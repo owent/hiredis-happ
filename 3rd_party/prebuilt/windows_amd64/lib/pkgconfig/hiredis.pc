@@ -1,0 +1,10 @@
+prefix=D:/projs/github/hiredis-happ/3rd_party/prebuilt/windows_amd64
+exec_prefix=${prefix}
+libdir=D:/projs/github/hiredis-happ/3rd_party/prebuilt/windows_amd64/lib
+includedir=D:/projs/github/hiredis-happ/3rd_party/prebuilt/windows_amd64/include/hiredis
+
+Name: hiredis
+Description: Minimalistic C client library for Redis.
+Version: 0.13.1
+Libs: -L${libdir} -lhiredis
+Cflags: -I${includedir} -D_FILE_OFFSET_BITS=64
