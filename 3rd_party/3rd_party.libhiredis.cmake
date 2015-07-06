@@ -46,7 +46,7 @@ else()
     )
 
     # win32 cmake bug
-    if(WIN32)
+    if(WIN32 AND EXISTS "${PROJECT_3RDPARTY_PREBUILT_DIR}/lib/libhiredis.a")
         file(COPY "${PROJECT_3RDPARTY_PREBUILT_DIR}/lib/libhiredis.a" DESTINATION ${PROJECT_3RDPARTY_BUILD_DIR})
         file(RENAME "${PROJECT_3RDPARTY_BUILD_DIR}/libhiredis.a" "${PROJECT_3RDPARTY_PREBUILT_DIR}/lib/libhiredis.lib")
     endif()
