@@ -54,7 +54,7 @@ build_script:
 #
 # Run unit test
 # 
-test:
+test_script:
     - '%CYG_BASH% -lc "cd $APPVEYOR_BUILD_FOLDER; exec 0</dev/null; build/test/hiredis-happ-test"'
 
 #
