@@ -64,5 +64,4 @@ branches:
   only:
     - master
 
-# no need
-artifacts: off
+# no need artifacts
