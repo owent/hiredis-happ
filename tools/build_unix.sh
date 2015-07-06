@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
 cd "$(dirname "$0")";
 cd ..;
@@ -9,6 +9,6 @@ fi
 
 mkdir build;
 cd build;
-cmake .. -G "MSYS Makefiles";
+cmake ..;
 make;
 cd ..;
