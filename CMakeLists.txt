@@ -12,6 +12,7 @@ include("${PROJECT_CMAKE_MODULE_DIR}/CompilerOption.cmake")
 include("${PROJECT_CMAKE_MODULE_DIR}/TargetOption.cmake")
 include("${PROJECT_CMAKE_MODULE_DIR}/IncludeDirectoryRecurse.cmake")
 include("${PROJECT_CMAKE_MODULE_DIR}/FindPlatform.cmake")
+include("${PROJECT_CMAKE_MODULE_DIR}/FindConfigurePackage.cmake")
 
 # 包含所有macro文件
 include_macro_recurse(${PROJECT_SOURCE_DIR})
