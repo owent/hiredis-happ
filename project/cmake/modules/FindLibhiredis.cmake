@@ -42,6 +42,8 @@
 #  License text for the above reference.)
 
 unset(_LIBHIREDIS_SEARCH_ROOT)
+unset(_LIBHIREDIS_SEARCH_INCLUDE)
+unset(_LIBHIREDIS_SEARCH_LIB)
 
 # Search LIBHIREDIS_ROOT first if it is set.
 if (Libhiredis_ROOT)
@@ -50,15 +52,16 @@ endif()
 
 if(LIBHIREDIS_ROOT)
   set(_LIBHIREDIS_SEARCH_ROOT PATHS ${LIBHIREDIS_ROOT} NO_DEFAULT_PATH)
+  set(_LIBHIREDIS_SEARCH_INCLUDE PATHS ${LIBHIREDIS_ROOT}/include NO_DEFAULT_PATH)
+  set(_LIBHIREDIS_SEARCH_LIB PATHS ${LIBHIREDIS_ROOT}/lib NO_DEFAULT_PATH)
 endif()
 
 # Normal search.
 set(Libhiredis_NAMES hiredis libhiredis)
 
 # Try each search configuration.
-
-find_path(Libhiredis_INCLUDE_DIRS    NAMES hiredis.h    ${_LIBHIREDIS_SEARCH_ROOT} PATH_SUFFIXES hiredis)
-find_library(Libhiredis_LIBRARIES    NAMES ${Libhiredis_NAMES}  ${_LIBHIREDIS_SEARCH_ROOT})
+find_path(Libhiredis_INCLUDE_DIRS    NAMES hiredis.h  ${_LIBHIREDIS_SEARCH_INCLUDE} PATH_SUFFIXES hiredis)
+find_library(Libhiredis_LIBRARIES    NAMES ${Libhiredis_NAMES}  ${_LIBHIREDIS_SEARCH_LIB})
 
 mark_as_advanced(Libhiredis_INCLUDE_DIRS Libhiredis_LIBRARIES)
 
@@ -72,4 +75,7 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(Libhiredis
 
 if(Libhiredis_FOUND)
     set(LIBHIREDIS_FOUND ${Libhiredis_FOUND})
+else()
+    unset(Libhiredis_INCLUDE_DIRS CACHE )
+    unset(Libhiredis_LIBRARIES CACHE )
 endif()
