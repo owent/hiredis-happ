@@ -31,6 +31,12 @@ else()
         WORKING_DIRECTORY "${3RD_PARTY_REDIS_BASE_DIR}/hiredis-${HIREDIS_VERSION}"
     )
 
+    # win32 cmake bug
+    if(WIN32)
+        file(COPY "${PROJECT_3RDPARTY_PREBUILT_DIR}/lib/libhiredis.a" DESTINATION ${PROJECT_3RDPARTY_BUILD_DIR})
+        file(RENAME "${PROJECT_3RDPARTY_BUILD_DIR}/libhiredis.a" "${PROJECT_3RDPARTY_PREBUILT_DIR}/lib/libhiredis.lib")
+    endif()
+
     set(LIBHIREDIS_ROOT ${PROJECT_3RDPARTY_PREBUILT_DIR})
     find_package(Libhiredis)
     if(LIBHIREDIS_FOUND)
