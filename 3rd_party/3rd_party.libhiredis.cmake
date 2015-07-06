@@ -23,9 +23,23 @@ else()
     endif()
 
     find_program(TAR_EXECUTABLE tar PATHS "${CYGWIN_INSTALL_PATH}/bin")
-    execute_process(COMMAND ${TAR_EXECUTABLE} -axvf hiredis-${HIREDIS_VERSION}.tar.gz
-        WORKING_DIRECTORY ${3RD_PARTY_REDIS_BASE_DIR}
-    )
+    if(TAR_EXECUTABLE)
+        execute_process(COMMAND ${TAR_EXECUTABLE} -axvf hiredis-${HIREDIS_VERSION}.tar.gz
+            WORKING_DIRECTORY ${3RD_PARTY_REDIS_BASE_DIR}
+        )
+    else()
+        find_program(TAR_EXECUTABLE 7z PATHS "$ENV{ProgramFiles}/7-Zip")
+        if(TAR_EXECUTABLE)
+            execute_process(COMMAND ${TAR_EXECUTABLE} x -r -y hiredis-${HIREDIS_VERSION}.tar.gz
+                WORKING_DIRECTORY ${3RD_PARTY_REDIS_BASE_DIR}
+            )
+            execute_process(COMMAND ${TAR_EXECUTABLE} x -r -y hiredis-${HIREDIS_VERSION}.tar
+                WORKING_DIRECTORY ${3RD_PARTY_REDIS_BASE_DIR}
+            )
+        else()
+            message(FATAL_ERROR "require tar or 7z to extract hiredis-${HIREDIS_VERSION}.tar.gz")
+        endif()
+    endif()
 
     execute_process(COMMAND make "PREFIX=${PROJECT_3RDPARTY_PREBUILT_DIR}" install
         WORKING_DIRECTORY "${3RD_PARTY_REDIS_BASE_DIR}/hiredis-${HIREDIS_VERSION}"
