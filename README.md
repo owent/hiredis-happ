@@ -6,7 +6,7 @@ Redis高可用Driver方案实现
 ------
 见 [doc](doc) 目录
 
-构建环境     | Linux (GCC & Clang) | Windows |
+构建环境     | Linux (GCC)         | Windows |
 -------------|---------------------|---------|
 当前构建状态 | [![Build Status](https://travis-ci.org/owt5008137/hiredis-happ.svg)](https://travis-ci.org/owt5008137/hiredis-happ) | [![Build status](https://ci.appveyor.com/api/projects/status/tp0bkc9ltorakfvs?svg=true)](https://ci.appveyor.com/project/owt5008137/hiredis-happ)
 
