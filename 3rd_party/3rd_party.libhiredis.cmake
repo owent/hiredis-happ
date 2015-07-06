@@ -41,11 +41,7 @@ else()
         endif()
     endif()
 
-    execute_process(COMMAND make "PREFIX=${PROJECT_3RDPARTY_PREBUILT_DIR}" install
-        WORKING_DIRECTORY "${3RD_PARTY_REDIS_BASE_DIR}/hiredis-${HIREDIS_VERSION}"
-    )
-    
-    execute_process(COMMAND ls -lh "PREFIX=${PROJECT_3RDPARTY_PREBUILT_DIR}"
+    execute_process(COMMAND ${CMAKE_MAKE_PROGRAM} "PREFIX=${PROJECT_3RDPARTY_PREBUILT_DIR}" install
         WORKING_DIRECTORY "${3RD_PARTY_REDIS_BASE_DIR}/hiredis-${HIREDIS_VERSION}"
     )
 
