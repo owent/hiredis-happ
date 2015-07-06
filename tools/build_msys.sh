@@ -3,7 +3,7 @@
 cd "$(dirname "$0")";
 cd ..;
 
-if [ -e build ];
+if [ -e build ]; then
     rm -rf build;
 fi
 
