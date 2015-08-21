@@ -7,6 +7,7 @@ find_package(Libhiredis)
 
 if(NOT LIBHIREDIS_FOUND)
     set(LIBHIREDIS_ROOT ${PROJECT_3RDPARTY_PREBUILT_DIR})
+    message(STATUS ${PROJECT_3RDPARTY_PREBUILT_DIR})
     find_package(Libhiredis)
 endif()
 
@@ -17,6 +18,9 @@ else()
     message(STATUS "hiredis not found try to build it.")
     if (NOT EXISTS "${3RD_PARTY_REDIS_BASE_DIR}/hiredis-${HIREDIS_VERSION}.tar.gz")
         message(STATUS "download from https://github.com/redis/hiredis/archive/v${HIREDIS_VERSION}.tar.gz to ${3RD_PARTY_REDIS_BASE_DIR}/hiredis-${HIREDIS_VERSION}.tar.gz")
+        if (NOT EXISTS ${3RD_PARTY_REDIS_BASE_DIR})
+            file(MAKE_DIRECTORY ${3RD_PARTY_REDIS_BASE_DIR})
+        endif()
         FindConfigurePackageDownloadFile("https://github.com/redis/hiredis/archive/v${HIREDIS_VERSION}.tar.gz" "${3RD_PARTY_REDIS_BASE_DIR}/hiredis-${HIREDIS_VERSION}.tar.gz" SHOW_PROGRESS)
     else()
         message(STATUS "use cache package ${3RD_PARTY_REDIS_BASE_DIR}/hiredis-${HIREDIS_VERSION}.tar.gz")
@@ -28,7 +32,8 @@ else()
             WORKING_DIRECTORY ${3RD_PARTY_REDIS_BASE_DIR}
         )
     else()
-        find_program(TAR_EXECUTABLE 7z PATHS "$ENV{ProgramFiles}/7-Zip")
+        find_program(TAR_EXECUTABLE 7z PATHS "$ENV{ProgramFiles}/7-Zip" "$ENV{ProgramW6432}/7-Zip")
+        message(STATUS "$ENV{ProgramFiles}============$ENV{ProgramFiles}/7-Zip=>${TAR_EXECUTABLE}")
         if(TAR_EXECUTABLE)
             execute_process(COMMAND ${TAR_EXECUTABLE} x -r -y hiredis-${HIREDIS_VERSION}.tar.gz
                 WORKING_DIRECTORY ${3RD_PARTY_REDIS_BASE_DIR}
