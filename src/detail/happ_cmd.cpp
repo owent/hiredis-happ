@@ -23,7 +23,7 @@ namespace hiredis {
                 return NULL;
             }
 
-            memset(ret, 0, sizeof(ret));
+            memset(ret, 0, sizeof(cmd_exec));
 
             ret->holder = holder;
             ret->callback = cbk;

@@ -776,7 +776,7 @@ namespace hiredis {
 
             va_list ap;
             va_start(ap, fmt);
-            int len = c99_vsnprintf(conf.log_buffer, conf.log_max_size, fmt, ap);
+            int len = vsnprintf(conf.log_buffer, conf.log_max_size, fmt, ap);
             va_end(ap);
 
             conf.log_buffer[conf.log_max_size - 1] = 0;
@@ -798,7 +798,7 @@ namespace hiredis {
 
             va_list ap;
             va_start(ap, fmt);
-            int len = c99_vsnprintf(conf.log_buffer, conf.log_max_size, fmt, ap);
+            int len = vsnprintf(conf.log_buffer, conf.log_max_size, fmt, ap);
             va_end(ap);
 
             conf.log_buffer[conf.log_max_size - 1] = 0;
