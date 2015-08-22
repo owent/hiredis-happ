@@ -66,6 +66,30 @@ static std::list<std::string> g_cmds;
 
 static void on_connect_cbk(hiredis::happ::cluster*, hiredis::happ::connection* conn) {
     redisLibuvAttach(conn->get_context(), main_loop);
+    if (NULL != conn) {
+        printf("start connect to %s", conn->get_context());
+    } else {
+        printf("error: connection not found when connect");
+    }
+}
+
+static void on_connected_cbk(hiredis::happ::cluster*, hiredis::happ::connection* conn, const struct redisAsyncContext* c, int status) {
+    redisLibuvAttach(conn->get_context(), main_loop);
+    if (NULL == conn) {
+        printf("error: connection not found when connected");
+        return;
+    }
+
+    if (REDIS_OK == status) {
+        printf("%s connected success", conn->get_key().name.c_str());
+    } else {
+        char no_msg[] = "none";
+        printf("%s connected failed, status %d, err: %d, msg %s",
+           conn->get_key().name.c_str(),
+           status, c? c->err: 0,
+           (c && c->errstr)? c->errstr: no_msg
+        );
+    }
 }
 
 static std::string pick_word(const std::string& cmd_line, int i) {
@@ -161,6 +185,7 @@ int main(int argc, char* argv[]) {
     main_loop = uv_default_loop();
     // 事件分发器
     g_clu.set_on_connect(on_connect_cbk);
+    g_clu.set_on_connected(on_connected_cbk);
 
     // 设置定时器
     uv_timer_t timer_obj;
