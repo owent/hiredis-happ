@@ -11,9 +11,6 @@
 
 #include "config.h"
 
-#include "hiredis.h"
-#include "async.h"
-
 #include "happ_cmd.h"
 
 namespace hiredis {
@@ -54,7 +51,7 @@ namespace hiredis {
             int call_reply(cmd_exec* c, void* reply);
             cmd_exec* pop_reply(cmd_exec* c);
 
-            redisAsyncContext* get_context();
+            redisAsyncContext* get_context() const;
 
             void release(std::list<cmd_exec*>* dump_pending, bool close_fd);
 

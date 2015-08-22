@@ -4,4 +4,3 @@
 
 #include "hiredis_happ.h"
 
-void test_main(){}

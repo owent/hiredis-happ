@@ -7,9 +7,6 @@
 
 #pragma once
 
-#include "hiredis.h"
-#include "async.h"
-
 #include <stdint.h>
 #include <cstddef>
 #include <string>
@@ -17,6 +14,20 @@
 #include <cstring>
 #include <functional>
 #include <memory>
+#include <algorithm>
+
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+#include "hiredis.h"
+#include "async.h"
+
+#if defined(__cplusplus)
+}
+#endif
+
 
 #define HIREDIS_HAPP_SLOT_NUMBER 16384
 
@@ -103,11 +114,18 @@ namespace hiredis {
         template<typename T>
         struct unique_ptr {
             typedef std::unique_ptr<T> type;
+            static void swap(type& l, type& r) {
+                l.swap(r);
+            }
         };
 #else
         template<typename T>
         struct unique_ptr {
-            typedef std::auto_ptr<T> type;
+            typedef std::shared_ptr<T> type;
+            static void swap(type& l, type& r) {
+                using std::swap;
+                swap(l, r);
+            }
         };
 #endif
 

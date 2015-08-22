@@ -172,7 +172,7 @@ namespace hiredis {
             return c;
         }
 
-        redisAsyncContext* connection::get_context() {
+        redisAsyncContext* connection::get_context() const {
             return context;
         }
 

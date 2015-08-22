@@ -9,9 +9,6 @@
 
 #include "config.h"
 
-#include "hiredis.h"
-#include "async.h"
-
 namespace hiredis {
     namespace happ {
         class cluster;

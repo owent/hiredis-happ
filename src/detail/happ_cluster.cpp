@@ -63,9 +63,13 @@ namespace hiredis {
             all_contexts.reserve(connections.size());
 
             // 先预存所有连接，再关闭
-            for (connection_map_t::iterator it = connections.begin(); it != connections.end(); ++it) {
-                if (NULL != it->second->get_context()) {
-                    all_contexts.push_back(it->second->get_context());
+            {
+                connection_map_t::const_iterator it_b = connections.begin();
+                connection_map_t::const_iterator it_e = connections.end();
+                for (; it_b != it_e; ++ it_b) {
+                    if (NULL != it_b->second->get_context()) {
+                        all_contexts.push_back(it_b->second->get_context());
+                    }
                 }
             }
 
@@ -352,7 +356,7 @@ namespace hiredis {
 
             ::hiredis::happ::unique_ptr<connection_t>::type ret_ptr(new connection_t());
             connection_t& ret = *ret_ptr;
-            connections[key.name].swap(ret_ptr);
+            ::hiredis::happ::unique_ptr<connection_t>::swap(connections[key.name], ret_ptr);
             ret.init(h, key);
             ret.set_connecting(c);
 

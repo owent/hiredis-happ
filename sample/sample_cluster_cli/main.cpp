@@ -81,8 +81,8 @@ static std::string pick_word(const std::string& cmd_line, int i) {
     return ret;
 }
 
-static std::string dump_callback(hiredis::happ::cmd_exec* cmd, struct redisAsyncContext*, void* r, void* p) {
-    assert(p == dump_callback);
+static void dump_callback(hiredis::happ::cmd_exec* cmd, struct redisAsyncContext*, void* r, void* p) {
+    assert(p == reinterpret_cast<void*>(dump_callback));
     g_clu.dump(std::cout, reinterpret_cast<redisReply*>(r), 0);
 }
 
@@ -127,9 +127,9 @@ static void on_timer_proc(uv_timer_t* handle) {
         }
         std::string cmd_key = pick_word(cmd_line, k);
         if (cmd_key.empty()) {
-            g_clu.exec(NULL, 0, cbk, cbk, cmd.c_str());
+            g_clu.exec(NULL, 0, cbk, reinterpret_cast<void*>(cbk), cmd.c_str());
         } else {
-            g_clu.exec(cmd_key.c_str(), cmd_key.size(), cbk, cbk, cmd.c_str());
+            g_clu.exec(cmd_key.c_str(), cmd_key.size(), cbk, reinterpret_cast<void*>(cbk), cmd.c_str());
         }
     }
 
@@ -148,7 +148,7 @@ static void on_log_fn(const char* content) {
 
 int main(int argc, char* argv[]) {
     if (argc < 3) {
-        printf("usage: %s <ip> <port>", argv[0]);
+        printf("usage: %s <ip> <port>\n", argv[0]);
         return 0;
     }
 
