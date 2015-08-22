@@ -58,7 +58,7 @@ namespace hiredis {
 
             conn_status = status::CONNECTED;
 
-            // µ¼³öµÈ´ıÁĞ±í
+            // å¯¼å‡ºç­‰å¾…åˆ—è¡¨
             pending.clear();
             pending.swap(pending_list);
             return true;
@@ -74,11 +74,11 @@ namespace hiredis {
             }
 
             switch (conn_status) {
-            case status::CONNECTING: { // ÕıÔÚÁ¬½ÓÔò½øÈë·¢ËÍµÈ´ı¶ÓÁĞ
+            case status::CONNECTING: { // æ­£åœ¨è¿æ¥åˆ™è¿›å…¥å‘é€ç­‰å¾…é˜Ÿåˆ—
                 pending_list.push_back(c);
                 return error_code::REDIS_HAPP_OK;
             }
-            case status::DISCONNECTED: { // Î´Á¬½ÓÔòÖ±½ÓÊ§°Ü
+            case status::DISCONNECTED: { // æœªè¿æ¥åˆ™ç›´æ¥å¤±è´¥
                 return error_code::REDIS_HAPP_CONNECTION;
             }
             case status::CONNECTED: {
@@ -101,7 +101,7 @@ namespace hiredis {
             }
             }
 
-            // Î´ÖªÒì³££¬»ØÊÕcmd
+            // æœªçŸ¥å¼‚å¸¸ï¼Œå›æ”¶cmd
             c->call_reply(error_code::REDIS_HAPP_UNKNOWD, context, NULL);
             cmd_exec::destroy(c);
 
@@ -158,7 +158,7 @@ namespace hiredis {
                 return NULL;
             }
 
-            // ÏÈ´¦ÀíµôËùÓĞ¹ıÆÚÇëÇó
+            // å…ˆå¤„ç†æ‰æ‰€æœ‰è¿‡æœŸè¯·æ±‚
             while (!reply_list.empty() && reply_list.front() != c) {
                 cmd_exec* expired_c = reply_list.front();
                 reply_list.pop_front();
@@ -181,7 +181,7 @@ namespace hiredis {
                 redisAsyncDisconnect(context);
             }
 
-            // »Ø°üÁĞ±í
+            // å›åŒ…åˆ—è¡¨
             while (!reply_list.empty()) {
                 cmd_exec* expired_c = reply_list.front();
                 reply_list.pop_front();
@@ -190,7 +190,7 @@ namespace hiredis {
                 cmd_exec::destroy(expired_c);
             }
 
-            // µÈ´ıÁĞ±í
+            // ç­‰å¾…åˆ—è¡¨
             if (NULL == dump_pending) {
                 while (!pending_list.empty()) {
                     cmd_exec* expired_c = pending_list.front();

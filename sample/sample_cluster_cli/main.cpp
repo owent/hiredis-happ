@@ -96,8 +96,6 @@ static void on_timer_proc(uv_timer_t* handle) {
         usec %= 10000000;
     }
 
-    puts("timeout");
-
     // 提取命令
     pthread_mutex_lock(&g_mutex);
     std::list<std::string> pending_cmds;

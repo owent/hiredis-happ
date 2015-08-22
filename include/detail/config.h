@@ -1,5 +1,5 @@
 //
-// Created by ŷ��� on 2015/08/18.
+// Created by OWenT on 2015/08/18.
 //
 
 #ifndef HIREDIS_HAPP_HIREDIS_HAPP_CONFIG_H
