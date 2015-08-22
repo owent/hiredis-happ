@@ -41,7 +41,8 @@
 # (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
-unset(_LIBUV_SEARCH_ROOT)
+unset(_LIBUV_SEARCH_ROOT_INC)
+unset(_LIBUV_SEARCH_ROOT_LIB)
 
 # Search LIBUV_ROOT first if it is set.
 if (Libuv_ROOT)
@@ -49,15 +50,16 @@ if (Libuv_ROOT)
 endif()
 
 if(LIBUV_ROOT)
-  set(_LIBUV_SEARCH_ROOT PATHS ${LIBUV_ROOT} NO_DEFAULT_PATH)
+  set(_LIBUV_SEARCH_ROOT_INC PATHS ${LIBUV_ROOT} ${LIBUV_ROOT}/include NO_DEFAULT_PATH)
+  set(_LIBUV_SEARCH_ROOT_LIB PATHS ${LIBUV_ROOT} ${LIBUV_ROOT}/lib NO_DEFAULT_PATH)
 endif()
 
 # Normal search.
 set(Libuv_NAMES uv libuv)
 
 # Try each search configuration.
-find_path(Libuv_INCLUDE_DIRS    NAMES uv.h            ${_LIBUV_SEARCH_ROOT})
-find_library(Libuv_LIBRARIES    NAMES ${Libuv_NAMES}  ${_LIBUV_SEARCH_ROOT})
+find_path(Libuv_INCLUDE_DIRS    NAMES uv.h            ${_LIBUV_SEARCH_ROOT_INC})
+find_library(Libuv_LIBRARIES    NAMES ${Libuv_NAMES}  ${_LIBUV_SEARCH_ROOT_LIB})
 
 mark_as_advanced(Libuv_INCLUDE_DIRS Libuv_LIBRARIES)
 

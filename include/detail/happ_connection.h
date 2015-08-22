@@ -75,9 +75,9 @@ namespace hiredis {
 
             holder_t holder;
             redisAsyncContext* context;
-            // 连接完成重新执行列表
+            // 杩炴帴瀹屾垚閲嶆柊鎵ц鍒楄〃
             std::list<cmd_exec*> pending_list;
-            // 回包响应列表
+            // 鍥炲寘鍝嶅簲鍒楄〃
             std::list<cmd_exec*> reply_list;
             status::type conn_status;
         };

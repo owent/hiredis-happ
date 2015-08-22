@@ -1,5 +1,5 @@
 //
-// Created by Å·ÎÄèº on 2015/08/18.
+// Created by Å·ï¿½ï¿½ï¿½ on 2015/08/18.
 //
 
 #ifndef HIREDIS_HAPP_HIREDIS_HAPP_CONFIG_H
@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <functional>
+#include <memory>
 
 #define HIREDIS_HAPP_SLOT_NUMBER 16384
 
@@ -98,6 +99,18 @@ __inline int c99_snprintf(char* str, size_t size, const char* format, ...) {
 // error code
 namespace hiredis {
     namespace happ {
+#if (defined(__cplusplus) && __cplusplus >= 201103L) || (defined(_MSC_VER) && _MSC_VER >= 1600)
+        template<typename T>
+        struct unique_ptr {
+            typedef std::unique_ptr<T> type;
+        };
+#else
+        template<typename T>
+        struct unique_ptr {
+            typedef std::auto_ptr<T> type;
+        };
+#endif
+
         struct error_code {
             typedef enum {
                 REDIS_HAPP_OK               =  REDIS_OK,

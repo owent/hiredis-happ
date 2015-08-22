@@ -109,8 +109,10 @@ namespace hiredis {
             }
 
             err = err;
-            callback(this, context, reply, pri_data);
+            callback_fn_t tc = callback;
             callback = NULL;
+            tc(this, context, reply, pri_data);
+
             return error_code::REDIS_HAPP_OK;
         }
     }

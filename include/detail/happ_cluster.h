@@ -1,5 +1,5 @@
 //
-// Created by Å·ÎÄèº on 2015/08/18.
+// Created by æ¬§æ–‡éŸ¬ on 2015/08/18.
 //
 
 #ifndef HIREDIS_HAPP_HIREDIS_HAPP_CLUSTER_H
@@ -26,7 +26,7 @@ namespace hiredis {
                 std::vector<connection::key_t> hosts;
             };
             typedef connection connection_t;
-            typedef HIREDIS_HAPP_MAP(std::string, connection_t) connection_map_t;
+            typedef HIREDIS_HAPP_MAP(std::string, ::hiredis::happ::unique_ptr<connection_t>::type) connection_map_t;
 
             typedef std::function<void(cluster*, connection_t*)> onconnect_fn_t;
             typedef std::function<void (cluster*, connection_t*, const struct redisAsyncContext*, int status)> onconnected_fn_t;
@@ -84,15 +84,13 @@ namespace hiredis {
 
             int proc(time_t sec, time_t usec);
 
+            void set_log_writer(log_fn_t info_fn, log_fn_t debug_fn, size_t max_size = 65536);
+
+            void dump(std::ostream& out, redisReply* reply, int ident = 0);
         private:
             cmd_t* create_cmd(cmd_t::callback_fn_t cbk, void* pridata);
             void destroy_cmd(cmd_t* c);
             int call_cmd(cmd_t* c, int err, redisAsyncContext* context, void* reply);
-
-            //int exec_connection(const std::string& key, );
-
-            void set_log_writer(log_fn_t info_fn, log_fn_t debug_fn, size_t max_size = 65536);
-
 
             static void on_reply_wrapper(redisAsyncContext* c, void* r, void* privdata);
             static void on_reply_update_slot(redisAsyncContext* c, void* r, void* privdata);
@@ -101,7 +99,6 @@ namespace hiredis {
             static void on_disconnected_wrapper(const struct redisAsyncContext*, int status);
 
         private:
-            void dump(std::ostream& out, redisReply* reply, int ident = 0);
 
             void log_debug(const char* fmt, ...);
 
@@ -120,7 +117,7 @@ namespace hiredis {
             };
             config_t conf;
 
-            // ²ÛĞÅÏ¢
+            // æ§½ä¿¡æ¯
             struct slot_status {
                 enum type {
                     INVALID = 0,
@@ -130,14 +127,14 @@ namespace hiredis {
             };
             slot_t slots[HIREDIS_HAPP_SLOT_NUMBER];
             slot_status::type slot_flag;
-            // ¸üĞÂÍêSlotÖØÈëÁĞ±í
+            // æ›´æ–°å®ŒSloté‡å…¥åˆ—è¡¨
             std::list<cmd_t*> slot_pending;
 
-            // Êı¾İÁ¬½ÓĞÅÏ¢
+            // æ•°æ®è¿æ¥ä¿¡æ¯
             connection_map_t connections;
 
 
-            // ¶¨Ê±Æ÷ÖØÈëÁĞ±í
+            // å®šæ—¶å™¨é‡å…¥åˆ—è¡¨
             struct timer_t {
                 time_t last_update_sec;
                 time_t last_update_usec;
@@ -151,7 +148,7 @@ namespace hiredis {
             };
             timer_t timer_actions;
 
-            // »Øµ÷½Ó¿ÚÁĞ±í
+            // å›è°ƒæ¥å£åˆ—è¡¨
             struct callback_set_t {
                 onconnect_fn_t on_connect;
                 onconnected_fn_t on_connected;

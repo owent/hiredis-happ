@@ -7,4 +7,6 @@
 
 #pragma once
 
+#include "detail/happ_cluster.h"
+
 #endif //HIREDIS_HAPP_HIREDIS_HAPP_H

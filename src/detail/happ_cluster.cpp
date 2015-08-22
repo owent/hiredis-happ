@@ -62,10 +62,10 @@ namespace hiredis {
             std::vector<redisAsyncContext*> all_contexts;
             all_contexts.reserve(connections.size());
 
-            // ÏÈÔ¤´æËùÓĞÁ¬½Ó£¬ÔÙ¹Ø±Õ
+            // å…ˆé¢„å­˜æ‰€æœ‰è¿æ¥ï¼Œå†å…³é—­
             for (connection_map_t::iterator it = connections.begin(); it != connections.end(); ++it) {
-                if (NULL != it->second.get_context()) {
-                    all_contexts.push_back(it->second.get_context());
+                if (NULL != it->second->get_context()) {
+                    all_contexts.push_back(it->second->get_context());
                 }
             }
 
@@ -73,7 +73,7 @@ namespace hiredis {
                 redisAsyncDisconnect(all_contexts[i]);
             }
 
-            // ÊÍ·Åslot pending list
+            // é‡Šæ”¾slot pending list
             while(!slot_pending.empty()) {
                 cmd_t* cmd = slot_pending.front();
                 slot_pending.pop_front();
@@ -87,7 +87,7 @@ namespace hiredis {
             }
             slot_flag = slot_status::INVALID;
 
-            // ÊÍ·Åtimer pending list
+            // é‡Šæ”¾timer pending list
             while(!timer_actions.timer_pending.empty()) {
                 cmd_t* cmd = timer_actions.timer_pending.front().cmd;
                 timer_actions.timer_pending.pop_front();
@@ -162,12 +162,12 @@ namespace hiredis {
                 return error_code::REDIS_HAPP_PARAM;
             }
 
-            // ĞèÒªÔÚÕâÀï×ª·¢cmd_tµÄËùÓĞÈ¨
+            // éœ€è¦åœ¨è¿™é‡Œè½¬å‘cmd_tçš„æ‰€æœ‰æƒ
             if (NULL != key && 0 != ks) {
                 cmd->engine.slot = static_cast<int>(crc16(key, ks));
             }
 
-            // ttl Ô¤ÅĞ¶¨
+            // ttl é¢„åˆ¤å®š
             if (0 == cmd->ttl) {
                 log_debug("cmd at slot %d ttl expired", cmd->engine.slot);
                 call_cmd(cmd, error_code::REDIS_HAPP_TTL, NULL, NULL);
@@ -184,7 +184,7 @@ namespace hiredis {
                 return 0;
             }
 
-            // Ö¸¶¨»òËæ»ú»ñÈ¡·şÎñÆ÷µØÖ·
+            // æŒ‡å®šæˆ–éšæœºè·å–æœåŠ¡å™¨åœ°å€
             const connection::key_t* conn_key = get_slot_master(cmd->engine.slot);
 
             if (NULL == conn_key) {
@@ -193,7 +193,7 @@ namespace hiredis {
                 return error_code::REDIS_HAPP_CONNECTION;
             }
 
-            // ×ª·¢µ½½¨Á¢Á¬½Ó
+            // è½¬å‘åˆ°å»ºç«‹è¿æ¥
             connection_t* conn_inst = get_connection(conn_key->name);
             if (NULL == conn_inst) {
                 conn_inst = make_connection(*conn_key);
@@ -216,7 +216,7 @@ namespace hiredis {
                 return error_code::REDIS_HAPP_PARAM;
             }
 
-            // ttl ÕıÊ½ÅĞ¶¨
+            // ttl æ­£å¼åˆ¤å®š
             if (0 == cmd->ttl) {
                 log_debug("cmd at slot %d ttl expired", cmd->engine.slot);
                 call_cmd(cmd, error_code::REDIS_HAPP_TTL, NULL, NULL);
@@ -236,11 +236,11 @@ namespace hiredis {
                 return error_code::REDIS_HAPP_PARAM;
             }
 
-            // Ö÷Ñ­»·Âß¼­»Ø°ü´¦Àí
+            // ä¸»å¾ªç¯é€»è¾‘å›åŒ…å¤„ç†
             int res = conn->redis_cmd(cmd, on_reply_wrapper);
 
-            // hiredisµÄ´úÂë£¬½öÔÚÍøÂç¹Ø±ÕºÍÃüÁî´íÎó»á·µ»Ø³ö´í
-            // ËùÒÔÕâĞ©Çé¿ö¶¼Ó¦¸ÃÖ±½Ó³ö´í»Øµ÷
+            // hiredisçš„ä»£ç ï¼Œä»…åœ¨ç½‘ç»œå…³é—­å’Œå‘½ä»¤é”™è¯¯ä¼šè¿”å›å‡ºé”™
+            // æ‰€ä»¥è¿™äº›æƒ…å†µéƒ½åº”è¯¥ç›´æ¥å‡ºé”™å›è°ƒ
             if (REDIS_OK != res) {
                 cmd->call_reply(error_code::REDIS_HAPP_HIREDIS, conn->get_context(), NULL);
                 destroy_cmd(cmd);
@@ -251,7 +251,7 @@ namespace hiredis {
         }
 
         int cluster::retry(cmd_t* cmd, connection_t* conn) {
-            // ÖØÊÔ´ÎÊı½ÏÉÙÔòÖ±½ÓÖØÊÔ
+            // é‡è¯•æ¬¡æ•°è¾ƒå°‘åˆ™ç›´æ¥é‡è¯•
             if(NULL == cmd) {
                 return error_code::REDIS_HAPP_PARAM;
             }
@@ -264,8 +264,8 @@ namespace hiredis {
                 }
             }
 
-            // ÖØÊÔ´ÎÊı½Ï¶àÔòµÈÒ»»áÖØÊÔ
-            // ÑÓ³ÙÖØÊÔµÄÃüÁî²»¼ÇÂ¼Á¬½ÓĞÅÏ¢£¬ÒòÎª¿ÉÄÜµ½Ê±ºòÁ¬½ÓÒÑ¾­¶ªÊ§
+            // é‡è¯•æ¬¡æ•°è¾ƒå¤šåˆ™ç­‰ä¸€ä¼šé‡è¯•
+            // å»¶è¿Ÿé‡è¯•çš„å‘½ä»¤ä¸è®°å½•è¿æ¥ä¿¡æ¯ï¼Œå› ä¸ºå¯èƒ½åˆ°æ—¶å€™è¿æ¥å·²ç»ä¸¢å¤±
             add_timer_cmd(cmd);
             return 0;
         }
@@ -287,7 +287,7 @@ namespace hiredis {
                 return true;
             }
 
-            // ÕâÀïÒªÓÃÔ­Ê¼½Ó¿Ú£¬ÒòÎªexec_cmd»á°ÑÏûÏ¢ÈÓ´ıÖ´ĞĞ¶ÓÁĞÀï
+            // è¿™é‡Œè¦ç”¨åŸå§‹æ¥å£ï¼Œå› ä¸ºexec_cmdä¼šæŠŠæ¶ˆæ¯æ‰”å¾…æ‰§è¡Œé˜Ÿåˆ—é‡Œ
             redisAsyncCommand(const_cast<redisAsyncContext*>(conn->get_context()), on_reply_update_slot, NULL, "CLUSTER SLOTS");
             slot_flag = slot_status::UPDATING;
 
@@ -299,7 +299,7 @@ namespace hiredis {
                 return &slots[index].hosts.front();
             }
 
-            // Ëæ»ú»ñÈ¡µØÖ·
+            // éšæœºè·å–åœ°å€
             index = (detail::random() & 0xFFFF) % HIREDIS_HAPP_SLOT_NUMBER;
             if (slots[index].hosts.empty()) {
                 return &conf.init_connection;
@@ -314,7 +314,7 @@ namespace hiredis {
                 return NULL;
             }
 
-            return &it->second;
+            return it->second.get();
         }
 
         cluster::connection_t* cluster::get_connection(const std::string& key) {
@@ -323,7 +323,7 @@ namespace hiredis {
                 return NULL;
             }
 
-            return &it->second;
+            return it->second.get();
         }
 
         const cluster::connection_t* cluster::get_connection(const std::string& ip, uint16_t port) const {
@@ -350,7 +350,9 @@ namespace hiredis {
             redisAsyncSetConnectCallback(c, on_connected_wrapper);
             redisAsyncSetDisconnectCallback(c, on_disconnected_wrapper);
 
-            connection_t& ret = connections[key.name];
+            ::hiredis::happ::unique_ptr<connection_t>::type ret_ptr(new connection_t());
+            connection_t& ret = *ret_ptr;
+            connections[key.name].swap(ret_ptr);
             ret.init(h, key);
             ret.set_connecting(c);
 
@@ -372,17 +374,17 @@ namespace hiredis {
             }
 
             std::list<cmd_exec*> pending_list;
-            it->second.set_disconnected(&pending_list, close_fd);
+            it->second->set_disconnected(&pending_list, close_fd);
 
             if(callbacks.on_disconnected) {
-                callbacks.on_disconnected(this, &it->second, it->second.get_context(), status);
+                callbacks.on_disconnected(this, it->second.get(), it->second->get_context(), status);
             }
 
             log_debug("release connection %s", key.name.c_str());
             connections.erase(it);
 
 
-            // ÖØÊÔcmd
+            // é‡è¯•cmd
             for (std::list<cmd_exec*>::iterator it_cmd; it_cmd != pending_list.end(); ++it_cmd) {
                 retry(*it_cmd);
             }
@@ -467,7 +469,7 @@ namespace hiredis {
                 return;
             }
 
-            // ¶ªÊ§Á¬½Ó
+            // ä¸¢å¤±è¿æ¥
             if (NULL != c->callback) {
                 call_cmd(c, error_code::REDIS_HAPP_UNKNOWD, NULL, NULL);
             }
@@ -503,29 +505,29 @@ namespace hiredis {
 
             if (REDIS_ERR_IO == c->err && REDIS_ERR_EOF == c->err) {
                 self->log_debug("redis reply context err %d and will retry, %s", c->err, c->errstr);
-                // ÍøÂç´íÎóÔòÖØÊÔ
+                // ç½‘ç»œé”™è¯¯åˆ™é‡è¯•
                 self->retry(cmd);
                 return;
             }
 
             if (REDIS_OK != c->err || NULL == r) {
                 self->log_debug("redis reply context err %d and abort, %s", c->err, NULL == c->errstr? "none": c->errstr);
-                // ÆäËû´íÎóÔòÏòÉÏ´«µİ
+                // å…¶ä»–é”™è¯¯åˆ™å‘ä¸Šä¼ é€’
                 conn->call_reply(cmd, r);
                 return;
             }
 
             redisReply* reply = reinterpret_cast<redisReply*>(r);
 
-            // ´íÎó´¦Àí
+            // é”™è¯¯å¤„ç†
             if (REDIS_REPLY_ERROR == reply->type) {
                 int slot_index = 0;
                 char addr[260] = { 0 };
 
-                // ¼ì²â MOVED£¬ASKºÍCLUSTERDOWNÖ¸Áî
+                // æ£€æµ‹ MOVEDï¼ŒASKå’ŒCLUSTERDOWNæŒ‡ä»¤
                 if(0 == HIREDIS_HAPP_STRNCASE_CMP("ASK", reply->str, 3)) {
                     self->log_debug("%s", reply->str);
-                    // ·¢ËÍASKµ½Ä¿±êconnection
+                    // å‘é€ASKåˆ°ç›®æ ‡connection
                     HIREDIS_HAPP_SSCANF(reply->str + 4, " %d %s", &slot_index, addr);
                     std::string ip;
                     uint16_t port;
@@ -533,13 +535,13 @@ namespace hiredis {
                         connection::key_t conn_key;
                         connection::set_key(conn_key, ip, port);
 
-                        // ASKING ÇëÇó
+                        // ASKING è¯·æ±‚
                         connection_t* conn = self->get_connection(conn_key.name);
                         if (NULL == conn) {
                             conn = self->make_connection(conn_key);
                         }
 
-                        // cmd×ªÒÆµ½ĞÂµÄconnection£¬²¢ÔÚÍê³ÉºóÖ´ĞĞ
+                        // cmdè½¬ç§»åˆ°æ–°çš„connectionï¼Œå¹¶åœ¨å®Œæˆåæ‰§è¡Œ
                         if (NULL != conn) {
                             if(REDIS_OK == redisAsyncCommand(conn->get_context(), on_reply_asking, cmd, "ASKING")) {
                                 return;
@@ -555,7 +557,7 @@ namespace hiredis {
                     std::string ip;
                     uint16_t port;
                     if (connection::pick_name(addr, ip, port)) {
-                        // ¸üĞÂÒ»Ìõslot
+                        // æ›´æ–°ä¸€æ¡slot
                         self->slots[slot_index].hosts.clear();
                         self->slots[slot_index].hosts.push_back(connection::key_t());
                         connection::set_key(self->slots[slot_index].hosts.back(), ip, port);
@@ -563,10 +565,10 @@ namespace hiredis {
                         // retry
                         self->retry(cmd);
 
-                        // ÖØĞÂÀ­È¡slotÁĞ±í
-                        // TODO ÕâÀïÊÇ·ñÒªÇ¿ÖÆÀ­È¡slotsÁĞ±í£¿
-                        // Èç¹û²»À­È¡¿ÉÄÜ¶ªÊ§´Ó½ÚµãĞÅÏ¢£¬µ«ÊÇÀ­È¡µÄ»°Ç¨ÒÆ¹ı³ÌÖĞ¿ÉÄÜ»áµ¼ÖÂ¸üĞÂ¶à´Î£¿
-                        // ²¢ÇÒ¸üĞÂslotsÒ²ÊÇÒ»¸ö±È½ÏºÄ·ÑCPUµÄ²Ù×÷£¨16384´ÎlistµÄÇå¿ÕºÍ¸´ÖÆ£©
+                        // é‡æ–°æ‹‰å–slotåˆ—è¡¨
+                        // TODO è¿™é‡Œæ˜¯å¦è¦å¼ºåˆ¶æ‹‰å–slotsåˆ—è¡¨ï¼Ÿ
+                        // å¦‚æœä¸æ‹‰å–å¯èƒ½ä¸¢å¤±ä»èŠ‚ç‚¹ä¿¡æ¯ï¼Œä½†æ˜¯æ‹‰å–çš„è¯è¿ç§»è¿‡ç¨‹ä¸­å¯èƒ½ä¼šå¯¼è‡´æ›´æ–°å¤šæ¬¡ï¼Ÿ
+                        // å¹¶ä¸”æ›´æ–°slotsä¹Ÿæ˜¯ä¸€ä¸ªæ¯”è¾ƒè€—è´¹CPUçš„æ“ä½œï¼ˆ16384æ¬¡listçš„æ¸…ç©ºå’Œå¤åˆ¶ï¼‰
                         self->reload_slots();
                         return;
                     } else {
@@ -580,12 +582,12 @@ namespace hiredis {
                 }
 
                 self->log_debug("redis reply errorand abort, msg: %s", NULL == reply->str? "none": reply->str);
-                // ÆäËû´íÎóÔòÏòÉÏ´«µİ
+                // å…¶ä»–é”™è¯¯åˆ™å‘ä¸Šä¼ é€’
                 conn->call_reply(cmd, r);
                 return;
             }
 
-            // Õı³£»Øµ÷
+            // æ­£å¸¸å›è°ƒ
             conn->call_reply(cmd, r);
         }
 
@@ -594,7 +596,7 @@ namespace hiredis {
             connection_t* conn = reinterpret_cast<connection_t*>(c->data);
             cluster* self = conn->get_holder().clu;
 
-            // ³ö´í£¬ÖØĞÂÀ­È¡
+            // å‡ºé”™ï¼Œé‡æ–°æ‹‰å–
             if (NULL == reply || reply->elements <= 0 || REDIS_REPLY_ARRAY != reply->element[0]->type) {
                 self->slot_flag = slot_status::INVALID;
 
@@ -633,14 +635,21 @@ namespace hiredis {
                         
                     }
 
-                    // 16384´Î¸´ÖÆ
+                    // log
+                    if(NULL != self->conf.log_fn_debug && self->conf.log_max_size > 0 ) {
+                        self->log_debug("slot update: [%lld-%lld]\n", si, ei);
+                        for (size_t j = 0; j < hosts.size(); ++ j) {
+                            self->log_debug(" -- %s", hosts[j].name.c_str());
+                        }
+                    }
+                    // 16384æ¬¡å¤åˆ¶
                     for (; si <= ei; ++ si) {
                         self->slots[si].hosts = hosts;
                     }
                 }
             }
 
-            // Ö´ĞĞ´ıÖ´ĞĞ¶ÓÁĞ
+            // æ‰§è¡Œå¾…æ‰§è¡Œé˜Ÿåˆ—
             while(!self->slot_pending.empty()) {
                 cmd_t* cmd = self->slot_pending.front();
                 self->slot_pending.pop_front();
@@ -658,14 +667,14 @@ namespace hiredis {
 
             if (REDIS_ERR_IO == c->err && REDIS_ERR_EOF == c->err) {
                 self->log_debug("redis asking err %d and will retry, %s", c->err, c->errstr);
-                // ÍøÂç´íÎóÔòÖØÊÔ
+                // ç½‘ç»œé”™è¯¯åˆ™é‡è¯•
                 self->retry(cmd);
                 return;
             }
 
             if (REDIS_OK != c->err || NULL == r) {
                 self->log_debug("redis asking err %d and abort, %s", c->err, NULL == c->errstr ? "none" : c->errstr);
-                // ÆäËû´íÎóÔòÏòÉÏ´«µİ
+                // å…¶ä»–é”™è¯¯åˆ™å‘ä¸Šä¼ é€’
                 conn->call_reply(cmd, r);
                 return;
             }
@@ -676,7 +685,7 @@ namespace hiredis {
             }
 
             self->log_debug("redis reply asking err %d and abort, %s", reply->type, NULL == reply->str ? "none" : reply->str);
-            // ÆäËû´íÎóÔòÏòÉÏ´«µİ
+            // å…¶ä»–é”™è¯¯åˆ™å‘ä¸Šä¼ é€’
             conn->call_reply(cmd, r);
         }
 
@@ -689,12 +698,12 @@ namespace hiredis {
                 self->callbacks.on_connected(self, conn, c, status);
             }
 
-            // Ê§°ÜÔòÊÍ·Å×ÊÔ´
+            // å¤±è´¥åˆ™é‡Šæ”¾èµ„æº
             if (REDIS_OK != status) {
                 self->log_debug("connect to %s failed, status: %d, msg: %s", conn->get_key().name.c_str(), status, c->errstr);
                 self->release_connection(conn->get_key(), false, status);
             } else {
-                // Ö´ĞĞpendingÃüÁî
+                // æ‰§è¡Œpendingå‘½ä»¤
                 std::list<cmd_exec*> pending_list;
                 conn->set_connected(pending_list);
                 for (std::list<cmd_exec*>::iterator it = pending_list.begin(); it != pending_list.end(); ++ it) {
@@ -703,7 +712,7 @@ namespace hiredis {
 
                 self->log_debug("connect to %s success", conn->get_key().name.c_str());
 
-                // ¸üĞÂslot
+                // æ›´æ–°slot
                 if (slot_status::INVALID == self->slot_flag) {
                     self->reload_slots();
                 }
@@ -714,7 +723,7 @@ namespace hiredis {
         void cluster::on_disconnected_wrapper(const struct redisAsyncContext* c, int status) {
             connection_t* conn = reinterpret_cast<connection_t*>(c->data);
             cluster* self = conn->get_holder().clu;
-            // ÊÍ·Å×ÊÔ´
+            // é‡Šæ”¾èµ„æº
             self->release_connection(conn->get_key(), false, status);
         }
 

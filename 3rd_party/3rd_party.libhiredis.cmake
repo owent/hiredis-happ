@@ -1,6 +1,5 @@
 # 自动构建hiredis
 
-
 set (3RD_PARTY_REDIS_BASE_DIR ${PROJECT_3RDPARTY_BUILD_DIR})
 
 find_package(Libhiredis)
