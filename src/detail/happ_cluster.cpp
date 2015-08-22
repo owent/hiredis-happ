@@ -738,7 +738,7 @@ namespace hiredis {
                 return;
             }
 
-            // TODO dump reply
+            // dump reply
             switch(reply->type) {
             case REDIS_REPLY_NIL: {
                 out << "[NIL]"<< std::endl;
