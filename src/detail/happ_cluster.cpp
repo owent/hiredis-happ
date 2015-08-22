@@ -286,9 +286,11 @@ namespace hiredis {
 
             connection_t* conn = get_connection(conn_key->name);
             if (NULL == conn) {
-                slot_flag = slot_status::INVALID;
-                make_connection(*conn_key);
-                return true;
+                conn = make_connection(*conn_key);
+            }
+
+            if (NULL == conn) {
+                return false;
             }
 
             // 这里要用原始接口，因为exec_cmd会把消息扔待执行队列里
@@ -340,7 +342,7 @@ namespace hiredis {
 
         cluster::connection_t* cluster::make_connection(const connection::key_t& key) {
             holder_t h;
-            if (connections.find(key.name) == connections.end()) {
+            if (connections.find(key.name) != connections.end()) {
                 return NULL;
             }
 
