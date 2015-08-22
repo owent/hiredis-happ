@@ -105,6 +105,7 @@ namespace hiredis {
             // log buffer
             if (NULL != conf.log_buffer) {
                 free(conf.log_buffer);
+                conf.log_buffer = NULL;
             }
 
             return 0;
