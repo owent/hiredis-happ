@@ -67,7 +67,7 @@ static std::list<std::string> g_cmds;
 static void on_connect_cbk(hiredis::happ::cluster*, hiredis::happ::connection* conn) {
     redisLibuvAttach(conn->get_context(), main_loop);
     if (NULL != conn) {
-        printf("start connect to %s", conn->get_context());
+        printf("start connect to %s", conn->get_key().name.c_str());
     } else {
         printf("error: connection not found when connect");
     }
