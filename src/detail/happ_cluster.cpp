@@ -682,7 +682,7 @@ namespace hiredis {
 
                     std::vector<connection::key_t> hosts;
                     for (size_t j = 2; j < slot_node->elements; ++ j) {
-                        redisReply* addr = slot_node->element[i];
+                        redisReply* addr = slot_node->element[j];
                         if (2 == addr->elements && REDIS_REPLY_STRING == addr->element[0]->type && REDIS_REPLY_INTEGER == addr->element[1]->type) {
                             hosts.push_back(connection::key_t());
                             connection::set_key(
