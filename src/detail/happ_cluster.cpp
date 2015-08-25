@@ -708,6 +708,9 @@ namespace hiredis {
                 }
             }
 
+            // 先设置状态，然后重试命令。否则会陷入死循环
+            self->slot_flag = slot_status::OK;
+
             // 执行待执行队列
             while(!self->slot_pending.empty()) {
                 cmd_t* cmd = self->slot_pending.front();
@@ -715,7 +718,6 @@ namespace hiredis {
                 self->retry(cmd);
             }
 
-            self->slot_flag = slot_status::OK;
             self->log_info("update %d slots done",static_cast<int>(reply->elements));
         }
 
