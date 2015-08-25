@@ -52,7 +52,7 @@ namespace hiredis {
             holder = h;
         }
 
-        status::type connection::set_connecting(redisAsyncContext* c) {
+        connection::status::type connection::set_connecting(redisAsyncContext* c) {
             status::type ret = conn_status;
             if (status::CONNECTING == conn_status) {
                 return ret;
@@ -68,7 +68,7 @@ namespace hiredis {
             return ret;
         }
 
-        status::type connection::set_disconnected(std::list<cmd_exec*>* pending, bool close_fd) {
+        connection::status::type connection::set_disconnected(std::list<cmd_exec*>* pending, bool close_fd) {
             status::type ret = conn_status;
             if (status::DISCONNECTED == conn_status) {
                 return ret;
@@ -81,7 +81,7 @@ namespace hiredis {
             return ret;
         }
 
-        status::type connection::set_connected(std::list<cmd_exec*>& pending) {
+        connection::status::type connection::set_connected(std::list<cmd_exec*>& pending) {
             status::type ret = conn_status;
             if (status::CONNECTING != conn_status || NULL == context) {
                 return ret;
