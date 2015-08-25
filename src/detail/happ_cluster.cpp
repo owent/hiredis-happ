@@ -171,7 +171,7 @@ namespace hiredis {
 
             // 需要在这里转发cmd_t的所有权
             if (NULL != key && 0 != ks) {
-                cmd->engine.slot = static_cast<int>(crc16(key, ks));
+                cmd->engine.slot = static_cast<int>(crc16(key, ks) % HIREDIS_HAPP_SLOT_NUMBER);
             }
 
             // ttl 预判定
