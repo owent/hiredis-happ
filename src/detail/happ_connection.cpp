@@ -74,6 +74,9 @@ namespace hiredis {
                 return ret;
             }
 
+            // 先设置，防止重入
+            conn_status = status::DISCONNECTED;
+
             release(pending, close_fd);
             return ret;
         }
