@@ -176,7 +176,8 @@ namespace hiredis {
                 REDIS_HAPP_SLOT_UNAVAILABLE = -1005, // slot unavailable
                 REDIS_HAPP_CREATE           = -1006, // create failed
                 REDIS_HAPP_PARAM            = -1007, // param error
-                REDIS_HAPP_TIMEOUT          = -1008, // param error
+                REDIS_HAPP_TIMEOUT          = -1008, // timeout
+                REDIS_HAPP_NOT_FOUND        = -1009, // not found
             } type;
         };
     }

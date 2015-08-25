@@ -144,15 +144,12 @@ namespace hiredis {
                 return error_code::REDIS_HAPP_CREATE;
             }
 
-            pop_reply(c);
+            c = pop_reply(c);
 
-            if (reply_list.empty()) {
-                assert(0);
-                return error_code::REDIS_HAPP_OK;
+            if (NULL == c) {
+                return error_code::REDIS_HAPP_NOT_FOUND;
             }
 
-            // now, c == reply_list.front()
-            reply_list.pop_front();
             int errcode = error_code::REDIS_HAPP_OK;
             if (REDIS_OK != context->err) {
                 errcode = error_code::REDIS_HAPP_HIREDIS;
@@ -199,6 +196,7 @@ namespace hiredis {
             }
 
             // now, c == reply_list.front()
+            c = reply_list.front();
             reply_list.pop_front();
             return c;
         }
