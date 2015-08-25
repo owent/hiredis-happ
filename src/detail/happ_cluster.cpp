@@ -345,7 +345,8 @@ namespace hiredis {
 
         cluster::connection_t* cluster::make_connection(const connection::key_t& key) {
             holder_t h;
-            if (connections.find(key.name) != connections.end()) {
+            connection_map_t::iterator check_it = connections.find(key.name);
+            if ( check_it != connections.end()) {
                 log_debug("connection %s already exists", key.name.c_str());
                 return NULL;
             }
@@ -394,10 +395,31 @@ namespace hiredis {
             }
 
             std::list<cmd_exec*> pending_list;
-            it->second->set_disconnected(&pending_list, close_fd);
+            connection_t::status::type from_status = it->second->set_disconnected(&pending_list, close_fd);
+            switch(from_status) {
+                // 递归调用，直接退出
+                case connection_t::status::DISCONNECTED:
+                    return true;
 
-            if(callbacks.on_disconnected) {
-                callbacks.on_disconnected(this, it->second.get(), it->second->get_context(), status);
+                // 正在连接，响应connected事件
+                case connection_t::status::CONNECTING:
+                    if(callbacks.on_connected) {
+                        callbacks.on_connected(this, it->second.get(), it->second->get_context(),
+                            error_code::REDIS_HAPP_OK == status? error_code::REDIS_HAPP_CONNECTION: status
+                        );
+                    }
+                    break;
+
+                // 已连接，响应disconnected事件
+                case connection_t::status::CONNECTED:
+                    if(callbacks.on_disconnected) {
+                        callbacks.on_disconnected(this, it->second.get(), it->second->get_context(), status);
+                    }
+                    break;
+
+                default:
+                    log_info("unknown connection status %d", static_cast<int>(from_status));
+                    break;
             }
 
             log_debug("release connection %s", key.name.c_str());
@@ -406,7 +428,7 @@ namespace hiredis {
             connections.erase(it);
 
             // 重试cmd
-            for (std::list<cmd_exec*>::iterator it_cmd; it_cmd != pending_list.end(); ++it_cmd) {
+            for (std::list<cmd_exec*>::iterator it_cmd = pending_list.begin(); it_cmd != pending_list.end(); ++it_cmd) {
                 retry(*it_cmd);
             }
             

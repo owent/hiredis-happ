@@ -52,29 +52,36 @@ namespace hiredis {
             holder = h;
         }
 
-        bool connection::set_connecting(redisAsyncContext* c) {
+        status::type connection::set_connecting(redisAsyncContext* c) {
+            status::type ret = conn_status;
             if (status::CONNECTING == conn_status) {
-                return false;
+                return ret;
             }
 
             if (c == context) {
-                return false;
+                return ret;
             }
 
             context = c;
             conn_status = status::CONNECTING;
             c->data = this;
-            return true;
+            return ret;
         }
 
-        void connection::set_disconnected(std::list<cmd_exec*>* pending, bool close_fd) {
-            conn_status = status::DISCONNECTED;
+        status::type connection::set_disconnected(std::list<cmd_exec*>* pending, bool close_fd) {
+            status::type ret = conn_status;
+            if (status::DISCONNECTED == conn_status) {
+                return ret;
+            }
+
             release(pending, close_fd);
+            return ret;
         }
 
-        bool connection::set_connected(std::list<cmd_exec*>& pending) {
+        status::type connection::set_connected(std::list<cmd_exec*>& pending) {
+            status::type ret = conn_status;
             if (status::CONNECTING != conn_status || NULL == context) {
-                return false;
+                return ret;
             }
 
             conn_status = status::CONNECTED;
@@ -82,7 +89,7 @@ namespace hiredis {
             // 导出等待列表
             pending.clear();
             pending.swap(pending_list);
-            return true;
+            return ret;
         }
 
         int connection::redis_cmd(cmd_exec* c, redisCallbackFn fn) {
@@ -226,6 +233,7 @@ namespace hiredis {
             }
 
             context = NULL;
+            conn_status = status::DISCONNECTED;
         }
 
         std::string connection::make_name(const std::string& ip, uint16_t port) {

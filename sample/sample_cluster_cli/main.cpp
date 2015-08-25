@@ -20,11 +20,6 @@
 #include <winsock2.h>
 #endif
 
-#ifndef HIREDIS_HAPP_ENABLE_LIBEVENT
-#undef HIREDIS_HAPP_ENABLE_LIBUV
-#define HIREDIS_HAPP_ENABLE_LIBEVENT
-#endif
-
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
 #include "hiredis/adapters/libuv.h"
 #elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)

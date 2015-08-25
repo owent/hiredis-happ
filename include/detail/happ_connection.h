@@ -42,11 +42,11 @@ namespace hiredis {
 
             void init(holder_t h, const key_t& k);
 
-            bool set_connecting(redisAsyncContext* c);
+            status::type set_connecting(redisAsyncContext* c);
 
-            void set_disconnected(std::list<cmd_exec*>* pending, bool close_fd);
+            status::type set_disconnected(std::list<cmd_exec*>* pending, bool close_fd);
 
-            bool set_connected(std::list<cmd_exec*>& pending);
+            status::type set_connected(std::list<cmd_exec*>& pending);
 
             int redis_cmd(cmd_exec* c, redisCallbackFn fn);
 
@@ -60,6 +60,8 @@ namespace hiredis {
             inline const key_t& get_key() const { return key; }
 
             inline holder_t get_holder() const { return holder; }
+
+            inline status::type get_status() const { return conn_status; }
         private:
             connection(const connection&);
             connection& operator=(const connection&);
