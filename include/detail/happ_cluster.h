@@ -80,6 +80,8 @@ namespace hiredis {
 
             void set_timer_interval(time_t sec, time_t usec);
 
+            void set_timeout(time_t sec);
+
             void add_timer_cmd(cmd_t* cmd);
 
             int proc(time_t sec, time_t usec);
@@ -87,7 +89,7 @@ namespace hiredis {
             void set_log_writer(log_fn_t info_fn, log_fn_t debug_fn, size_t max_size = 65536);
 
             void dump(std::ostream& out, redisReply* reply, int ident = 0);
-        private:
+        HIREDIS_HAPP_PRIVATE:
             cmd_t* create_cmd(cmd_t::callback_fn_t cbk, void* pridata);
             void destroy_cmd(cmd_t* c);
             int call_cmd(cmd_t* c, int err, redisAsyncContext* context, void* reply);
@@ -104,7 +106,7 @@ namespace hiredis {
 
             void log_info(const char* fmt, ...);
 
-        private:
+        HIREDIS_HAPP_PRIVATE:
             struct config_t {
                 connection::key_t init_connection;
                 log_fn_t log_fn_info;
@@ -114,6 +116,7 @@ namespace hiredis {
 
                 time_t timer_interval_sec;
                 time_t timer_interval_usec;
+                time_t timer_timeout_sec;
             };
             config_t conf;
 
@@ -145,6 +148,13 @@ namespace hiredis {
                     cmd_t* cmd;
                 };
                 std::list<delay_t> timer_pending;
+
+                struct conn_timetout_t {
+                    std::string name;
+                    uint64_t sequence;
+                    time_t timeout;
+                };
+                std::list<conn_timetout_t> timer_conns;
             };
             timer_t timer_actions;
 

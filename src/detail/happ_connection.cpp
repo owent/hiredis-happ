@@ -11,7 +11,28 @@
 namespace hiredis {
     namespace happ {
         connection::connection(): context(NULL), conn_status(status::DISCONNECTED) {
+            // ID主要用于判定超时的时候，防止地址或名称重用，超时时间内64位整数不可能会重复
+#if defined(HIREDIS_HAPP_ATOMIC_STD)
+            static std::atomic<uint64_t> seq_alloc(0);
+            sequence = seq_alloc.fetch_add(1);
+
+#elif defined(HIREDIS_HAPP_ATOMIC_MSVC)
+            static LONGLONG volatile seq_alloc = 0;
+            sequence = static_cast<uint64_t>(InterlockedAdd64(&seq_alloc, 1));
+
+#elif defined(HIREDIS_HAPP_ATOMIC_GCC_ATOMIC)
+            static volatile uint64_t seq_alloc = 0;
+            sequence = __atomic_add_fetch(&seq_alloc, 1, __ATOMIC_SEQ_CST);
+#elif defined(HIREDIS_HAPP_ATOMIC_GCC)
+            static volatile uint64_t seq_alloc = 0;
+            sequence = __sync_fetch_and_add (&seq_alloc, 1);
+#else
+            static volatile uint64_t seq_alloc = 0;
+            sequence = ++ seq_alloc;
+#endif
             holder.clu = NULL;
+
+
         }
 
         connection::~connection() {
@@ -196,7 +217,7 @@ namespace hiredis {
                     cmd_exec* expired_c = pending_list.front();
                     pending_list.pop_front();
 
-                    expired_c->call_reply(error_code::REDIS_HAPP_CONNECTION, NULL, NULL);
+                    expired_c->call_reply(error_code::REDIS_HAPP_CONNECTION, context, NULL);
                     cmd_exec::destroy(expired_c);
                 }
             } else {

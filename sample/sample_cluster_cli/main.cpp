@@ -15,7 +15,21 @@
 
 #include "hiredis_happ.h"
 
+
+#ifdef _MSC_VER
+#include <winsock2.h>
+#endif
+
+#ifndef HIREDIS_HAPP_ENABLE_LIBEVENT
+#undef HIREDIS_HAPP_ENABLE_LIBUV
+#define HIREDIS_HAPP_ENABLE_LIBEVENT
+#endif
+
+#if defined(HIREDIS_HAPP_ENABLE_LIBUV)
 #include "hiredis/adapters/libuv.h"
+#elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
+#include "hiredis/adapters/libevent.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -60,12 +74,23 @@ typedef pthread_t thread_t;
 
 
 static hiredis::happ::cluster g_clu;
+
+#if defined(HIREDIS_HAPP_ENABLE_LIBUV)
 static uv_loop_t* main_loop;
+#elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
+static event_base* main_loop;
+#endif
+
 static pthread_mutex_t g_mutex;
 static std::list<std::string> g_cmds;
 
 static void on_connect_cbk(hiredis::happ::cluster*, hiredis::happ::connection* conn) {
+#if defined(HIREDIS_HAPP_ENABLE_LIBUV)
     redisLibuvAttach(conn->get_context(), main_loop);
+#elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
+    redisLibeventAttach(conn->get_context(), main_loop);
+#endif
+
     if (NULL != conn) {
         printf("start connect to %s\n", conn->get_key().name.c_str());
     } else {
@@ -74,7 +99,6 @@ static void on_connect_cbk(hiredis::happ::cluster*, hiredis::happ::connection* c
 }
 
 static void on_connected_cbk(hiredis::happ::cluster*, hiredis::happ::connection* conn, const struct redisAsyncContext* c, int status) {
-    redisLibuvAttach(conn->get_context(), main_loop);
     if (NULL == conn) {
         printf("error: connection not found when connected\n");
         return;
@@ -88,6 +112,24 @@ static void on_connected_cbk(hiredis::happ::cluster*, hiredis::happ::connection*
            conn->get_key().name.c_str(),
            status, c? c->err: 0,
            (c && c->errstr)? c->errstr: no_msg
+        );
+    }
+}
+
+static void on_disconnected_cbk(hiredis::happ::cluster*, hiredis::happ::connection* conn, const struct redisAsyncContext* c, int status) {
+    if (NULL == conn) {
+        printf("error: connection not found when connected\n");
+        return;
+    }
+
+    if (REDIS_OK == status) {
+        printf("%s disconnected\n", conn->get_key().name.c_str());
+    } else {
+        char no_msg[] = "none";
+        printf("%s disconnected failed, status %d, err: %d, msg %s\n",
+               conn->get_key().name.c_str(),
+               status, c? c->err: 0,
+               (c && c->errstr)? c->errstr: no_msg
         );
     }
 }
@@ -110,7 +152,13 @@ static void dump_callback(hiredis::happ::cmd_exec* cmd, struct redisAsyncContext
     g_clu.dump(std::cout, reinterpret_cast<redisReply*>(r), 0);
 }
 
-static void on_timer_proc(uv_timer_t* handle) {
+static void on_timer_proc(
+#if defined(HIREDIS_HAPP_ENABLE_LIBUV)
+    uv_timer_t* handle
+#elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
+    evutil_socket_t fd, short event, void *arg
+#endif
+) {
     static time_t sec = time(NULL);
     static time_t usec = 0;
 
@@ -159,7 +207,11 @@ static void on_timer_proc(uv_timer_t* handle) {
 }
 
 static THREAD_FUNC proc_uv_thd(void *) {
+#if defined(HIREDIS_HAPP_ENABLE_LIBUV)
     uv_run(main_loop, UV_RUN_DEFAULT);
+#elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
+    event_base_dispatch(main_loop);
+#endif
 
     THREAD_RETURN;
 }
@@ -174,6 +226,16 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
+#ifdef _MSC_VER
+    {
+        WORD wVersionRequested;
+        WSADATA wsaData;
+
+        wVersionRequested = MAKEWORD(2, 2);
+
+        (void)WSAStartup(wVersionRequested, &wsaData);
+    }
+#endif
 
     const char* ip = argv[1];
     long lport = 0;
@@ -182,16 +244,32 @@ int main(int argc, char* argv[]) {
 
     g_clu.init(ip, port);
 
+#if defined(HIREDIS_HAPP_ENABLE_LIBUV)
     main_loop = uv_default_loop();
+#elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
+    main_loop = event_init();
+#endif
+
     // 事件分发器
     g_clu.set_on_connect(on_connect_cbk);
     g_clu.set_on_connected(on_connected_cbk);
+    g_clu.set_on_disconnected(on_disconnected_cbk);
 
+#if defined(HIREDIS_HAPP_ENABLE_LIBUV)
     // 设置定时器
     uv_timer_t timer_obj;
     uv_timer_init(main_loop, &timer_obj);
     uv_timer_start(&timer_obj, on_timer_proc, 1000, 100);
 
+#elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
+    // 设置定时器
+    struct timeval tv;
+    struct event ev;
+    event_assign(&ev, main_loop, -1, EV_PERSIST, on_timer_proc, NULL);
+    tv.tv_sec = 0;
+    tv.tv_usec = 100000;
+    evtimer_add(&ev, &tv);
+#endif
 
     // 设置日志
     g_clu.set_log_writer(on_log_fn, on_log_fn, 65536);
@@ -216,7 +294,12 @@ int main(int argc, char* argv[]) {
         cmd.clear();
     }
 
+#if defined(HIREDIS_HAPP_ENABLE_LIBUV)
     uv_stop(main_loop);
+#elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
+    event_base_loopbreak(main_loop);
+#endif
+
     THREAD_JOIN(uv_thd);
     pthread_mutex_destroy(&g_mutex);
 

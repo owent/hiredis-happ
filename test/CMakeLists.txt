@@ -52,11 +52,12 @@ file(GLOB_RECURSE ALL_TEST_SRC_LIST
 )
 # source_group_by_dir(ALL_TEST_SRC_LIST)
 
-
 # ================ multi thread ================
 
 # ============ test - coroutine test frame ============
 set(EXECUTABLE_OUTPUT_PATH "${PROJECT_BINARY_DIR}/test")
+
+add_compiler_define(HIREDIS_HAPP_UNIT_TEST_HACK=1)
 
 add_executable(hiredis-happ-test ${ALL_TEST_SRC_LIST})
 target_link_libraries(hiredis-happ-test

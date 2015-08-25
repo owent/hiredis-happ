@@ -49,6 +49,7 @@ namespace hiredis {
                     redisFreeCommand(c->content.raw);
                     c->content.raw = NULL;
                 }
+                c->raw_len = 0;
             }
         }
 
@@ -63,7 +64,7 @@ namespace hiredis {
         }
 
 
-        int cmd_exec::format(int argc, const char** argv, const size_t* argvlen) {
+        int cmd_exec::vformat(int argc, const char** argv, const size_t* argvlen) {
             free_cmd_content(&cmd);
 
             cmd.raw_len = 0;
@@ -81,7 +82,7 @@ namespace hiredis {
             return cmd.raw_len;
         }
 
-        int cmd_exec::format(const char* fmt, va_list ap) {
+        int cmd_exec::vformat(const char* fmt, va_list ap) {
             free_cmd_content(&cmd);
 
             va_list ap_c;
@@ -90,7 +91,7 @@ namespace hiredis {
             return cmd.raw_len = redisvFormatCommand(&cmd.content.raw, fmt, ap_c);
         }
 
-        int cmd_exec::format(const sds* src) {
+        int cmd_exec::vformat(const sds* src) {
             free_cmd_content(&cmd);
 
             if (NULL == src) {
@@ -108,7 +109,7 @@ namespace hiredis {
                 return error_code::REDIS_HAPP_OK;
             }
 
-            err = err;
+            err = rcode;
             callback_fn_t tc = callback;
             callback = NULL;
             tc(this, context, reply, pri_data);

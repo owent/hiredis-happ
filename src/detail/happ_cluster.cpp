@@ -32,6 +32,7 @@ namespace hiredis {
             conf.log_max_size = 0;
             conf.timer_interval_sec = HIREDIS_HAPP_TIMER_INTERVAL_SEC;
             conf.timer_interval_usec = HIREDIS_HAPP_TIMER_INTERVAL_USEC;
+            conf.timer_timeout_sec = HIREDIS_HAPP_TIMER_TIMEOUT_SEC;
 
             for (int i = 0; i < HIREDIS_HAPP_SLOT_NUMBER; ++ i) {
                 slots[i].index = i;
@@ -101,6 +102,7 @@ namespace hiredis {
             }
             timer_actions.last_update_sec = 0;
             timer_actions.last_update_usec = 0;
+            timer_actions.timer_conns.clear();
 
             // log buffer
             if (NULL != conf.log_buffer) {
@@ -117,7 +119,7 @@ namespace hiredis {
                 return error_code::REDIS_HAPP_CREATE;
             }
 
-            int len = cmd->format(argc, argv, argvlen);
+            int len = cmd->vformat(argc, argv, argvlen);
             if (len <= 0) {
                 log_info("format cmd with argc=%d failed", argc);
                 destroy_cmd(cmd);
@@ -135,7 +137,7 @@ namespace hiredis {
 
             va_list ap;
             va_start(ap, fmt);
-            int len = cmd->format(fmt, ap);
+            int len = cmd->vformat(fmt, ap);
             va_end(ap);
             if (len <= 0) {
                 log_info("format cmd with format=%s failed", fmt);
@@ -152,7 +154,7 @@ namespace hiredis {
                 return error_code::REDIS_HAPP_CREATE;
             }
 
-            int len = cmd->format(fmt, ap);
+            int len = cmd->vformat(fmt, ap);
             if (len <= 0) {
                 log_info("format cmd with format=%s failed", fmt);
                 destroy_cmd(cmd);
@@ -344,6 +346,7 @@ namespace hiredis {
         cluster::connection_t* cluster::make_connection(const connection::key_t& key) {
             holder_t h;
             if (connections.find(key.name) != connections.end()) {
+                log_debug("connection %s already exists", key.name.c_str());
                 return NULL;
             }
 
@@ -370,6 +373,15 @@ namespace hiredis {
                 callbacks.on_connect(this, &ret);
             }
 
+            // timeout timer
+            if(conf.timer_timeout_sec > 0 && is_timer_active()) {
+                timer_actions.timer_conns.push_back(timer_t::conn_timetout_t());
+                timer_t::conn_timetout_t& conn_expire = timer_actions.timer_conns.back();
+                conn_expire.name = key.name;
+                conn_expire.sequence = ret.get_sequence();
+                conn_expire.timeout = timer_actions.last_update_sec + conf.timer_timeout_sec;
+            }
+
             log_debug("redis make connection to %s ", key.name.c_str());
             return &ret;
         }
@@ -377,6 +389,7 @@ namespace hiredis {
         bool cluster::release_connection(const connection::key_t& key, bool close_fd, int status) {
             connection_map_t::iterator it = connections.find(key.name);
             if (connections.end() == it) {
+                log_debug("connection %s not found", key.name.c_str());
                 return false;
             }
 
@@ -388,8 +401,9 @@ namespace hiredis {
             }
 
             log_debug("release connection %s", key.name.c_str());
-            connections.erase(it);
 
+            // can not use key any more
+            connections.erase(it);
 
             // 重试cmd
             for (std::list<cmd_exec*>::iterator it_cmd; it_cmd != pending_list.end(); ++it_cmd) {
@@ -427,6 +441,10 @@ namespace hiredis {
             conf.timer_interval_usec = usec;
         }
 
+        void cluster::set_timeout(time_t sec) {
+            conf.timer_timeout_sec = sec;
+        }
+
         void cluster::add_timer_cmd(cmd_t* cmd) {
             if (NULL == cmd) {
                 return;
@@ -458,6 +476,18 @@ namespace hiredis {
                 exec(NULL, 0, d.cmd);
 
                 ++ret;
+            }
+
+            // connection timeout
+            while(!timer_actions.timer_conns.empty() && sec >= timer_actions.timer_conns.front().timeout) {
+                timer_t::conn_timetout_t& conn_expire = timer_actions.timer_conns.front();
+
+                connection_t* conn = get_connection(conn_expire.name);
+                if (NULL != conn && conn->get_sequence() == conn_expire.sequence) {
+                    release_connection(conn->get_key(), true, error_code::REDIS_HAPP_TIMEOUT);
+                }
+
+                timer_actions.timer_conns.pop_front();
             }
 
             return ret;
@@ -662,6 +692,8 @@ namespace hiredis {
                 self->slot_pending.pop_front();
                 self->retry(cmd);
             }
+
+            self->slot_flag = slot_status::OK;
             self->log_info("update %d slots done",static_cast<int>(reply->elements));
         }
 

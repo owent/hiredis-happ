@@ -17,6 +17,38 @@
 #include <algorithm>
 
 
+#if defined(__cplusplus) && __cplusplus >= 201103L
+    #include <atomic>
+    #define HIREDIS_HAPP_ATOMIC_STD
+#elif defined(__clang__) && (__clang_major__ > 3 || (__clang_major__ == 3 && __clang_minor__ >= 1 ) ) && __cplusplus >= 201103L
+    #include <atomic>
+    #define HIREDIS_HAPP_ATOMIC_STD
+#elif defined(_MSC_VER) && _MSC_VER > 1700
+    #include <atomic>
+    #define HIREDIS_HAPP_ATOMIC_STD
+#elif defined(__GNUC__)
+    #if((__GNUC__ == 4 && __GNUC_MINOR__ >= 5) || __GNUC__ > 4) && defined(__GXX_EXPERIMENTAL_CXX0X__)
+        #include <atomic>
+        #define HIREDIS_HAPP_ATOMIC_STD
+    #endif
+#elif defined(__clang__) || defined(__clang__) || defined(__INTEL_COMPILER)
+    #if defined(__GNUC__) && (__GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 1))
+        #error GCC version must be greater or equal than 4.1
+    #endif
+    #if defined(__INTEL_COMPILER) && __INTEL_COMPILER < 1100
+        #error Intel Compiler version must be greater or equal than 11.0
+    #endif
+
+    #if defined(__GCC_ATOMIC_INT_LOCK_FREE)
+        #define HIREDIS_HAPP_ATOMIC_GCC_ATOMIC 1
+    #else
+        #define HIREDIS_HAPP_ATOMIC_GCC 1
+    #endif
+#elif defined(_MSC_VER)
+    #include <WinBase.h>
+    #define HIREDIS_HAPP_ATOMIC_MSVC 1
+#endif
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -53,6 +85,11 @@ extern "C" {
 #ifndef  HIREDIS_HAPP_TIMER_INTERVAL_USEC
 // 100 ms
 #define HIREDIS_HAPP_TIMER_INTERVAL_USEC 100000
+#endif
+
+#ifndef  HIREDIS_HAPP_TIMER_TIMEOUT_SEC
+// 30 s
+#define HIREDIS_HAPP_TIMER_TIMEOUT_SEC 30
 #endif
 
 #ifdef _MSC_VER
@@ -144,5 +181,12 @@ namespace hiredis {
         };
     }
 }
+
+// do not define this macro , it will only be used in unit test
+#ifdef HIREDIS_HAPP_UNIT_TEST_HACK
+#define HIREDIS_HAPP_PRIVATE public
+#else
+#define HIREDIS_HAPP_PRIVATE private
+#endif
 
 #endif //HIREDIS_HAPP_HIREDIS_HAPP_CONFIG_H

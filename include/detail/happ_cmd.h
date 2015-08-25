@@ -31,22 +31,22 @@ namespace hiredis {
             typedef void (*callback_fn_t)(cmd_exec* , struct redisAsyncContext*, void*, void*);
 
 
-            int format(int argc, const char** argv, const size_t* argvlen);
+            int vformat(int argc, const char** argv, const size_t* argvlen);
 
             int format(const char* fmt, ...);
 
-            int format(const char* fmt, va_list ap);
+            int vformat(const char* fmt, va_list ap);
 
-            int format(const sds* src);
+            int vformat(const sds* src);
 
             int call_reply(int rcode, redisAsyncContext* context, void* reply);
-        private:
+        HIREDIS_HAPP_PRIVATE:
             static cmd_exec* create(holder_t holder, callback_fn_t cbk, void* pridata);
             static void destroy(cmd_exec* c);
 
             friend class cluster;
             friend class connection;
-        private:
+        HIREDIS_HAPP_PRIVATE:
             holder_t holder;            // holder
             cmd_content cmd;
             void* pri_data;             // user pri data

@@ -36,6 +36,8 @@ namespace hiredis {
             connection();
             ~connection();
 
+            inline const uint64_t get_sequence() const { return sequence; }
+
             void init(holder_t h, const std::string& ip, uint16_t port);
 
             void init(holder_t h, const key_t& k);
@@ -67,8 +69,9 @@ namespace hiredis {
             static void set_key(connection::key_t& k, const std::string& ip, uint16_t port);
             static bool pick_name(const std::string& name, std::string& ip, uint16_t& port);
 
-        private:
+        HIREDIS_HAPP_PRIVATE:
             key_t key;
+            uint64_t sequence;
 
             holder_t holder;
             redisAsyncContext* context;
