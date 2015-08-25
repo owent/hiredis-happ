@@ -640,7 +640,7 @@ namespace hiredis {
                     return;
                 }
 
-                self->log_debug("redis reply errorand abort, msg: %s", NULL == reply->str? "none": reply->str);
+                self->log_debug("redis reply error and abort, msg: %s", NULL == reply->str? "none": reply->str);
                 // 其他错误则向上传递
                 conn->call_reply(cmd, r);
                 return;

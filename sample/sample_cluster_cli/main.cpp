@@ -192,9 +192,9 @@ static void on_timer_proc(
         }
         std::string cmd_key = pick_word(cmd_line, k);
         if (cmd_key.empty()) {
-            g_clu.exec(NULL, 0, cbk, reinterpret_cast<void*>(cbk), cmd.c_str());
+            g_clu.exec(NULL, 0, cbk, reinterpret_cast<void*>(cbk), cmd_line.c_str());
         } else {
-            g_clu.exec(cmd_key.c_str(), cmd_key.size(), cbk, reinterpret_cast<void*>(cbk), cmd.c_str());
+            g_clu.exec(cmd_key.c_str(), cmd_key.size(), cbk, reinterpret_cast<void*>(cbk), cmd_line.c_str());
         }
     }
 
