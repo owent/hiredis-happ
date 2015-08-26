@@ -306,7 +306,7 @@ namespace hiredis {
                 return error_code::REDIS_HAPP_CREATE;
             }
 
-            int len = cmd->format("%s", "CLUSTER SLOTS");
+            int len = cmd->format("CLUSTER SLOTS");
             if (len <= 0) {
                 log_info("format cmd CLUSTER SLOTS failed");
                 destroy_cmd(cmd);
