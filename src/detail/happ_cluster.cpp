@@ -696,7 +696,7 @@ namespace hiredis {
 
                     // log
                     if(NULL != self->conf.log_fn_debug && self->conf.log_max_size > 0 ) {
-                        self->log_debug("slot update: [%lld-%lld]\n", si, ei);
+                        self->log_debug("slot update: [%lld-%lld]", si, ei);
                         for (size_t j = 0; j < hosts.size(); ++ j) {
                             self->log_debug(" -- %s", hosts[j].name.c_str());
                         }
