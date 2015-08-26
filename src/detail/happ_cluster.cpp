@@ -1,3 +1,9 @@
+#ifdef _MSC_VER
+#include <winsock2.h>
+#else
+#include <sys/time.h>
+#endif
+
 #include <algorithm>
 #include <cstdio>
 #include <random>
@@ -249,11 +255,19 @@ namespace hiredis {
             // 主循环逻辑回包处理
             int res = conn->redis_cmd(cmd, on_reply_wrapper);
 
-            // hiredis的代码，仅在网络关闭和命令错误会返回出错
-            // 所以这些情况都应该直接出错回调
             if (REDIS_OK != res) {
-                cmd->call_reply(error_code::REDIS_HAPP_HIREDIS, conn->get_context(), NULL);
-                destroy_cmd(cmd);
+                // hiredis的代码，仅在网络关闭和命令错误会返回出错
+                // 其他情况都应该直接出错回调
+                if (conn->get_context()->c.flags & (REDIS_DISCONNECTING | REDIS_FREEING)) {
+                    release_connection(conn->get_key(), true, error_code::REDIS_HAPP_CONNECTION);
+                    // conn = NULL;
+                    // 连接丢失需要重连，先随机重新找可用连接
+                    cmd->engine.slot = -1;
+                    return retry(cmd, NULL);
+                } else {
+                    cmd->call_reply(error_code::REDIS_HAPP_HIREDIS, conn->get_context(), NULL);
+                    destroy_cmd(cmd);
+                }
                 return error_code::REDIS_HAPP_HIREDIS;
             }
 
@@ -300,7 +314,7 @@ namespace hiredis {
                 return false;
             }
 
-            // CLUSTER SLOTS命令
+            // CLUSTER SLOTS cmd
             cmd_t* cmd = create_cmd(on_reply_update_slot, NULL);
             if (NULL == cmd) {
                 return error_code::REDIS_HAPP_CREATE;
@@ -377,6 +391,13 @@ namespace hiredis {
             h.clu = this;
             redisAsyncSetConnectCallback(c, on_connected_wrapper);
             redisAsyncSetDisconnectCallback(c, on_disconnected_wrapper);
+            redisEnableKeepAlive(&c->c);
+            if (conf.timer_timeout_sec > 0) {
+                struct timeval tv;
+                tv.tv_sec =conf.timer_timeout_sec;
+                tv.tv_usec = 0;
+                redisSetTimeout(&c->c, tv);
+            }
 
             ::hiredis::happ::unique_ptr<connection_t>::type ret_ptr(new connection_t());
             connection_t& ret = *ret_ptr;
@@ -490,7 +511,7 @@ namespace hiredis {
                 d.usec = timer_actions.last_update_usec + conf.timer_interval_usec;
                 d.cmd = cmd;
             } else {
-                retry(cmd);
+                exec(NULL, 0, cmd);
             }
         }
 
@@ -797,6 +818,9 @@ namespace hiredis {
             if (REDIS_OK != status) {
                 self->log_debug("connect to %s failed, status: %d, msg: %s", conn->get_key().name.c_str(), status, c->errstr);
                 self->release_connection(conn->get_key(), false, status);
+
+                // 连接失败则更新slot列表
+                self->reload_slots();
             } else {
                 conn->set_connected();
 

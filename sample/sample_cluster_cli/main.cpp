@@ -2,6 +2,12 @@
 // Created by 欧文韬 on 2015/7/5.
 //
 
+#ifdef _MSC_VER
+#include <winsock2.h>
+#else
+#include <sys/time.h>
+#endif
+
 #include <assert.h>
 #include <cstdio>
 #include <cstring>
@@ -15,10 +21,6 @@
 
 #include "hiredis_happ.h"
 
-
-#ifdef _MSC_VER
-#include <winsock2.h>
-#endif
 
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
 #include "hiredis/adapters/libuv.h"

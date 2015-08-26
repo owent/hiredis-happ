@@ -58,7 +58,7 @@ endif()
 set(Libevent_NAMES event libevent)
 
 # Try each search configuration.
-find_path(Libevent_INCLUDE_DIRS    NAMES event.h     ${_LIBEVENT_SEARCH_ROOT_INC} PATH_SUFFIXES event2)
+find_path(Libevent_INCLUDE_DIRS    NAMES event.h     ${_LIBEVENT_SEARCH_ROOT_INC})
 find_library(Libevent_LIBRARIES    NAMES ${Libevent_NAMES}  ${_LIBEVENT_SEARCH_ROOT_LIB})
 
 mark_as_advanced(Libevent_INCLUDE_DIRS Libevent_LIBRARIES)
