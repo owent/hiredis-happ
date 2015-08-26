@@ -575,7 +575,7 @@ namespace hiredis {
         void cluster::on_reply_wrapper(redisAsyncContext* c, void* r, void* privdata) {
             connection_t* conn = reinterpret_cast<connection_t*>(c->data);
             cmd_t* cmd = reinterpret_cast<cmd_t*>(privdata);
-            cluster* self = conn->get_holder().clu;
+            cluster* self = cmd->holder.clu;
 
             // 正在释放的连接重试也只会死循环，所以直接失败退出
             if (c->c.flags & REDIS_DISCONNECTING) {
@@ -673,10 +673,9 @@ namespace hiredis {
             conn->call_reply(cmd, r);
         }
 
-        void cluster::on_reply_update_slot(cmd_exec* cmd, redisAsyncContext* c, void* r, void* privdata) {
+        void cluster::on_reply_update_slot(cmd_exec* cmd, redisAsyncContext*, void* r, void* privdata) {
             redisReply* reply = reinterpret_cast<redisReply*>(r);
-            connection_t* conn = reinterpret_cast<connection_t*>(c->data);
-            cluster* self = conn->get_holder().clu;
+            cluster* self = cmd->holder.clu;
 
             // 出错，重新拉取
             if (NULL == reply || reply->elements <= 0 || REDIS_REPLY_ARRAY != reply->element[0]->type) {

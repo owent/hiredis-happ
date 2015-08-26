@@ -211,7 +211,8 @@ namespace hiredis {
                 cmd_exec* expired_c = reply_list.front();
                 reply_list.pop_front();
 
-                expired_c->call_reply(error_code::REDIS_HAPP_CONNECTION, context, NULL);
+                // context 已被关闭
+                expired_c->call_reply(error_code::REDIS_HAPP_CONNECTION, NULL, NULL);
                 cmd_exec::destroy(expired_c);
             }
 
