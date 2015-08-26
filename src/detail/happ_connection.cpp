@@ -146,18 +146,18 @@ namespace hiredis {
                 return error_code::REDIS_HAPP_NOT_FOUND;
             }
 
-            int errcode = error_code::REDIS_HAPP_OK;
+            // 错误码重定向
             if (REDIS_OK != context->err) {
-                errcode = error_code::REDIS_HAPP_HIREDIS;
+                c->err = error_code::REDIS_HAPP_HIREDIS;
             } else if (r) {
                 redisReply* reply = reinterpret_cast<redisReply*>(r);
                 if (REDIS_REPLY_ERROR == reply->type) {
-                    errcode = error_code::REDIS_HAPP_HIREDIS;
+                    c->err = error_code::REDIS_HAPP_HIREDIS;
                 }
             }
 
             int res = c->call_reply(
-                errcode,
+                c->err,
                 context, 
                 r
             );

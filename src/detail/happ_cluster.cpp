@@ -24,6 +24,8 @@ namespace hiredis {
                 return rand();
 #endif
             }
+
+            static char NONE_MSG[] = "none";
         }
 
         cluster::cluster(): slot_flag(slot_status::INVALID) {
@@ -353,7 +355,7 @@ namespace hiredis {
 
             redisAsyncContext* c = redisAsyncConnect(key.ip.c_str(), static_cast<int>(key.port));
             if (NULL == c || c->err) {
-                log_info("redis connect to %s failed, msg: %s", key.name.c_str(), NULL == c? "none": c->errstr);
+                log_info("redis connect to %s failed, msg: %s", key.name.c_str(), NULL == c? detail::NONE_MSG: c->errstr);
                 return NULL;
             }
 
@@ -556,6 +558,14 @@ namespace hiredis {
             cmd_t* cmd = reinterpret_cast<cmd_t*>(privdata);
             cluster* self = conn->get_holder().clu;
 
+            // 正在释放的连接重试也只会死循环，所以直接失败退出
+            if (c->c.flags & REDIS_DISCONNECTING) {
+                self->log_debug("redis reply when disconnecting context err %d,msg %s", c->err, NULL == c->errstr? detail::NONE_MSG: c->errstr);
+                cmd->err = error_code::REDIS_HAPP_CONNECTION;
+                conn->call_reply(cmd, r);
+                return;
+            }
+
             if (REDIS_ERR_IO == c->err && REDIS_ERR_EOF == c->err) {
                 self->log_debug("redis reply context err %d and will retry, %s", c->err, c->errstr);
                 // 网络错误则重试
@@ -564,7 +574,7 @@ namespace hiredis {
             }
 
             if (REDIS_OK != c->err || NULL == r) {
-                self->log_debug("redis reply context err %d and abort, %s", c->err, NULL == c->errstr? "none": c->errstr);
+                self->log_debug("redis reply context err %d and abort, %s", c->err, NULL == c->errstr? detail::NONE_MSG: c->errstr);
                 // 其他错误则向上传递
                 conn->call_reply(cmd, r);
                 return;
@@ -634,7 +644,7 @@ namespace hiredis {
                     return;
                 }
 
-                self->log_debug("redis reply error and abort, msg: %s", NULL == reply->str? "none": reply->str);
+                self->log_debug("redis reply error and abort, msg: %s", NULL == reply->str? detail::NONE_MSG: reply->str);
                 // 其他错误则向上传递
                 conn->call_reply(cmd, r);
                 return;
@@ -730,7 +740,7 @@ namespace hiredis {
             }
 
             if (REDIS_OK != c->err || NULL == r) {
-                self->log_debug("redis asking err %d and abort, %s", c->err, NULL == c->errstr ? "none" : c->errstr);
+                self->log_debug("redis asking err %d and abort, %s", c->err, NULL == c->errstr ? detail::NONE_MSG : c->errstr);
                 // 其他错误则向上传递
                 conn->call_reply(cmd, r);
                 return;
@@ -741,7 +751,7 @@ namespace hiredis {
                 return;
             }
 
-            self->log_debug("redis reply asking err %d and abort, %s", reply->type, NULL == reply->str ? "none" : reply->str);
+            self->log_debug("redis reply asking err %d and abort, %s", reply->type, NULL == reply->str ? detail::NONE_MSG : reply->str);
             // 其他错误则向上传递
             conn->call_reply(cmd, r);
         }
