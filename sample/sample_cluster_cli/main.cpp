@@ -144,6 +144,10 @@ static std::string pick_word(const std::string& cmd_line, int i) {
 
 static void dump_callback(hiredis::happ::cmd_exec* cmd, struct redisAsyncContext*, void* r, void* p) {
     assert(p == reinterpret_cast<void*>(dump_callback));
+
+    if (cmd->result() != hiredis::happ::error_code::REDIS_HAPP_OK) {
+        printf("cmd_exec result: %d\n", cmd->result());
+    }
     g_clu.dump(std::cout, reinterpret_cast<redisReply*>(r), 0);
 }
 
@@ -249,6 +253,7 @@ int main(int argc, char* argv[]) {
     g_clu.set_on_connect(on_connect_cbk);
     g_clu.set_on_connected(on_connected_cbk);
     g_clu.set_on_disconnected(on_disconnected_cbk);
+    g_clu.set_timeout(5); // 测试工具，5秒超时
 
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
     // 设置定时器

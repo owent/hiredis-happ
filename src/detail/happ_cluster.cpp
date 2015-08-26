@@ -369,11 +369,6 @@ namespace hiredis {
 
             c->data = &ret;
 
-            // event callback
-            if (callbacks.on_connect) {
-                callbacks.on_connect(this, &ret);
-            }
-
             // timeout timer
             if(conf.timer_timeout_sec > 0 && is_timer_active()) {
                 timer_actions.timer_conns.push_back(timer_t::conn_timetout_t());
@@ -381,6 +376,11 @@ namespace hiredis {
                 conn_expire.name = key.name;
                 conn_expire.sequence = ret.get_sequence();
                 conn_expire.timeout = timer_actions.last_update_sec + conf.timer_timeout_sec;
+            }
+
+            // event callback
+            if (callbacks.on_connect) {
+                callbacks.on_connect(this, &ret);
             }
 
             log_debug("redis make connection to %s ", key.name.c_str());
@@ -394,8 +394,7 @@ namespace hiredis {
                 return false;
             }
 
-            std::list<cmd_exec*> pending_list;
-            connection_t::status::type from_status = it->second->set_disconnected(&pending_list, close_fd);
+            connection_t::status::type from_status = it->second->set_disconnected(close_fd);
             switch(from_status) {
                 // 递归调用，直接退出
                 case connection_t::status::DISCONNECTED:
@@ -426,11 +425,6 @@ namespace hiredis {
 
             // can not use key any more
             connections.erase(it);
-
-            // 重试cmd
-            for (std::list<cmd_exec*>::iterator it_cmd = pending_list.begin(); it_cmd != pending_list.end(); ++it_cmd) {
-                retry(*it_cmd);
-            }
             
             return true;
         }
@@ -766,12 +760,7 @@ namespace hiredis {
                 self->log_debug("connect to %s failed, status: %d, msg: %s", conn->get_key().name.c_str(), status, c->errstr);
                 self->release_connection(conn->get_key(), false, status);
             } else {
-                // 执行pending命令
-                std::list<cmd_exec*> pending_list;
-                conn->set_connected(pending_list);
-                for (std::list<cmd_exec*>::iterator it = pending_list.begin(); it != pending_list.end(); ++ it) {
-                    self->retry(*it);
-                }
+                conn->set_connected();
 
                 self->log_debug("connect to %s success", conn->get_key().name.c_str());
 

@@ -30,7 +30,6 @@ namespace hiredis {
         public:
             typedef void (*callback_fn_t)(cmd_exec* , struct redisAsyncContext*, void*, void*);
 
-
             int vformat(int argc, const char** argv, const size_t* argvlen);
 
             int format(const char* fmt, ...);
@@ -40,6 +39,9 @@ namespace hiredis {
             int vformat(const sds* src);
 
             int call_reply(int rcode, redisAsyncContext* context, void* reply);
+
+            inline int result() const { return err; }
+
         HIREDIS_HAPP_PRIVATE:
             static cmd_exec* create(holder_t holder, callback_fn_t cbk, void* pridata);
             static void destroy(cmd_exec* c);

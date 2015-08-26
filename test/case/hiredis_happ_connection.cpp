@@ -83,14 +83,7 @@ CASE_TEST(happ_connection, basic)
 
     CASE_EXPECT_EQ(conn1->get_context(), &vir_context);
     CASE_EXPECT_EQ(hiredis::happ::connection::status::CONNECTING, conn1->conn_status);
-    res = conn1->redis_cmd(cmd, NULL);
-    CASE_EXPECT_EQ(hiredis::happ::error_code::REDIS_HAPP_OK, res);
-    CASE_EXPECT_EQ(static_cast<size_t>(1), conn1->pending_list.size());
-
-    std::list<hiredis::happ::cmd_exec*> pending_list;
-    conn1->set_connected(pending_list);
-    CASE_EXPECT_EQ(static_cast<size_t>(1), pending_list.size());
-    CASE_EXPECT_EQ(cmd, pending_list.front());
+    conn1->set_connected();
     CASE_EXPECT_EQ(hiredis::happ::connection::status::CONNECTED, conn1->conn_status);
 
     CASE_EXPECT_EQ(conn1->get_context(), &vir_context);
@@ -102,8 +95,8 @@ CASE_TEST(happ_connection, basic)
     conn2->redis_cmd(cmd, NULL);
     CASE_EXPECT_EQ(1, happ_connection_basic_f);
 
-    conn1->release(NULL, false);
-    conn2->release(NULL, false);
+    conn1->release(false);
+    conn2->release(false);
 
     CASE_EXPECT_EQ(2, happ_connection_basic_f);
 

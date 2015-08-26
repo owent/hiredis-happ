@@ -36,7 +36,7 @@ namespace hiredis {
         }
 
         connection::~connection() {
-            release(NULL, true);
+            release(true);
         }
 
         void connection::init(holder_t h, const std::string& ip, uint16_t port) {
@@ -68,7 +68,7 @@ namespace hiredis {
             return ret;
         }
 
-        connection::status::type connection::set_disconnected(std::list<cmd_exec*>* pending, bool close_fd) {
+        connection::status::type connection::set_disconnected(bool close_fd) {
             status::type ret = conn_status;
             if (status::DISCONNECTED == conn_status) {
                 return ret;
@@ -77,21 +77,17 @@ namespace hiredis {
             // 先设置，防止重入
             conn_status = status::DISCONNECTED;
 
-            release(pending, close_fd);
+            release(close_fd);
             return ret;
         }
 
-        connection::status::type connection::set_connected(std::list<cmd_exec*>& pending) {
+        connection::status::type connection::set_connected() {
             status::type ret = conn_status;
             if (status::CONNECTING != conn_status || NULL == context) {
                 return ret;
             }
 
             conn_status = status::CONNECTED;
-
-            // 导出等待列表
-            pending.clear();
-            pending.swap(pending_list);
             return ret;
         }
 
@@ -105,13 +101,13 @@ namespace hiredis {
             }
 
             switch (conn_status) {
-            case status::CONNECTING: { // 正在连接则进入发送等待队列
-                pending_list.push_back(c);
-                return error_code::REDIS_HAPP_OK;
-            }
             case status::DISCONNECTED: { // 未连接则直接失败
                 return error_code::REDIS_HAPP_CONNECTION;
             }
+
+            // 正在连接也直接发送，hiredis底层会缓存队列
+            // 不发送会导致连接回调不被触发
+            case status::CONNECTING:
             case status::CONNECTED: {
                 int res = 0;
                 if (0 == c->cmd.raw_len) {
@@ -205,7 +201,7 @@ namespace hiredis {
             return context;
         }
 
-        void connection::release(std::list<cmd_exec*>* dump_pending, bool close_fd) {
+        void connection::release(bool close_fd) {
             if (NULL != context && close_fd) {
                 redisAsyncDisconnect(context);
             }
@@ -217,20 +213,6 @@ namespace hiredis {
 
                 expired_c->call_reply(error_code::REDIS_HAPP_CONNECTION, context, NULL);
                 cmd_exec::destroy(expired_c);
-            }
-
-            // 等待列表
-            if (NULL == dump_pending) {
-                while (!pending_list.empty()) {
-                    cmd_exec* expired_c = pending_list.front();
-                    pending_list.pop_front();
-
-                    expired_c->call_reply(error_code::REDIS_HAPP_CONNECTION, context, NULL);
-                    cmd_exec::destroy(expired_c);
-                }
-            } else {
-                dump_pending->clear();
-                dump_pending->swap(pending_list);
             }
 
             context = NULL;

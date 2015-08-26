@@ -44,9 +44,9 @@ namespace hiredis {
 
             status::type set_connecting(redisAsyncContext* c);
 
-            status::type set_disconnected(std::list<cmd_exec*>* pending, bool close_fd);
+            status::type set_disconnected(bool close_fd);
 
-            status::type set_connected(std::list<cmd_exec*>& pending);
+            status::type set_connected();
 
             int redis_cmd(cmd_exec* c, redisCallbackFn fn);
 
@@ -55,7 +55,7 @@ namespace hiredis {
 
             redisAsyncContext* get_context() const;
 
-            void release(std::list<cmd_exec*>* dump_pending, bool close_fd);
+            void release(bool close_fd);
 
             inline const key_t& get_key() const { return key; }
 
@@ -77,8 +77,7 @@ namespace hiredis {
 
             holder_t holder;
             redisAsyncContext* context;
-            // 连接完成重新执行列表
-            std::list<cmd_exec*> pending_list;
+
             // 回包响应列表
             std::list<cmd_exec*> reply_list;
             status::type conn_status;
