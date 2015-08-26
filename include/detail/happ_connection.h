@@ -66,6 +66,7 @@ namespace hiredis {
             connection(const connection&);
             connection& operator=(const connection&);
 
+            void make_sequence();
         public:
             static std::string make_name(const std::string& ip, uint16_t port);
             static void set_key(connection::key_t& k, const std::string& ip, uint16_t port);

@@ -10,29 +10,9 @@
 
 namespace hiredis {
     namespace happ {
-        connection::connection(): context(NULL), conn_status(status::DISCONNECTED) {
-            // ID主要用于判定超时的时候，防止地址或名称重用，超时时间内64位整数不可能会重复
-#if defined(HIREDIS_HAPP_ATOMIC_STD)
-            static std::atomic<uint64_t> seq_alloc(0);
-            sequence = seq_alloc.fetch_add(1);
-
-#elif defined(HIREDIS_HAPP_ATOMIC_MSVC)
-            static LONGLONG volatile seq_alloc = 0;
-            sequence = static_cast<uint64_t>(InterlockedAdd64(&seq_alloc, 1));
-
-#elif defined(HIREDIS_HAPP_ATOMIC_GCC_ATOMIC)
-            static volatile uint64_t seq_alloc = 0;
-            sequence = __atomic_add_fetch(&seq_alloc, 1, __ATOMIC_SEQ_CST);
-#elif defined(HIREDIS_HAPP_ATOMIC_GCC)
-            static volatile uint64_t seq_alloc = 0;
-            sequence = __sync_fetch_and_add (&seq_alloc, 1);
-#else
-            static volatile uint64_t seq_alloc = 0;
-            sequence = ++ seq_alloc;
-#endif
+        connection::connection(): sequence(0), context(NULL), conn_status(status::DISCONNECTED) {
+            make_sequence();
             holder.clu = NULL;
-
-
         }
 
         connection::~connection() {
@@ -65,6 +45,9 @@ namespace hiredis {
             context = c;
             conn_status = status::CONNECTING;
             c->data = this;
+
+            // new operation sequence
+            make_sequence();
             return ret;
         }
 
@@ -78,6 +61,9 @@ namespace hiredis {
             conn_status = status::DISCONNECTED;
 
             release(close_fd);
+
+            // new operation sequence
+            make_sequence();
             return ret;
         }
 
@@ -88,6 +74,10 @@ namespace hiredis {
             }
 
             conn_status = status::CONNECTED;
+
+            // new operation sequence
+            make_sequence();
+
             return ret;
         }
 
@@ -218,6 +208,30 @@ namespace hiredis {
 
             context = NULL;
             conn_status = status::DISCONNECTED;
+        }
+
+        void connection::make_sequence() {
+            do {
+            // ID主要用于判定超时的时候，防止地址或名称重用，超时时间内64位整数不可能会重复
+#if defined(HIREDIS_HAPP_ATOMIC_STD)
+            static std::atomic<uint64_t> seq_alloc(0);
+            sequence = seq_alloc.fetch_add(1);
+
+#elif defined(HIREDIS_HAPP_ATOMIC_MSVC)
+            static LONGLONG volatile seq_alloc = 0;
+            sequence = static_cast<uint64_t>(InterlockedAdd64(&seq_alloc, 1));
+
+#elif defined(HIREDIS_HAPP_ATOMIC_GCC_ATOMIC)
+            static volatile uint64_t seq_alloc = 0;
+            sequence = __atomic_add_fetch(&seq_alloc, 1, __ATOMIC_SEQ_CST);
+#elif defined(HIREDIS_HAPP_ATOMIC_GCC)
+            static volatile uint64_t seq_alloc = 0;
+            sequence = __sync_fetch_and_add (&seq_alloc, 1);
+#else
+            static volatile uint64_t seq_alloc = 0;
+            sequence = ++ seq_alloc;
+#endif
+            } while(0 == sequence);
         }
 
         std::string connection::make_name(const std::string& ip, uint16_t port) {
