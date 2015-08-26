@@ -62,6 +62,8 @@ CASE_TEST(happ_cluster, connection_callback)
 
     CASE_EXPECT_EQ(static_cast<size_t>(0), clu.timer_actions.timer_conns.size());
     CASE_EXPECT_EQ(static_cast<size_t>(0), clu.connections.size());
+
+    clu.reset();
 }
 
 // 其他的需要真实的redis环境，没想好怎么测

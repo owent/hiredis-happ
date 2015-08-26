@@ -3,6 +3,7 @@
 #include <random>
 #include <sstream>
 #include <ctime>
+#include <detail/happ_cmd.h>
 
 #include "detail/crc16.h"
 #include "detail/happ_cluster.h"
@@ -253,6 +254,7 @@ namespace hiredis {
             if (REDIS_OK != res) {
                 cmd->call_reply(error_code::REDIS_HAPP_HIREDIS, conn->get_context(), NULL);
                 destroy_cmd(cmd);
+                return error_code::REDIS_HAPP_HIREDIS;
             }
 
             log_debug("exec cmd at slot %d, connection %s", cmd->engine.slot, conn->get_key().name.c_str());
@@ -298,9 +300,22 @@ namespace hiredis {
                 return false;
             }
 
-            // 这里要用原始接口，因为exec_cmd会把消息扔待执行队列里
-            redisAsyncCommand(const_cast<redisAsyncContext*>(conn->get_context()), on_reply_update_slot, NULL, "CLUSTER SLOTS");
-            slot_flag = slot_status::UPDATING;
+            // CLUSTER SLOTS命令
+            cmd_t* cmd = create_cmd(on_reply_update_slot, NULL);
+            if (NULL == cmd) {
+                return error_code::REDIS_HAPP_CREATE;
+            }
+
+            int len = cmd->format("%s", "CLUSTER SLOTS");
+            if (len <= 0) {
+                log_info("format cmd CLUSTER SLOTS failed");
+                destroy_cmd(cmd);
+                return false;
+            }
+
+            if(hiredis::happ::error_code::REDIS_HAPP_OK == exec(conn, cmd)) {
+                slot_flag = slot_status::UPDATING;
+            }
 
             return true;
         }
@@ -468,11 +483,15 @@ namespace hiredis {
                 return;
             }
 
-            timer_actions.timer_pending.push_back(timer_t::delay_t());
-            timer_t::delay_t& d = timer_actions.timer_pending.back();
-            d.sec = timer_actions.last_update_sec + conf.timer_interval_sec;
-            d.usec = timer_actions.last_update_usec + conf.timer_interval_usec;
-            d.cmd = cmd;
+            if (is_timer_active()) {
+                timer_actions.timer_pending.push_back(timer_t::delay_t());
+                timer_t::delay_t& d = timer_actions.timer_pending.back();
+                d.sec = timer_actions.last_update_sec + conf.timer_interval_sec;
+                d.usec = timer_actions.last_update_usec + conf.timer_interval_usec;
+                d.cmd = cmd;
+            } else {
+                retry(cmd);
+            }
         }
 
         int cluster::proc(time_t sec, time_t usec) {
@@ -654,7 +673,7 @@ namespace hiredis {
             conn->call_reply(cmd, r);
         }
 
-        void cluster::on_reply_update_slot(redisAsyncContext* c, void* r, void* privdata) {
+        void cluster::on_reply_update_slot(cmd_exec* cmd, redisAsyncContext* c, void* r, void* privdata) {
             redisReply* reply = reinterpret_cast<redisReply*>(r);
             connection_t* conn = reinterpret_cast<connection_t*>(c->data);
             cluster* self = conn->get_holder().clu;
@@ -665,7 +684,13 @@ namespace hiredis {
 
                 if (!self->slot_pending.empty()) {
                     self->log_info("update slots failed and try to retry again.");
-                    self->reload_slots();
+
+                    // 断线则稍后重试
+                    // 如果没有开启定时器且只有一条连接且该链接处于关闭状态
+                    // 这条消息将会重试TTL次后失败
+                    // 更新slots的命令永远随机slot，不缓存连接信息
+                    cmd->engine.slot = -1;
+                    self->add_timer_cmd(cmd);
                 } else {
                     self->log_info("update slots failed and will retry later.");
                 }
@@ -731,7 +756,6 @@ namespace hiredis {
             connection_t* conn = reinterpret_cast<connection_t*>(c->data);
             cluster* self = conn->get_holder().clu;
 
-
             if (REDIS_ERR_IO == c->err && REDIS_ERR_EOF == c->err) {
                 self->log_debug("redis asking err %d and will retry, %s", c->err, c->errstr);
                 // 网络错误则重试
@@ -741,6 +765,11 @@ namespace hiredis {
 
             if (REDIS_OK != c->err || NULL == r) {
                 self->log_debug("redis asking err %d and abort, %s", c->err, NULL == c->errstr ? detail::NONE_MSG : c->errstr);
+
+                if(c->c.flags & REDIS_DISCONNECTING) {
+                    cmd->err = error_code::REDIS_HAPP_CONNECTION;
+                }
+
                 // 其他错误则向上传递
                 conn->call_reply(cmd, r);
                 return;

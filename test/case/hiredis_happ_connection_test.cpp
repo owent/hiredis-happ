@@ -82,4 +82,6 @@ CASE_TEST(happ_connection, basic)
 
     CASE_EXPECT_EQ(conn1->get_context(), NULL);
     CASE_EXPECT_EQ(conn2->get_context(), NULL);
+
+    hiredis::happ::cmd_exec::destroy(cmd);
 }

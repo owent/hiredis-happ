@@ -95,7 +95,7 @@ namespace hiredis {
             int call_cmd(cmd_t* c, int err, redisAsyncContext* context, void* reply);
 
             static void on_reply_wrapper(redisAsyncContext* c, void* r, void* privdata);
-            static void on_reply_update_slot(redisAsyncContext* c, void* r, void* privdata);
+            static void on_reply_update_slot(cmd_exec* cmd, redisAsyncContext* c, void* r, void* privdata);
             static void on_reply_asking(redisAsyncContext* c, void* r, void* privdata);
             static void on_connected_wrapper(const struct redisAsyncContext*, int status);
             static void on_disconnected_wrapper(const struct redisAsyncContext*, int status);
