@@ -259,7 +259,9 @@ namespace hiredis {
                 // hiredis的代码，仅在网络关闭和命令错误会返回出错
                 // 其他情况都应该直接出错回调
                 if (conn->get_context()->c.flags & (REDIS_DISCONNECTING | REDIS_FREEING)) {
-                    release_connection(conn->get_key(), true, error_code::REDIS_HAPP_CONNECTION);
+                    // fix hiredis 的BUG，可能会漏调用onDisconnect
+                    // 只要不在hiredis的回调函数内，一旦标记了REDIS_DISCONNECTING或REDIS_FREEING则是已经释放完毕了
+                    release_connection(conn->get_key(), false, error_code::REDIS_HAPP_CONNECTION);
                     // conn = NULL;
                     // 连接丢失需要重连，先随机重新找可用连接
                     cmd->engine.slot = -1;
