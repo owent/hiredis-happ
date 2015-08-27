@@ -1,30 +1,58 @@
 hiredis-happ
 ======
-Redis高可用Driver方案实现
+Redis HA connector
 
-设计文档
+Usage
 ------
-见 [doc](doc) 目录
 
-构建环境     | Linux (GCC)         | Windows 
+### Linux & Cygwin(hiredis not available in cygwin now)
+```bash
+git clone https://github.com/owt5008137/hiredis-happ.git;
+mkdir -p hiredis-happ/build && cd hiredis-happ/build;
+cmake ..; # cmake .. -DCMAKE_INSTALL_PREFIX=/usr;
+make;
+
+# for install only
+make install
+```
+
+### Windows(hiredis do not support MS VC now)
+```bat
+git clone https://github.com/owt5008137/hiredis-happ.git
+mkdir hiredis-happ/build
+cd hiredis-happ/build
+
+cmake .. -G "Visual Studio 14 2015 Win64"; # cmake .. -DCMAKE_INSTALL_PREFIX="%ProgramFiles%" -G "Visual Studio 14 2015 Win64"
+
+: using visual studio to build
+
+: or using msbuild when it's in PATH
+msbuild hiredis-happ.sln /p:Configuration=Release
+```
+
+Document
+------
+See [doc](doc) 
+
+Environment  | Linux (GCC)         | Windows 
 -------------|---------------------|---------
-当前构建状态 | [![Build Status](https://travis-ci.org/owt5008137/hiredis-happ.svg)](https://travis-ci.org/owt5008137/hiredis-happ) | [![Build status](https://ci.appveyor.com/api/projects/status/tp0bkc9ltorakfvs?svg=true)](https://ci.appveyor.com/project/owt5008137/hiredis-happ)
+Build Status | [![Build Status](https://travis-ci.org/owt5008137/hiredis-happ.svg)](https://travis-ci.org/owt5008137/hiredis-happ) | [![Build status](https://ci.appveyor.com/api/projects/status/tp0bkc9ltorakfvs?svg=true)](https://ci.appveyor.com/project/owt5008137/hiredis-happ)
 
 
-### 文件夹说明
+### Directory list
 
-**3rd_party**   -- 第三方库
+**3rd_party**   -- script for 3rd party  libraries
 
-**doc**         -- 文档
+**doc**         -- document
 
-**include**     -- 头文件
+**include**     -- include files
 
-**project**     -- 工程配置
+**project**     -- project configure
 
-**src**         -- 生成库的代码文件
+**src**         -- source
 
-**sample**      -- 部分模块的代码使用示例
+**sample**      -- samples
 
-**test**        -- 部分模块的单元测试
+**test**        -- unit test
 
-**tools**        -- 杂项工具目录
+**tools**        -- misc tools

@@ -123,7 +123,7 @@ static void on_disconnected_cbk(hiredis::happ::cluster*, hiredis::happ::connecti
         printf("%s disconnected\n", conn->get_key().name.c_str());
     } else {
         char no_msg[] = "none";
-        printf("%s disconnected failed, status %d, err: %d, msg %s\n",
+        printf("%s disconnected status %d, err: %d, msg %s\n",
                conn->get_key().name.c_str(),
                status, c? c->err: 0,
                (c && c->errstr)? c->errstr: no_msg
