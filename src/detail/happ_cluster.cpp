@@ -83,6 +83,9 @@ namespace hiredis {
                 }
             }
 
+            // disable slot update
+            slot_flag = slot_status::UPDATING;
+
             for (size_t i = 0; i < all_contexts.size(); ++ i) {
                 redisAsyncDisconnect(all_contexts[i]);
             }
@@ -99,7 +102,7 @@ namespace hiredis {
             for (int i = 0; i < HIREDIS_HAPP_SLOT_NUMBER; ++i) {
                 slots[i].hosts.clear();
             }
-            slot_flag = slot_status::INVALID;
+
 
             // 释放timer pending list
             while(!timer_actions.timer_pending.empty()) {
@@ -109,9 +112,27 @@ namespace hiredis {
                 call_cmd(cmd, error_code::REDIS_HAPP_TIMEOUT, NULL, NULL);
                 destroy_cmd(cmd);
             }
+
+            // connection timeout
+            while(!timer_actions.timer_conns.empty()) {
+                timer_t::conn_timetout_t& conn_expire = timer_actions.timer_conns.front();
+
+                connection_t* conn = get_connection(conn_expire.name);
+                if (NULL != conn && conn->get_sequence() == conn_expire.sequence) {
+                    release_connection(conn->get_key(), true, error_code::REDIS_HAPP_TIMEOUT);
+                }
+
+                timer_actions.timer_conns.pop_front();
+            }
+
             timer_actions.last_update_sec = 0;
             timer_actions.last_update_usec = 0;
-            timer_actions.timer_conns.clear();
+
+            // clear connections, should be empty here
+            connections.clear();
+
+            // reset slot status
+            slot_flag = slot_status::INVALID;
 
             // log buffer
             if (NULL != conf.log_buffer) {
@@ -260,8 +281,8 @@ namespace hiredis {
                 // 其他情况都应该直接出错回调
                 if (conn->get_context()->c.flags & (REDIS_DISCONNECTING | REDIS_FREEING)) {
                     // 尝试释放连接信息,避免下一次使用无效连接
-                    if (cmd->engine.slot >= 0 && cmd->engine.slot < HIREDIS_HAPP_SLOT_NUMBER) {
-                        std::vector<connection::key_t>& hosts = slots[cmd->engine.slot].hosts;
+                    for (int i = 0; i < HIREDIS_HAPP_SLOT_NUMBER; ++ i) {
+                        std::vector<connection::key_t>& hosts = slots[i].hosts;
                         if (!hosts.empty() && hosts[0].name == conn->get_key().name) {
                             if (hosts.size() > 1) {
                                 using std::swap;
@@ -858,6 +879,11 @@ namespace hiredis {
             cluster* self = conn->get_holder().clu;
             // 释放资源
             self->release_connection(conn->get_key(), false, status);
+
+            // 如果网络错误断开，则要更新slots
+            if(REDIS_OK != status) {
+                self->reload_slots();
+            }
         }
 
         void cluster::dump(std::ostream& out, redisReply* reply, int ident) {

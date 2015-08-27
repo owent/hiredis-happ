@@ -131,16 +131,43 @@ static void on_disconnected_cbk(hiredis::happ::cluster*, hiredis::happ::connecti
     }
 }
 
-static std::string pick_word(const std::string& cmd_line, int i) {
-    if (i < 0) {
-        return "";
+static std::vector<std::string> split_word(const std::string& cmd_line) {
+    std::vector<std::string> ret;
+
+    std::string seg;
+    for(size_t i = 0; i < cmd_line.size(); ++ i) {
+        if (cmd_line[i] == '\r' || cmd_line[i] == '\n' || cmd_line[i] == '\t' || cmd_line[i] == ' ') {
+            if(seg.empty()) {
+                continue;
+            }
+
+            ret.push_back(seg);
+            seg.clear();
+        } else {
+            char c = cmd_line[i];
+            if ('\'' == c || '\"' == c) {
+                for (++ i; i < cmd_line.size() && c != cmd_line[i]; ++ i) {
+                    if (c == '\"' && '\\' == cmd_line[i]) {
+                        ++ i;
+                        if (i < cmd_line.size()) {
+                            seg.push_back(cmd_line[i]);
+                        }
+                    } else {
+                        seg.push_back(c);
+                    }
+                }
+
+                ++ i;
+            } else {
+                seg.push_back(c);
+            }
+        }
     }
 
-    std::stringstream ss;
-    ss.str(cmd_line);
+    if(!seg.empty()) {
+        ret.push_back(seg);
+    }
 
-    std::string ret;
-    while(ss>> ret && i-- > 0);
     return ret;
 }
 
@@ -182,7 +209,8 @@ static void on_timer_proc(
         std::string cmd_line = pending_cmds.front();
         pending_cmds.pop_front();
 
-        std::string cmd = pick_word(cmd_line, 0);
+        std::vector<std::string> cmds = split_word(cmd_line);
+        std::string cmd = cmds.empty()? "": cmds.front();
         std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::toupper);
         hiredis::happ::cmd_exec::callback_fn_t cbk = dump_callback;
         int k = 1;
@@ -196,11 +224,22 @@ static void on_timer_proc(
         } else if ("SUBSCRIBE" == cmd || "UNSUBSCRIBE" == cmd) {
             cbk = NULL;
         }
-        std::string cmd_key = pick_word(cmd_line, k);
-        if (cmd_key.empty()) {
-            g_clu.exec(NULL, 0, cbk, reinterpret_cast<void*>(cbk), cmd_line.c_str());
+
+        // 生成参数
+        std::vector<const char*> pc;
+        std::vector<size_t> ps;
+        for(size_t i = 0; i < cmds.size(); ++ i) {
+            pc.push_back(cmds[i].c_str());
+            ps.push_back(cmds[i].size());
+        }
+
+
+        // 执行
+        if (k >= 0 && k < static_cast<int>(cmds.size())) {
+            cmd = cmds[k];
+            g_clu.exec(cmd.c_str(), cmd.size(), cbk, reinterpret_cast<void*>(cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
         } else {
-            g_clu.exec(cmd_key.c_str(), cmd_key.size(), cbk, reinterpret_cast<void*>(cbk), cmd_line.c_str());
+            g_clu.exec(NULL, 0, cbk, reinterpret_cast<void*>(cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
         }
     }
 
