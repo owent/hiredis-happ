@@ -153,7 +153,7 @@ static std::vector<std::string> split_word(const std::string& cmd_line) {
                             seg.push_back(cmd_line[i]);
                         }
                     } else {
-                        seg.push_back(c);
+                        seg.push_back(cmd_line[i]);
                     }
                 }
 
