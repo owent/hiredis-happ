@@ -218,7 +218,7 @@ static void on_timer_proc(
             "CLUSTER" == cmd) {
             k = -1;
         } else if ("SCRIPT" == cmd) {
-            k = 2;
+            k = -1;
         } else if ("EVALSHA" == cmd || "EVAL" == cmd) {
             k = 3;
         } else if ("SUBSCRIBE" == cmd || "UNSUBSCRIBE" == cmd) {
