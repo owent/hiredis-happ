@@ -868,14 +868,13 @@ namespace hiredis {
             connection_t* conn = reinterpret_cast<connection_t*>(c->data);
             cluster* self = conn->get_holder().clu;
 
-            std::string key_name = conn->get_key().name;
-            // 释放资源
-            self->release_connection(conn->get_key(), false, status);
-
             // 如果网络错误断开，则下一次命令需要更新slots
             if(REDIS_OK != status) {
-                self->remove_connection_key(key_name);
+                self->remove_connection_key(conn->get_key().name);
             }
+
+            // 释放资源
+            self->release_connection(conn->get_key(), false, status);
         }
 
         void cluster::remove_connection_key(const std::string& name) {
