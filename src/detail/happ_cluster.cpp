@@ -10,6 +10,7 @@
 #include <sstream>
 #include <ctime>
 #include <detail/happ_cmd.h>
+#include <iomanip>
 
 #include "detail/crc16.h"
 #include "detail/happ_cluster.h"
@@ -926,7 +927,7 @@ namespace hiredis {
 
                 out << "[ARRAY]: " << std::endl;
                 for (size_t i = 0; i < reply->elements; ++ i) {
-                    out << ident_str << out.width(7) << (i + 1) << ": ";
+                    out << ident_str << std::setw(7) << (i + 1) << ": ";
                     dump(out, reply->element[i], ident + 2);
                 }
 
