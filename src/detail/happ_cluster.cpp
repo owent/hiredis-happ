@@ -281,17 +281,7 @@ namespace hiredis {
                 // 其他情况都应该直接出错回调
                 if (conn->get_context()->c.flags & (REDIS_DISCONNECTING | REDIS_FREEING)) {
                     // 尝试释放连接信息,避免下一次使用无效连接
-                    for (int i = 0; i < HIREDIS_HAPP_SLOT_NUMBER; ++ i) {
-                        std::vector<connection::key_t>& hosts = slots[i].hosts;
-                        if (!hosts.empty() && hosts[0].name == conn->get_key().name) {
-                            if (hosts.size() > 1) {
-                                using std::swap;
-                                swap(hosts[0], hosts[hosts.size() - 1]);
-                            }
-
-                            hosts.pop_back();
-                        }
-                    }
+                    remove_connection_key(conn->get_key().name);
 
                     // fix hiredis 的BUG，可能会漏调用onDisconnect
                     // 只要不在hiredis的回调函数内，一旦标记了REDIS_DISCONNECTING或REDIS_FREEING则是已经释放完毕了
@@ -877,12 +867,30 @@ namespace hiredis {
         void cluster::on_disconnected_wrapper(const struct redisAsyncContext* c, int status) {
             connection_t* conn = reinterpret_cast<connection_t*>(c->data);
             cluster* self = conn->get_holder().clu;
+
+            std::string key_name = conn->get_key().name;
             // 释放资源
             self->release_connection(conn->get_key(), false, status);
 
-            // 如果网络错误断开，则要更新slots
+            // 如果网络错误断开，则下一次命令需要更新slots
             if(REDIS_OK != status) {
-                self->reload_slots();
+                self->remove_connection_key(key_name);
+            }
+        }
+
+        void cluster::remove_connection_key(const std::string& name) {
+            slot_flag = slot_status::INVALID;
+
+            for (int i = 0; i < HIREDIS_HAPP_SLOT_NUMBER; ++ i) {
+                std::vector<connection::key_t>& hosts = slots[i].hosts;
+                if (!hosts.empty() && hosts[0].name == name) {
+                    if (hosts.size() > 1) {
+                        using std::swap;
+                        swap(hosts[0], hosts[hosts.size() - 1]);
+                    }
+
+                    hosts.pop_back();
+                }
             }
         }
 

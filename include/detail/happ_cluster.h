@@ -100,6 +100,8 @@ namespace hiredis {
             static void on_connected_wrapper(const struct redisAsyncContext*, int status);
             static void on_disconnected_wrapper(const struct redisAsyncContext*, int status);
 
+
+            void remove_connection_key(const std::string& name);
         private:
 
             void log_debug(const char* fmt, ...);
