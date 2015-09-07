@@ -15,7 +15,7 @@ include("${PROJECT_CMAKE_MODULE_DIR}/TargetOption.cmake")
 include("${PROJECT_CMAKE_MODULE_DIR}/FindPlatform.cmake")
 
 # 包含所有macro文件
-include_macro_recurse(${PROJECT_SOURCE_DIR})
+include_macro_recurse(FILTER "*.happ-macro.cmake" ${PROJECT_SOURCE_DIR})
 
 # 设置输出目录 
 set(PROJECT_ALL_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")

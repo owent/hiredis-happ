@@ -19,6 +19,10 @@ if(Libuv_FOUND OR Libevent_FOUND)
         include_directories(${Libevent_INCLUDE_DIRS})
     endif()
 
+    if (NOT MSVC)
+        set(SAMPLE_EXT_LIBS ${SAMPLE_EXT_LIBS} pthread)
+    endif()
+    
     add_executable(${SAMPLE_NAME} ${SAMPLE_SRC_FILES})
     target_link_libraries(${SAMPLE_NAME}
         hiredis-happ

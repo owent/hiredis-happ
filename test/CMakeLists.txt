@@ -1,4 +1,3 @@
-include("${CMAKE_CURRENT_LIST_DIR}/test.macro.cmake")
 # import gtest
 
 enable_testing()
@@ -59,6 +58,10 @@ set(EXECUTABLE_OUTPUT_PATH "${PROJECT_BINARY_DIR}/test")
 
 add_compiler_define(HIREDIS_HAPP_UNIT_TEST_HACK=1)
 
+if (NOT MSVC)
+    set(EXTENTION_LINK_LIB ${EXTENTION_LINK_LIB} pthread)
+endif()
+    
 add_executable(hiredis-happ-test ${ALL_TEST_SRC_LIST})
 target_link_libraries(hiredis-happ-test
     hiredis-happ
