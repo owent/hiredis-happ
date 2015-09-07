@@ -14,32 +14,12 @@
 
 namespace hiredis {
     namespace happ {
-        namespace detail {
-            template<size_t s>
-            struct power2;
-
-            template<>
-            struct power2<0> {
-                static const size_t value = 0;
-            };
-
-            template<>
-            struct power2<1> {
-                static const size_t value = 0;
-            };
-
-            template<size_t s>
-            struct power2 {
-                static const size_t value = 1 + power2<(s >> 1)>::value;
-            };
-        }
-
         static const size_t cmd_exec_s = sizeof(cmd_exec);
 
         cmd_exec* cmd_exec::create(holder_t holder, callback_fn_t cbk, void* pridata, size_t buffer_len) {
             size_t sum_len = sizeof(cmd_exec) + buffer_len;
             // 对齐到sizeof(void*)字节，以便执行内存对齐
-            sum_len = (((sum_len - 1) >> detail::power2<sizeof(void*)>::value) + 1) << detail::power2<sizeof(void*)>::value;
+            sum_len = (sum_len + sizeof(void*) - 1) & (~(sizeof(void*) - 1));
 
             cmd_exec* ret = reinterpret_cast<cmd_exec*>(malloc(sum_len));
 
