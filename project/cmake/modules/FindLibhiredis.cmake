@@ -60,7 +60,7 @@ endif()
 set(Libhiredis_NAMES hiredis libhiredis)
 
 # Try each search configuration.
-find_path(Libhiredis_INCLUDE_DIRS    NAMES hiredis.h  ${_LIBHIREDIS_SEARCH_INCLUDE} PATH_SUFFIXES hiredis)
+find_path(Libhiredis_INCLUDE_DIRS    NAMES hiredis/hiredis.h  ${_LIBHIREDIS_SEARCH_INCLUDE})
 find_library(Libhiredis_LIBRARIES    NAMES ${Libhiredis_NAMES}  ${_LIBHIREDIS_SEARCH_LIB})
 
 mark_as_advanced(Libhiredis_INCLUDE_DIRS Libhiredis_LIBRARIES)
