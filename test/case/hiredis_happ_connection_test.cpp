@@ -48,7 +48,6 @@ CASE_TEST(happ_connection, basic)
 
     CASE_EXPECT_EQ(conn1->get_sequence() + 1, conn2->get_sequence());
 
-    hiredis::happ::cluster clu;
     hiredis::happ::holder_t h;
     redisAsyncContext vir_context;
 
@@ -60,7 +59,7 @@ CASE_TEST(happ_connection, basic)
     CASE_EXPECT_TRUE("127.0.0.2:1234" == conn1->get_key().name);
 
     CASE_EXPECT_EQ(hiredis::happ::connection::status::DISCONNECTED, conn1->conn_status);
-    hiredis::happ::cmd_exec* cmd = hiredis::happ::cmd_exec::create(h, NULL, &vir_context);
+    hiredis::happ::cmd_exec* cmd = hiredis::happ::cmd_exec::create(h, NULL, &vir_context, 0);
 
     int res = conn1->redis_cmd(cmd, NULL);
     CASE_EXPECT_EQ(hiredis::happ::error_code::REDIS_HAPP_CREATE, res);

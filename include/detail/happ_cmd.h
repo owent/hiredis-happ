@@ -42,8 +42,20 @@ namespace hiredis {
 
             inline int result() const { return err; }
 
+            void* buffer();
+
+            const void* buffer() const;
+
         HIREDIS_HAPP_PRIVATE:
-            static cmd_exec* create(holder_t holder, callback_fn_t cbk, void* pridata);
+            /**
+             * @brief 创建cmd对象
+             * @param holder 持有者
+             * @param cbk 回调函数
+             * @param pridata 回调参数指针
+             * @param buff_len 额外分配的内存块（如果回调参数指针不够大，可用于减少内存分配次数）
+             * @return 政工返回创建的cmd对象
+             */
+            static cmd_exec* create(holder_t holder, callback_fn_t cbk, void* pridata, size_t buffer_len);
             static void destroy(cmd_exec* c);
 
             friend class cluster;
@@ -51,7 +63,6 @@ namespace hiredis {
         HIREDIS_HAPP_PRIVATE:
             holder_t holder;            // holder
             cmd_content cmd;
-            void* pri_data;             // user pri data
             size_t ttl;                 // left retry times(just like network ttl)
             callback_fn_t callback;     // user callback function
 
@@ -60,6 +71,8 @@ namespace hiredis {
             union {
                 int slot;               // slot index if in cluster, -1 means random
             } engine;
+
+            void* pri_data;             // user pri data
         };
     }
 }

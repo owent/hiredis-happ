@@ -15,6 +15,8 @@ static void happ_cmd_basic_1(hiredis::happ::cmd_exec* cmd, struct redisAsyncCont
 
     CASE_EXPECT_NE(r, NULL);
     CASE_EXPECT_NE(pridata, NULL);
+
+    CASE_EXPECT_EQ(131313131, *reinterpret_cast<int*>(cmd->buffer()));
 }
 
 CASE_TEST(happ_cmd, basic)
@@ -24,13 +26,14 @@ CASE_TEST(happ_cmd, basic)
     redisAsyncContext vir_ontext;
     h.clu = &clu;
 
-    hiredis::happ::cmd_exec* cmd = hiredis::happ::cmd_exec::create(h, happ_cmd_basic_1, &clu);
+    hiredis::happ::cmd_exec* cmd = hiredis::happ::cmd_exec::create(h, happ_cmd_basic_1, &clu, sizeof(int));
 
     CASE_EXPECT_EQ(cmd->holder.clu, &clu);
     CASE_EXPECT_EQ(cmd->pri_data, &clu);
     CASE_EXPECT_EQ(cmd->callback, happ_cmd_basic_1);
 
     cmd->pri_data = cmd;
+    *reinterpret_cast<int*>(cmd->buffer()) = 131313131;
 
     int len = cmd->format("GET %s", "HERO");
     CASE_EXPECT_EQ(static_cast<size_t>(len), cmd->cmd.raw_len);

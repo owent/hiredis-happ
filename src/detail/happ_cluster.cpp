@@ -43,6 +43,7 @@ namespace hiredis {
             conf.timer_interval_sec = HIREDIS_HAPP_TIMER_INTERVAL_SEC;
             conf.timer_interval_usec = HIREDIS_HAPP_TIMER_INTERVAL_USEC;
             conf.timer_timeout_sec = HIREDIS_HAPP_TIMER_TIMEOUT_SEC;
+            conf.cmd_buffer_size = 0;
 
             for (int i = 0; i < HIREDIS_HAPP_SLOT_NUMBER; ++ i) {
                 slots[i].index = i;
@@ -144,26 +145,26 @@ namespace hiredis {
             return 0;
         }
 
-        int cluster::exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, int argc, const char** argv, const size_t* argvlen) {
+        cluster::cmd_t* cluster::exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, int argc, const char** argv, const size_t* argvlen) {
             cmd_t* cmd = create_cmd(cbk, priv_data);
             if (NULL == cmd) {
-                return error_code::REDIS_HAPP_CREATE;
+                return NULL;
             }
 
             int len = cmd->vformat(argc, argv, argvlen);
             if (len <= 0) {
                 log_info("format cmd with argc=%d failed", argc);
                 destroy_cmd(cmd);
-                return error_code::REDIS_HAPP_CREATE;
+                return NULL;
             }
 
             return exec(key, ks, cmd);
         }
 
-        int cluster::exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, const char* fmt, ...) {
+        cluster::cmd_t* cluster::exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, const char* fmt, ...) {
             cmd_t* cmd = create_cmd(cbk, priv_data);
             if (NULL == cmd) {
-                return error_code::REDIS_HAPP_CREATE;
+                return NULL;
             }
 
             va_list ap;
@@ -173,31 +174,31 @@ namespace hiredis {
             if (len <= 0) {
                 log_info("format cmd with format=%s failed", fmt);
                 destroy_cmd(cmd);
-                return error_code::REDIS_HAPP_CREATE;
+                return NULL;
             }
 
             return exec(key, ks, cmd);
         }
 
-        int cluster::exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, const char* fmt, va_list ap) {
+        cluster::cmd_t* cluster::exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, const char* fmt, va_list ap) {
             cmd_t* cmd = create_cmd(cbk, priv_data);
             if (NULL == cmd) {
-                return error_code::REDIS_HAPP_CREATE;
+                return NULL;
             }
 
             int len = cmd->vformat(fmt, ap);
             if (len <= 0) {
                 log_info("format cmd with format=%s failed", fmt);
                 destroy_cmd(cmd);
-                return error_code::REDIS_HAPP_CREATE;
+                return NULL;
             }
 
             return exec(key, ks, cmd);
         }
 
-        int cluster::exec(const char* key, size_t ks, cmd_t* cmd) {
+        cluster::cmd_t* cluster::exec(const char* key, size_t ks, cmd_t* cmd) {
             if (NULL == cmd) {
-                return error_code::REDIS_HAPP_PARAM;
+                return NULL;
             }
 
             // 需要在这里转发cmd_t的所有权
@@ -210,7 +211,7 @@ namespace hiredis {
                 log_debug("cmd at slot %d ttl expired", cmd->engine.slot);
                 call_cmd(cmd, error_code::REDIS_HAPP_TTL, NULL, NULL);
                 destroy_cmd(cmd);
-                return error_code::REDIS_HAPP_TTL;
+                return NULL;
             }
 
             // update slot
@@ -219,7 +220,7 @@ namespace hiredis {
                 slot_pending.push_back(cmd);
 
                 reload_slots();
-                return 0;
+                return cmd;
             }
 
             // 指定或随机获取服务器地址
@@ -228,7 +229,8 @@ namespace hiredis {
             if (NULL == conn_key) {
                 log_info("get connect of slot %d failed", cmd->engine.slot);
                 call_cmd(cmd, error_code::REDIS_HAPP_CONNECTION, NULL, NULL);
-                return error_code::REDIS_HAPP_CONNECTION;
+                destroy_cmd(cmd);
+                return NULL;
             }
 
             // 转发到建立连接
@@ -243,15 +245,15 @@ namespace hiredis {
                 call_cmd(cmd, error_code::REDIS_HAPP_CONNECTION, NULL, NULL);
                 destroy_cmd(cmd);
 
-                return error_code::REDIS_HAPP_CREATE;
+                return NULL;
             }
 
             return exec(conn_inst, cmd);
         }
 
-        int cluster::exec(connection_t* conn, cmd_t* cmd) {
+        cluster::cmd_t* cluster::exec(connection_t* conn, cmd_t* cmd) {
             if (NULL == cmd) {
-                return error_code::REDIS_HAPP_PARAM;
+                return NULL;
             }
 
             // ttl 正式判定
@@ -259,19 +261,16 @@ namespace hiredis {
                 log_debug("cmd at slot %d ttl expired", cmd->engine.slot);
                 call_cmd(cmd, error_code::REDIS_HAPP_TTL, NULL, NULL);
                 destroy_cmd(cmd);
-                return error_code::REDIS_HAPP_TTL;
+                return NULL;
             }
 
             // ttl
             --cmd->ttl;
 
             if (NULL == conn) {
-                if (NULL != cmd) {
-                    cmd->call_reply(error_code::REDIS_HAPP_CONNECTION, NULL, NULL);
-                    destroy_cmd(cmd);
-                }
-
-                return error_code::REDIS_HAPP_PARAM;
+                cmd->call_reply(error_code::REDIS_HAPP_CONNECTION, NULL, NULL);
+                destroy_cmd(cmd);
+                return NULL;
             }
 
             // 主循环逻辑回包处理
@@ -299,17 +298,17 @@ namespace hiredis {
                     cmd->call_reply(error_code::REDIS_HAPP_HIREDIS, conn->get_context(), NULL);
                     destroy_cmd(cmd);
                 }
-                return error_code::REDIS_HAPP_HIREDIS;
+                return NULL;
             }
 
             log_debug("exec cmd at slot %d, connection %s", cmd->engine.slot, conn->get_key().name.c_str());
-            return error_code::REDIS_HAPP_OK;
+            return cmd;
         }
 
-        int cluster::retry(cmd_t* cmd, connection_t* conn) {
+        cluster::cmd_t* cluster::retry(cmd_t* cmd, connection_t* conn) {
             // 重试次数较少则直接重试
             if(NULL == cmd) {
-                return error_code::REDIS_HAPP_PARAM;
+                return NULL;
             }
 
             if (false == is_timer_active() || cmd->ttl > HIREDIS_HAPP_TTL / 2) {
@@ -323,7 +322,7 @@ namespace hiredis {
             // 重试次数较多则等一会重试
             // 延迟重试的命令不记录连接信息，因为可能到时候连接已经丢失
             add_timer_cmd(cmd);
-            return 0;
+            return cmd;
         }
 
         bool cluster::reload_slots() {
@@ -358,7 +357,7 @@ namespace hiredis {
                 return false;
             }
 
-            if(hiredis::happ::error_code::REDIS_HAPP_OK == exec(conn, cmd)) {
+            if(NULL != exec(conn, cmd)) {
                 slot_flag = slot_status::UPDATING;
             }
 
@@ -516,6 +515,14 @@ namespace hiredis {
             return cbk;
         }
 
+        void cluster::set_cmd_buffer_size(size_t s) {
+            conf.cmd_buffer_size = s;
+        }
+
+        size_t cluster::get_cmd_buffer_size() const {
+            return conf.cmd_buffer_size;
+        }
+
         bool cluster::is_timer_active() const {
             return (timer_actions.last_update_sec != 0 || timer_actions.last_update_usec != 0) &&
                 (conf.timer_interval_sec > 0 || conf.timer_interval_usec > 0);
@@ -585,7 +592,7 @@ namespace hiredis {
         cluster::cmd_t* cluster::create_cmd(cmd_t::callback_fn_t cbk, void* pridata) {
             holder_t h;
             h.clu = this;
-            cmd_t* ret = cmd_t::create(h, cbk, pridata);
+            cmd_t* ret = cmd_t::create(h, cbk, pridata, conf.cmd_buffer_size);
             return ret;
         }
 

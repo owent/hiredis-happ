@@ -47,17 +47,17 @@ namespace hiredis {
 
             int reset();
 
-            int exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, int argc, const char** argv, const size_t* argvlen);
+            cmd_t* exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, int argc, const char** argv, const size_t* argvlen);
 
-            int exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, const char* fmt, ...);
+            cmd_t* exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, const char* fmt, ...);
 
-            int exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, const char* fmt, va_list ap);
+            cmd_t* exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, const char* fmt, va_list ap);
 
-            int exec(const char* key, size_t ks, cmd_t* cmd);
+            cmd_t* exec(const char* key, size_t ks, cmd_t* cmd);
 
-            int exec(connection_t* conn, cmd_t* cmd);
+            cmd_t* exec(connection_t* conn, cmd_t* cmd);
 
-            int retry(cmd_t* cmd, connection_t* conn = NULL);
+            cmd_t* retry(cmd_t* cmd, connection_t* conn = NULL);
 
             bool reload_slots();
 
@@ -75,6 +75,10 @@ namespace hiredis {
             onconnect_fn_t set_on_connect(onconnect_fn_t cbk);
             onconnected_fn_t set_on_connected(onconnected_fn_t cbk);
             ondisconnected_fn_t set_on_disconnected(ondisconnected_fn_t cbk);
+
+            void set_cmd_buffer_size(size_t s);
+
+            size_t get_cmd_buffer_size() const;
 
             bool is_timer_active() const;
 
@@ -119,6 +123,8 @@ namespace hiredis {
                 time_t timer_interval_sec;
                 time_t timer_interval_usec;
                 time_t timer_timeout_sec;
+
+                size_t cmd_buffer_size;
             };
             config_t conf;
 
