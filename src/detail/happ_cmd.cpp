@@ -149,11 +149,11 @@ namespace hiredis {
             return reinterpret_cast<const void*>(this + 1);
         }
         
-        void* cmd_exec::pri_data() const {
+        void* cmd_exec::private_data() const {
             return pri_data;
         }
             
-        void cmd_exec::pri_data(void* pd) const {
+        void cmd_exec::private_data(void* pd) {
             pri_data = pd;
         }
     }

@@ -46,9 +46,9 @@ namespace hiredis {
 
             const void* buffer() const;
             
-            void* pri_data() const;
+            void* private_data() const;
             
-            void pri_data(void* pd) const;
+            void private_data(void* pd);
 
         HIREDIS_HAPP_PRIVATE:
             /**
