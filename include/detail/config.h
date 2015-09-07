@@ -53,8 +53,8 @@
 extern "C" {
 #endif
 
-#include "hiredis.h"
-#include "async.h"
+#include "hiredis/hiredis.h"
+#include "hiredis/async.h"
 
 #if defined(__cplusplus)
 }
