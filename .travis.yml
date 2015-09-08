@@ -2,6 +2,7 @@ language: cpp
 
 compiler:
   - gcc
+  - clang
   
 after_success:
   - bin/hiredis-happ-test
@@ -46,6 +47,4 @@ env:
 
 os:
   - linux
-  - osx
 
-osx_image: xcode61

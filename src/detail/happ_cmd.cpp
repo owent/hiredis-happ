@@ -14,8 +14,6 @@
 
 namespace hiredis {
     namespace happ {
-        static const size_t cmd_exec_s = sizeof(cmd_exec);
-
         cmd_exec* cmd_exec::create(holder_t holder, callback_fn_t cbk, void* pridata, size_t buffer_len) {
             size_t sum_len = sizeof(cmd_exec) + buffer_len;
             // 对齐到sizeof(void*)字节，以便执行内存对齐
