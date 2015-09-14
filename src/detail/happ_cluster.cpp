@@ -268,7 +268,7 @@ namespace hiredis {
             --cmd->ttl;
 
             if (NULL == conn) {
-                cmd->call_reply(error_code::REDIS_HAPP_CONNECTION, NULL, NULL);
+                call_cmd(cmd, error_code::REDIS_HAPP_CONNECTION, NULL, NULL);
                 destroy_cmd(cmd);
                 return NULL;
             }
@@ -295,7 +295,7 @@ namespace hiredis {
                     cmd->engine.slot = -1;
                     return retry(cmd, NULL);
                 } else {
-                    cmd->call_reply(error_code::REDIS_HAPP_HIREDIS, conn->get_context(), NULL);
+                    call_cmd(cmd, error_code::REDIS_HAPP_HIREDIS, conn->get_context(), NULL);
                     destroy_cmd(cmd);
                 }
                 return NULL;
@@ -647,6 +647,7 @@ namespace hiredis {
             if (REDIS_ERR_IO == c->err && REDIS_ERR_EOF == c->err) {
                 self->log_debug("redis reply context err %d and will retry, %s", c->err, c->errstr);
                 // 网络错误则重试
+                conn->pop_reply(cmd);
                 self->retry(cmd);
                 return;
             }
@@ -677,24 +678,34 @@ namespace hiredis {
                         connection::set_key(conn_key, ip, port);
 
                         // ASKING 请求
-                        connection_t* conn = self->get_connection(conn_key.name);
-                        if (NULL == conn) {
-                            conn = self->make_connection(conn_key);
+                        connection_t* ask_conn = self->get_connection(conn_key.name);
+                        if (NULL == ask_conn) {
+                            ask_conn = self->make_connection(conn_key);
                         }
 
                         // cmd转移到新的connection，并在完成后执行
-                        if (NULL != conn) {
-                            if(REDIS_OK == redisAsyncCommand(conn->get_context(), on_reply_asking, cmd, "ASKING")) {
+                        conn->pop_reply(cmd);
+
+                        if (NULL != ask_conn) {
+                            // 先从原始conn队列弹出
+                            if(REDIS_OK == redisAsyncCommand(ask_conn->get_context(), on_reply_asking, cmd, "ASKING")) {
                                 return;
                             }
                         }
 
+                        // ASK 不成功则重试
+                        self->retry(cmd);
                         return;
                     }
                 } else if (0 == HIREDIS_HAPP_STRNCASE_CMP("MOVED", reply->str, 5)) {
                     self->log_debug("%s", reply->str);
 
                     HIREDIS_HAPP_SSCANF(reply->str + 6, " %d %s", &slot_index, addr);
+
+                    if (cmd->engine.slot >= 0 && cmd->engine.slot != slot_index) {
+                        self->log_info("cluster cmd key error, expect slot: %d, real slot: %d", cmd->engine.slot, slot_index);
+                    }
+
                     std::string ip;
                     uint16_t port;
                     if (connection::pick_name(addr, ip, port)) {
@@ -704,6 +715,7 @@ namespace hiredis {
                         connection::set_key(self->slots[slot_index].hosts.back(), ip, port);
 
                         // retry
+                        conn->pop_reply(cmd);
                         self->retry(cmd);
 
                         // 重新拉取slot列表
@@ -814,6 +826,9 @@ namespace hiredis {
             connection_t* conn = reinterpret_cast<connection_t*>(c->data);
             cluster* self = conn->get_holder().clu;
 
+            // ask命令带回的cmd不在任何conn队列中
+            // 所以不需要弹出cmd，直接retry或者调用回调即可
+
             if (REDIS_ERR_IO == c->err && REDIS_ERR_EOF == c->err) {
                 self->log_debug("redis asking err %d and will retry, %s", c->err, c->errstr);
                 // 网络错误则重试
@@ -829,7 +844,8 @@ namespace hiredis {
                 }
 
                 // 其他错误则向上传递
-                conn->call_reply(cmd, r);
+                self->call_cmd(cmd, error_code::REDIS_HAPP_CONNECTION, conn->get_context(), r);
+                self->destroy_cmd(cmd);
                 return;
             }
 
@@ -840,7 +856,8 @@ namespace hiredis {
 
             self->log_debug("redis reply asking err %d and abort, %s", reply->type, NULL == reply->str ? detail::NONE_MSG : reply->str);
             // 其他错误则向上传递
-            conn->call_reply(cmd, r);
+            self->call_cmd(cmd, error_code::REDIS_HAPP_CONNECTION, conn->get_context(), r);
+            self->destroy_cmd(cmd);
         }
 
         void cluster::on_connected_wrapper(const struct redisAsyncContext* c, int status) {
