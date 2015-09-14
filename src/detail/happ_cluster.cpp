@@ -704,6 +704,7 @@ namespace hiredis {
 
                     if (cmd->engine.slot >= 0 && cmd->engine.slot != slot_index) {
                         self->log_info("cluster cmd key error, expect slot: %d, real slot: %d", cmd->engine.slot, slot_index);
+                        cmd->engine.slot = slot_index;
                     }
 
                     std::string ip;
