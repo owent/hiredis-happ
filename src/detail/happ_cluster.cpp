@@ -301,7 +301,7 @@ namespace hiredis {
                 return NULL;
             }
 
-            log_debug("exec cmd at slot %d, connection %s", cmd->engine.slot, conn->get_key().name.c_str());
+            log_debug("exec cmd %p at slot %d, connection %s", cmd, cmd->engine.slot, conn->get_key().name.c_str());
             return cmd;
         }
 
@@ -638,14 +638,14 @@ namespace hiredis {
 
             // 正在释放的连接重试也只会死循环，所以直接失败退出
             if (c->c.flags & REDIS_DISCONNECTING) {
-                self->log_debug("redis reply when disconnecting context err %d,msg %s", c->err, NULL == c->errstr? detail::NONE_MSG: c->errstr);
+                self->log_debug("redis cmd %p reply when disconnecting context err %d,msg %s", cmd, c->err, NULL == c->errstr? detail::NONE_MSG: c->errstr);
                 cmd->err = error_code::REDIS_HAPP_CONNECTION;
                 conn->call_reply(cmd, r);
                 return;
             }
 
             if (REDIS_ERR_IO == c->err && REDIS_ERR_EOF == c->err) {
-                self->log_debug("redis reply context err %d and will retry, %s", c->err, c->errstr);
+                self->log_debug("redis cmd %p reply context err %d and will retry, %s", cmd, c->err, c->errstr);
                 // 网络错误则重试
                 conn->pop_reply(cmd);
                 self->retry(cmd);
@@ -653,7 +653,7 @@ namespace hiredis {
             }
 
             if (REDIS_OK != c->err || NULL == r) {
-                self->log_debug("redis reply context err %d and abort, %s", c->err, NULL == c->errstr? detail::NONE_MSG: c->errstr);
+                self->log_debug("redis cmd %p reply context err %d and abort, %s", cmd, c->err, NULL == c->errstr? detail::NONE_MSG: c->errstr);
                 // 其他错误则向上传递
                 conn->call_reply(cmd, r);
                 return;
@@ -668,7 +668,7 @@ namespace hiredis {
 
                 // 检测 MOVED，ASK和CLUSTERDOWN指令
                 if(0 == HIREDIS_HAPP_STRNCASE_CMP("ASK", reply->str, 3)) {
-                    self->log_debug("%s", reply->str);
+                    self->log_debug("redis cmd %p %s", cmd, reply->str);
                     // 发送ASK到目标connection
                     HIREDIS_HAPP_SSCANF(reply->str + 4, " %d %s", &slot_index, addr);
                     std::string ip;
@@ -698,7 +698,7 @@ namespace hiredis {
                         return;
                     }
                 } else if (0 == HIREDIS_HAPP_STRNCASE_CMP("MOVED", reply->str, 5)) {
-                    self->log_debug("%s", reply->str);
+                    self->log_debug("redis cmd %p %s", cmd, reply->str);
 
                     HIREDIS_HAPP_SSCANF(reply->str + 6, " %d %s", &slot_index, addr);
 
@@ -735,13 +735,14 @@ namespace hiredis {
                     return;
                 }
 
-                self->log_debug("redis reply error and abort, msg: %s", NULL == reply->str? detail::NONE_MSG: reply->str);
+                self->log_debug("redis cmd %p reply error and abort, msg: %s", cmd, NULL == reply->str? detail::NONE_MSG: reply->str);
                 // 其他错误则向上传递
                 conn->call_reply(cmd, r);
                 return;
             }
 
             // 正常回调
+            self->log_debug("redis cmd %p got reply success.(ttl=%3d)", cmd, NULL == cmd ? -1: static_cast<int>(cmd->ttl));
             conn->call_reply(cmd, r);
         }
 
