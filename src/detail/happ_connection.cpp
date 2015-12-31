@@ -100,6 +100,8 @@ namespace hiredis {
             case status::CONNECTING:
             case status::CONNECTED: {
                 int res = 0;
+                const char* cstr = NULL;
+                size_t clen = 0;
                 if (0 == c->cmd.raw_len) {
                     res = redisAsyncFormattedCommand(context, fn, c, c->cmd.content.redis_sds, sdslen(c->cmd.content.redis_sds));
                 } else {
@@ -107,7 +109,21 @@ namespace hiredis {
                 }
 
                 if (REDIS_OK == res) {
-                    reply_list.push_back(c);
+                    c->pick_cmd(&cstr, &clen);
+                    if (NULL == cstr) {
+                        reply_list.push_back(c);
+                    } else {
+                        bool is_sub_pattern = tolower(cstr[0]) == 'p';
+                        ++ cstr;
+                        if (0 == HIREDIS_HAPP_STRNCASE_CMP(cstr, "subscribe\r\n", 11)) {
+                            // TODO subscribe
+                        } else if (0 == HIREDIS_HAPP_STRNCASE_CMP(cstr, "unsubscribe\r\n", 13)) {
+                            // TODO unsubscribe
+                        } else {
+                            // TODO monitor
+                            reply_list.push_back(c);
+                        }
+                    }
                 }
 
                 return res;

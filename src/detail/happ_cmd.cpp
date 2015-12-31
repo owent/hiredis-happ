@@ -1,6 +1,7 @@
 
 #include <cstring>
 #include <cstdlib>
+#include <algorithm>
 
 #include "detail/happ_cmd.h"
 
@@ -133,6 +134,45 @@ namespace hiredis {
             
         void cmd_exec::private_data(void* pd) {
             pri_data = pd;
+        }
+        
+        const char* cmd_exec::pick_argument(const char* start, const char** str, size_t* len) {
+            if (NULL == start) {
+                if (0 == c->cmd.raw_len) {
+                    // because sds is typedefed to be a char*, so we can only use it directly here.
+                    start = c->cmd.content.redis_sds;
+                } else {
+                    start = c->cmd.content.raw;
+                }
+            }
+            
+            if (NULL == start) {
+                return NULL;
+            }
+            
+            // @see http://redis.io/topics/protocol
+            // Clients send commands to a Redis server as a RESP Array of Bulk Strings
+            if (start[0] != '$') {
+                start = strchr(start,'$');
+                if (NULL == start) return NULL;
+            }
+            
+            if (NULL == len || NULL == str) {
+                return start;
+            }
+
+            // redis bulk strings can not be greater than 512MB
+            *len = static_cast<size_t>(strtol(start + 1, NULL, 10));
+            start = strchr(start, '\r');
+            assert(start);
+            
+            // bulk string format: $[LENGTH]\r\n[CONTENT]\r\n
+            *str = start + 2;
+            return start + 2 + (*len) + 2;
+        }
+        
+        const char* cmd_exec::pick_cmd(const char** str, size_t* len) {
+            return pick_argument(NULL, str, len);
         }
     }
 }

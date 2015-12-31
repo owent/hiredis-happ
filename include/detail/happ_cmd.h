@@ -50,6 +50,10 @@ namespace hiredis {
             
             void private_data(void* pd);
 
+            const char* pick_argument(const char* start, const char** str, size_t* len);
+            
+            const char* pick_cmd(const char** str, size_t* len);
+            
         HIREDIS_HAPP_PRIVATE:
             /**
              * @brief 创建cmd对象

@@ -2,6 +2,13 @@ hiredis-happ
 ======
 Redis HA connector
 
+Function
+------
+1. auto reconnect
+2. support redis cluster
+3. [TODO] support redis sential
+4. [TODO] support raw redis connection
+
 Usage
 ------
 
@@ -55,4 +62,4 @@ Build Status | [![Build Status](https://travis-ci.org/owt5008137/hiredis-happ.sv
 
 **test**        -- unit test
 
-**tools**        -- misc tools
+**tools**       -- misc tools
