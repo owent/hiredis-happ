@@ -180,6 +180,20 @@ static void dump_callback(hiredis::happ::cmd_exec* cmd, struct redisAsyncContext
     g_clu.dump(std::cout, reinterpret_cast<redisReply*>(r), 0);
 }
 
+static void subscribe_callback(struct redisAsyncContext*, void* r, void* p) {
+    assert(p == reinterpret_cast<void*>(subscribe_callback));
+
+    printf(" ===== subscribe message received =====\n");
+    g_clu.dump(std::cout, reinterpret_cast<redisReply*>(r), 0);
+}
+
+static void monitor_callback(struct redisAsyncContext*, void* r, void* p) {
+    assert(p == reinterpret_cast<void*>(monitor_callback));
+
+    printf(" ----- monitor message received ----- \n");
+    g_clu.dump(std::cout, reinterpret_cast<redisReply*>(r), 0);
+}
+
 static void on_timer_proc(
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
     uv_timer_t* handle
@@ -213,6 +227,7 @@ static void on_timer_proc(
         std::string cmd = cmds.empty()? "": cmds.front();
         std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::toupper);
         hiredis::happ::cmd_exec::callback_fn_t cbk = dump_callback;
+        bool is_raw = false;
         int k = 1;
         if ("INFO" == cmd || "MULTI" == cmd || "EXEC" == cmd || "SLAVEOF" == cmd || "CONFIG" == cmd || "SHUTDOWN" == cmd ||
             "CLUSTER" == cmd) {
@@ -221,8 +236,12 @@ static void on_timer_proc(
             k = -1;
         } else if ("EVALSHA" == cmd || "EVAL" == cmd) {
             k = 3;
-        } else if ("SUBSCRIBE" == cmd || "UNSUBSCRIBE" == cmd) {
-            cbk = NULL;
+        } else if ("SUBSCRIBE" == cmd || "UNSUBSCRIBE" == cmd || "PSUBSCRIBE" == cmd || "PUNSUBSCRIBE" == cmd) {
+            cbk = subscribe_callback;
+            is_raw = true;
+        } else if ("MONITOR" == cmd) {
+            cbk = monitor_callback;
+            is_raw = true;
         }
 
         // 生成参数
@@ -233,13 +252,38 @@ static void on_timer_proc(
             ps.push_back(cmds[i].size());
         }
 
-
-        // 执行
-        if (k >= 0 && k < static_cast<int>(cmds.size())) {
-            cmd = cmds[k];
-            g_clu.exec(cmd.c_str(), cmd.size(), cbk, reinterpret_cast<void*>(cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
-        } else {
-            g_clu.exec(NULL, 0, cbk, reinterpret_cast<void*>(cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
+        if (is_raw) { // 执行特殊命令
+           
+            const hiredis::happ::cluster::slot_t* slot_info = NULL;
+            if (cmds.size() > 1) {
+                slot_info = g_clu.get_slot_by_key(cmds[1].c_str(), cmds[1].size());
+                assert(slot_info);
+            }
+            
+            const hiredis::happ::connection::key_t* conn_key = g_clu.get_slot_master(NULL == slot_info? -1: slot_info->index);
+            if (NULL == conn_key) {
+                printf("connection not found.\n");
+                continue;
+            }
+            
+            hiredis::happ::connection_t* conn = g_clu.get_connection(conn_key->name);
+            if (NULL == conn) {
+                conn = g_clu.make_connection(*conn_key);
+            }
+            
+            if (NULL == conn) {
+                printf("connect to %s failed.\n", conn_key->name.c_str());
+                continue;
+            }
+            conn->redis_raw_cmd(cbk, static_cast<int>(cmds.size()), &pc[0], &ps[0]);
+            
+        } else { // 执行请求-回包命令
+            if (k >= 0 && k < static_cast<int>(cmds.size())) {
+                cmd = cmds[k];
+                g_clu.exec(cmd.c_str(), cmd.size(), cbk, reinterpret_cast<void*>(cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
+            } else {
+                g_clu.exec(NULL, 0, cbk, reinterpret_cast<void*>(cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
+            }
         }
     }
 

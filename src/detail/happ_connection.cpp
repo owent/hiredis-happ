@@ -115,12 +115,21 @@ namespace hiredis {
                     } else {
                         bool is_sub_pattern = tolower(cstr[0]) == 'p';
                         ++ cstr;
+                        
+                        // according to the hiredis code, we can not use both monitor and subscribe in the same connection
+                        // @note hiredis use a tricky way to check if a reply is subscribe message or request-response message, 
+                        //       so it 's  recommanded not to use both subscribe message and request-response message at a connection.
                         if (0 == HIREDIS_HAPP_STRNCASE_CMP(cstr, "subscribe\r\n", 11)) {
-                            // TODO subscribe
+                            // subscribe message has not reply
+                            cmd_exec::destroy(c);
                         } else if (0 == HIREDIS_HAPP_STRNCASE_CMP(cstr, "unsubscribe\r\n", 13)) {
-                            // TODO unsubscribe
+                            // unsubscribe message has not reply
+                            cmd_exec::destroy(c);
+                        } else if (0 == HIREDIS_HAPP_STRNCASE_CMP(cstr, "monitor\r\n", 9)) {
+                            // monitor message has not reply
+                            cmd_exec::destroy(c);
                         } else {
-                            // TODO monitor
+                            // request-response message
                             reply_list.push_back(c);
                         }
                     }
@@ -139,6 +148,89 @@ namespace hiredis {
             cmd_exec::destroy(c);
 
             return error_code::REDIS_HAPP_OK;
+        }
+        
+        int connection::redis_raw_cmd(redisCallbackFn fn, const char* fmt, ...) {
+            cmd_exec* cmd = create_cmd(cbk, priv_data);
+            if (NULL == cmd) {
+                return REDIS_HAPP_CREATE;
+            }
+
+            va_list ap;
+            va_start(ap, fmt);
+            int len = cmd->vformat(fmt, ap);
+            va_end(ap);
+            if (len <= 0) {
+                cmd_exec::destroy(cmd);
+                return REDIS_HAPP_PARAM;
+            }
+
+            int ret = redis_cmd(cmd, fn);
+            if (REDIS_HAPP_OK != ret) {
+                cmd_exec::destroy(cmd);
+            }
+            
+            return ret;
+        }
+            
+        int connection::redis_raw_cmd(redisCallbackFn fn, const char* fmt, va_list ap) {
+            cmd_exec* cmd = create_cmd(cbk, priv_data);
+            if (NULL == cmd) {
+                return REDIS_HAPP_CREATE;
+            }
+
+            int len = cmd->vformat(fmt, ap);
+            if (len <= 0) {
+                cmd_exec::destroy(cmd);
+                return REDIS_HAPP_PARAM;
+            }
+
+            int ret = redis_cmd(cmd, fn);
+            if (REDIS_HAPP_OK != ret) {
+                cmd_exec::destroy(cmd);
+            }
+            
+            return ret;
+        }
+        
+        int connection::redis_raw_cmd(redisCallbackFn fn, const sds* src) {
+            cmd_exec* cmd = create_cmd(cbk, priv_data);
+            if (NULL == cmd) {
+                return REDIS_HAPP_CREATE;
+            }
+
+            int len = cmd->vformat(src);
+            if (len <= 0) {
+                cmd_exec::destroy(cmd);
+                return REDIS_HAPP_PARAM;
+            }
+
+            int ret = redis_cmd(cmd, fn);
+            if (REDIS_HAPP_OK != ret) {
+                cmd_exec::destroy(cmd);
+            }
+            
+            return ret;
+        }
+        
+        int connection::redis_raw_cmd(redisCallbackFn fn, int argc, const char** argv, const size_t* argvlen) {
+            cmd_exec* cmd = create_cmd(cbk, priv_data);
+            if (NULL == cmd) {
+                return REDIS_HAPP_CREATE;
+            }
+
+            int len = cmd->vformat(argc, argv, argvlen);
+            if (len <= 0) {
+                cmd_exec::destroy(cmd);
+                return REDIS_HAPP_PARAM;
+            }
+
+            int ret = redis_cmd(cmd, fn);
+            if (REDIS_HAPP_OK != ret) {
+                cmd_exec::destroy(cmd);
+            }
+            
+            return ret;
         }
 
         int connection::call_reply(cmd_exec* c, void* r) {

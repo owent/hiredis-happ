@@ -47,21 +47,121 @@ namespace hiredis {
 
             int reset();
 
+            /** 
+             * @breif send a request to redis server
+             * @param key the key used to calculate slot id
+             * @param ks  key size
+             * @param cbk callback
+             * @param priv_data private data passed to callback
+             * @param argc argument count
+             * @param argv pointer of every argument
+             * @param argvlen size of every argument
+             *   
+             * @note it can not be used to send subscribe, unsubscribe or monitor command.(because they are not request-response message)
+             *       hiredis deal with these command without notify event,
+             *       so you can only use connection::redis_raw_cmd to do these when connection finished or disconnected
+             *
+             * @see connection::redis_raw_cmd
+             * @see connection::redis_cmd
+             * @return command wrapper of this message, NULL if failed
+             */
             cmd_t* exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, int argc, const char** argv, const size_t* argvlen);
 
+            /** 
+             * @breif send a request to redis server
+             * @param key the key used to calculate slot id
+             * @param ks  key size
+             * @param cbk callback
+             * @param priv_data private data passed to callback
+             * @param fmt format string
+             * @param ... format data 
+             *   
+             * @note it can not be used to send subscribe, unsubscribe or monitor command.(because they are not request-response message)
+             *       hiredis deal with these command without notify event,
+             *       so you can only use connection::redis_raw_cmd to do these when connection finished or disconnected
+             *
+             * @see connection::redis_raw_cmd
+             * @see connection::redis_cmd
+             * @return command wrapper of this message, NULL if failed
+             */
             cmd_t* exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, const char* fmt, ...);
 
+            /** 
+             * @breif send a request to redis server
+             * @param key the key used to calculate slot id
+             * @param ks  key size
+             * @param cbk callback
+             * @param priv_data private data passed to callback
+             * @param fmt format string
+             * @param ap format data 
+             *   
+             * @note it can not be used to send subscribe, unsubscribe or monitor command.(because they are not request-response message)
+             *       hiredis deal with these command without notify event,
+             *       so you can only use connection::redis_raw_cmd to do these when connection finished or disconnected
+             *
+             * @see connection::redis_raw_cmd
+             * @see connection::redis_cmd
+             * @return command wrapper of this message, NULL if failed
+             */
             cmd_t* exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, const char* fmt, va_list ap);
 
+            /** 
+             * @breif send a request to redis server
+             * @param key the key used to calculate slot id
+             * @param ks  key size
+             * @param cmd cmd wrapper
+             *   
+             * @note it can not be used to send subscribe, unsubscribe or monitor command.(because they are not request-response message)
+             *       hiredis deal with these command without notify event,
+             *       so you can only use connection::redis_raw_cmd to do these when connection finished or disconnected
+             *
+             * @see connection::redis_raw_cmd
+             * @see connection::redis_cmd
+             * @return command wrapper of this message, NULL if failed
+             */
             cmd_t* exec(const char* key, size_t ks, cmd_t* cmd);
 
+            /** 
+             * @breif send a request to specifed redis server
+             * @param conn which connect to sent to
+             * @param cmd cmd wrapper
+             *   
+             * @note it can not be used to send subscribe, unsubscribe or monitor command.(because they are not request-response message)
+             *       hiredis deal with these command without notify event,
+             *       so you can only use connection::redis_raw_cmd to do these when connection finished or disconnected
+             *
+             * @see connection::redis_raw_cmd
+             * @see connection::redis_cmd
+             * @return command wrapper of this message, NULL if failed
+             */
             cmd_t* exec(connection_t* conn, cmd_t* cmd);
 
+            /** 
+             * @breif retry to send a request to redis server
+             * @param cmd cmd wrapper
+             * @param conn which connect to sent to(pass NULL to try to get one using the key in cmd)
+             *   
+             * @note it can not be used to send subscribe, unsubscribe or monitor command.(because they are not request-response message)
+             *       hiredis deal with these command without notify event,
+             *       so you can only use connection::redis_raw_cmd to do these when connection finished or disconnected
+             *
+             * @see connection::redis_raw_cmd
+             * @see connection::redis_cmd
+             * @return command wrapper of this message, NULL if failed
+             */
             cmd_t* retry(cmd_t* cmd, connection_t* conn = NULL);
 
             bool reload_slots();
 
             const connection::key_t* get_slot_master(int index);
+            
+            /** 
+             * @breif get slot info of a key
+             * @param key the key used to calculate slot id
+             * @param ks  key size
+             * @return slot info of this key
+             */
+            const slot_t* get_slot_by_key(const char* key, size_t ks) const;
 
             const connection_t* get_connection(const std::string& key) const;
             connection_t* get_connection(const std::string& key);

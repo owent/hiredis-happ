@@ -48,7 +48,49 @@ namespace hiredis {
 
             status::type set_connected();
 
+            /**
+             * @brief send message wrapped with cmd_exec to redis server
+             * @param c cmd data
+             * @param fn callback
+             * @return 0 or error code
+             */
             int redis_cmd(cmd_exec* c, redisCallbackFn fn);
+            
+            /**
+             * @brief send raw message redis server
+             * @param fn callback
+             * @param fmt format string
+             * @param ... format data 
+             * @return 0 or error code
+             */
+            int redis_raw_cmd(redisCallbackFn fn, const char* fmt, ...);
+            
+            /**
+             * @brief send raw message redis server
+             * @param fn callback
+             * @param fmt format string
+             * @param ap format data 
+             * @return 0 or error code
+             */
+            int redis_raw_cmd(redisCallbackFn fn, const char* fmt, va_list ap);
+            
+            /**
+             * @brief send raw message redis server
+             * @param fn callback
+             * @param src formated sds object
+             * @return 0 or error code
+             */
+            int redis_raw_cmd(redisCallbackFn fn, const sds* src);
+            
+            /**
+             * @brief send raw message redis server
+             * @param fn callback
+             * @param argc argument count
+             * @param argv pointer of every argument
+             * @param argvlen size of every argument
+             * @return 0 or error code
+             */
+            int redis_raw_cmd(redisCallbackFn fn, int argc, const char** argv, const size_t* argvlen);
 
             int call_reply(cmd_exec* c, void* reply);
             cmd_exec* pop_reply(cmd_exec* c);

@@ -377,6 +377,11 @@ namespace hiredis {
 
             return &slots[index].hosts.front();
         }
+        
+        const slot_t* cluster::get_slot_by_key(const char* key, size_t ks) const {
+            int index = static_cast<int>(crc16(key, ks) % HIREDIS_HAPP_SLOT_NUMBER);
+            return &slots[index];
+        }
 
         const cluster::connection_t* cluster::get_connection(const std::string& key) const {
             connection_map_t::const_iterator it = connections.find(key);
