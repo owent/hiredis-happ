@@ -1,8 +1,13 @@
 language: cpp
 
-compiler:
-  - gcc
-  - clang
+env:
+  global:
+    - LANG="zh_CN.UTF-8"
+  matrix:
+    - TRAVIS_OS_NAME=osx CC=clang CXX=clang
+    - TRAVIS_OS_NAME=osx CC=gcc CXX=gcc
+    - TRAVIS_OS_NAME=linux CC=gcc CXX=gcc
+    - TRAVIS_OS_NAME=linux CC=clang CXX=clang
   
 after_success:
   - bin/hiredis-happ-test
@@ -10,27 +15,24 @@ after_success:
 script: 
   - REPO_DIR=$PWD
   - mkdir -p tools && cd tools
-  - CMAKE_PREFIX=$HOME/prebuilt;
+  - CMAKE_PREFIX=$PWD/prebuilt/cmake
   - if [ ! -e "$CMAKE_PREFIX/bin/cmake" ]; then
-        wget -c "http://www.cmake.org/files/v3.3/cmake-3.3.1.tar.gz" -O cmake-3.3.1.tar.gz ;
-        tar -axvf cmake-3.3.1.tar.gz  > build_cmake.log 2>&1 ;
-        cd cmake-3.3.1 ;
+        wget -c "https://github.com/Kitware/CMake/archive/v3.4.1.tar.gz" -O CMake-3.4.1.tar.gz ;
+        tar -axvf CMake-3.4.1.tar.gz > build_cmake.log 2>&1 ;
+        cd CMake-3.4.1 ;
         ./bootstrap --prefix=$CMAKE_PREFIX  >> build_cmake.log 2>&1 ;
         make -j4 install  >> build_cmake.log 2>&1 ;
     fi
   - mkdir -p $REPO_DIR/build && cd $REPO_DIR/build ;
-  - env LD_LIBRARY_PATH=$CMAKE_PREFIX/lib C_INCLUDE_PATH=$CMAKE_PREFIX/include CXX_INCLUDE_PATH=$CMAKE_PREFIX/include $CMAKE_PREFIX/bin/cmake .. ;
+  - $CMAKE_PREFIX/bin/cmake .. -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX;
   - make -j4 ;
-  - if [ -e "$REPO_DIR/build/prebuilt" ]; then
-        cp -rf "$REPO_DIR/build/prebuilt"/*/* "$CMAKE_PREFIX";
-    fi
 
 install: true
 
 cache: 
     apt: true
     directories:
-    - $HOME/prebuilt
+    - $CMAKE_PREFIX
     
 branches:
   only:
@@ -41,10 +43,3 @@ notifications:
   irc:
     template:
       - "%{repository}/%{branch} (%{commit} - %{author}): %{build_url}: %{message}"
-
-env:
-  - LANG="zh_CN.UTF-8"
-
-os:
-  - linux
-
