@@ -50,7 +50,7 @@ install:
 #
 build_script:
     - 'echo Building...'
-    - '%CYG_BASH% -lc "cd $APPVEYOR_BUILD_FOLDER; exec 0</dev/null; chmod +x tools/build_unix.sh; tools/build_unix.sh;"'
+    - '%CYG_BASH% -lc "cd $APPVEYOR_BUILD_FOLDER; exec 0</dev/null; mkdir -p build; cd build; cmake .. && make -j4;"'
 #
 # Run unit test
 # 

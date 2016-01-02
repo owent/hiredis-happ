@@ -113,8 +113,10 @@ namespace hiredis {
                     if (NULL == cstr) {
                         reply_list.push_back(c);
                     } else {
-                        bool is_sub_pattern = tolower(cstr[0]) == 'p';
-                        ++ cstr;
+                        bool is_pattern = tolower(cstr[0]) == 'p';
+                        if (is_pattern) {
+                            ++ cstr;
+                        }
                         
                         // according to the hiredis code, we can not use both monitor and subscribe in the same connection
                         // @note hiredis use a tricky way to check if a reply is subscribe message or request-response message, 
@@ -150,87 +152,41 @@ namespace hiredis {
             return error_code::REDIS_HAPP_OK;
         }
         
-        int connection::redis_raw_cmd(redisCallbackFn fn, const char* fmt, ...) {
-            cmd_exec* cmd = create_cmd(cbk, priv_data);
-            if (NULL == cmd) {
-                return REDIS_HAPP_CREATE;
+        int connection::redis_raw_cmd(redisCallbackFn fn, void* priv_data, const char* fmt, ...) {
+            if (NULL == context) {
+                return error_code::REDIS_HAPP_CREATE;
             }
-
+            
             va_list ap;
             va_start(ap, fmt);
-            int len = cmd->vformat(fmt, ap);
+            int res = redisvAsyncCommand(context, fn, priv_data, fmt, ap);
             va_end(ap);
-            if (len <= 0) {
-                cmd_exec::destroy(cmd);
-                return REDIS_HAPP_PARAM;
-            }
-
-            int ret = redis_cmd(cmd, fn);
-            if (REDIS_HAPP_OK != ret) {
-                cmd_exec::destroy(cmd);
-            }
             
-            return ret;
+            return res;
         }
             
-        int connection::redis_raw_cmd(redisCallbackFn fn, const char* fmt, va_list ap) {
-            cmd_exec* cmd = create_cmd(cbk, priv_data);
-            if (NULL == cmd) {
-                return REDIS_HAPP_CREATE;
+        int connection::redis_raw_cmd(redisCallbackFn fn, void* priv_data, const char* fmt, va_list ap) {
+            if (NULL == context) {
+                return error_code::REDIS_HAPP_CREATE;
             }
-
-            int len = cmd->vformat(fmt, ap);
-            if (len <= 0) {
-                cmd_exec::destroy(cmd);
-                return REDIS_HAPP_PARAM;
-            }
-
-            int ret = redis_cmd(cmd, fn);
-            if (REDIS_HAPP_OK != ret) {
-                cmd_exec::destroy(cmd);
-            }
-            
-            return ret;
+                   
+            return redisvAsyncCommand(context, fn, priv_data, fmt, ap);
         }
         
-        int connection::redis_raw_cmd(redisCallbackFn fn, const sds* src) {
-            cmd_exec* cmd = create_cmd(cbk, priv_data);
-            if (NULL == cmd) {
-                return REDIS_HAPP_CREATE;
-            }
-
-            int len = cmd->vformat(src);
-            if (len <= 0) {
-                cmd_exec::destroy(cmd);
-                return REDIS_HAPP_PARAM;
-            }
-
-            int ret = redis_cmd(cmd, fn);
-            if (REDIS_HAPP_OK != ret) {
-                cmd_exec::destroy(cmd);
+        int connection::redis_raw_cmd(redisCallbackFn fn, void* priv_data, const sds* src) {
+            if (NULL == context) {
+                return error_code::REDIS_HAPP_CREATE;
             }
             
-            return ret;
+            return redisAsyncFormattedCommand(context, fn, priv_data, *src, sdslen(*src));           
         }
         
-        int connection::redis_raw_cmd(redisCallbackFn fn, int argc, const char** argv, const size_t* argvlen) {
-            cmd_exec* cmd = create_cmd(cbk, priv_data);
-            if (NULL == cmd) {
-                return REDIS_HAPP_CREATE;
-            }
-
-            int len = cmd->vformat(argc, argv, argvlen);
-            if (len <= 0) {
-                cmd_exec::destroy(cmd);
-                return REDIS_HAPP_PARAM;
-            }
-
-            int ret = redis_cmd(cmd, fn);
-            if (REDIS_HAPP_OK != ret) {
-                cmd_exec::destroy(cmd);
+        int connection::redis_raw_cmd(redisCallbackFn fn, void* priv_data, int argc, const char** argv, const size_t* argvlen) {
+            if (NULL == context) {
+                return error_code::REDIS_HAPP_CREATE;
             }
             
-            return ret;
+            return redisAsyncCommandArgv(context, fn, priv_data, argc, argv, argvlen);
         }
 
         int connection::call_reply(cmd_exec* c, void* r) {

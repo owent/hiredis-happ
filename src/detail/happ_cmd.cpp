@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
+#include <assert.h>
 
 #include "detail/happ_cmd.h"
 
@@ -138,11 +139,11 @@ namespace hiredis {
         
         const char* cmd_exec::pick_argument(const char* start, const char** str, size_t* len) {
             if (NULL == start) {
-                if (0 == c->cmd.raw_len) {
+                if (0 == cmd.raw_len) {
                     // because sds is typedefed to be a char*, so we can only use it directly here.
-                    start = c->cmd.content.redis_sds;
+                    start = cmd.content.redis_sds;
                 } else {
-                    start = c->cmd.content.raw;
+                    start = cmd.content.raw;
                 }
             }
             
