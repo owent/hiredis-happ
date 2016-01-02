@@ -227,7 +227,7 @@ static void on_timer_proc(
         std::string cmd = cmds.empty()? "": cmds.front();
         std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::toupper);
         hiredis::happ::cmd_exec::callback_fn_t cbk = dump_callback;
-        redisCallbackFn raw_cbk = NULL;
+        redisCallbackFn raw_cbk;
         bool is_raw = false;
         int k = 1;
         if ("INFO" == cmd || "MULTI" == cmd || "EXEC" == cmd || "SLAVEOF" == cmd || "CONFIG" == cmd || "SHUTDOWN" == cmd ||
