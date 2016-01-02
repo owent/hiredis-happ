@@ -152,7 +152,7 @@ namespace hiredis {
             return error_code::REDIS_HAPP_OK;
         }
         
-        int connection::redis_raw_cmd(redisCallbackFn fn, void* priv_data, const char* fmt, ...) {
+        int connection::redis_raw_cmd(redisCallbackFn* fn, void* priv_data, const char* fmt, ...) {
             if (NULL == context) {
                 return error_code::REDIS_HAPP_CREATE;
             }
@@ -165,7 +165,7 @@ namespace hiredis {
             return res;
         }
             
-        int connection::redis_raw_cmd(redisCallbackFn fn, void* priv_data, const char* fmt, va_list ap) {
+        int connection::redis_raw_cmd(redisCallbackFn* fn, void* priv_data, const char* fmt, va_list ap) {
             if (NULL == context) {
                 return error_code::REDIS_HAPP_CREATE;
             }
@@ -173,7 +173,7 @@ namespace hiredis {
             return redisvAsyncCommand(context, fn, priv_data, fmt, ap);
         }
         
-        int connection::redis_raw_cmd(redisCallbackFn fn, void* priv_data, const sds* src) {
+        int connection::redis_raw_cmd(redisCallbackFn* fn, void* priv_data, const sds* src) {
             if (NULL == context) {
                 return error_code::REDIS_HAPP_CREATE;
             }
@@ -181,7 +181,7 @@ namespace hiredis {
             return redisAsyncFormattedCommand(context, fn, priv_data, *src, sdslen(*src));           
         }
         
-        int connection::redis_raw_cmd(redisCallbackFn fn, void* priv_data, int argc, const char** argv, const size_t* argvlen) {
+        int connection::redis_raw_cmd(redisCallbackFn* fn, void* priv_data, int argc, const char** argv, const size_t* argvlen) {
             if (NULL == context) {
                 return error_code::REDIS_HAPP_CREATE;
             }
