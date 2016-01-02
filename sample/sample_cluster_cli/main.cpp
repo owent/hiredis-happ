@@ -276,7 +276,7 @@ static void on_timer_proc(
                 printf("connect to %s failed.\n", conn_key->name.c_str());
                 continue;
             }
-            conn->redis_raw_cmd(raw_cbk, raw_cbk, static_cast<int>(cmds.size()), &pc[0], &ps[0]);
+            conn->redis_raw_cmd(raw_cbk, reinterpret_cast<void*>(raw_cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
             
         } else { // 执行请求-回包命令
             if (k >= 0 && k < static_cast<int>(cmds.size())) {
