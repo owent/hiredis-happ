@@ -227,6 +227,7 @@ static void on_timer_proc(
         std::string cmd = cmds.empty()? "": cmds.front();
         std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::toupper);
         hiredis::happ::cmd_exec::callback_fn_t cbk = dump_callback;
+        redisCallbackFn raw_cbk = NULL;
         bool is_raw = false;
         int k = 1;
         if ("INFO" == cmd || "MULTI" == cmd || "EXEC" == cmd || "SLAVEOF" == cmd || "CONFIG" == cmd || "SHUTDOWN" == cmd ||
@@ -237,10 +238,10 @@ static void on_timer_proc(
         } else if ("EVALSHA" == cmd || "EVAL" == cmd) {
             k = 3;
         } else if ("SUBSCRIBE" == cmd || "UNSUBSCRIBE" == cmd || "PSUBSCRIBE" == cmd || "PUNSUBSCRIBE" == cmd) {
-            cbk = subscribe_callback;
+            raw_cbk = subscribe_callback;
             is_raw = true;
         } else if ("MONITOR" == cmd) {
-            cbk = monitor_callback;
+            raw_cbk = monitor_callback;
             is_raw = true;
         }
 
@@ -266,7 +267,7 @@ static void on_timer_proc(
                 continue;
             }
             
-            hiredis::happ::connection_t* conn = g_clu.get_connection(conn_key->name);
+            hiredis::happ::connection* conn = g_clu.get_connection(conn_key->name);
             if (NULL == conn) {
                 conn = g_clu.make_connection(*conn_key);
             }
@@ -275,7 +276,7 @@ static void on_timer_proc(
                 printf("connect to %s failed.\n", conn_key->name.c_str());
                 continue;
             }
-            conn->redis_raw_cmd(cbk, static_cast<int>(cmds.size()), &pc[0], &ps[0]);
+            conn->redis_raw_cmd(raw_cbk, raw_cbk, static_cast<int>(cmds.size()), &pc[0], &ps[0]);
             
         } else { // 执行请求-回包命令
             if (k >= 0 && k < static_cast<int>(cmds.size())) {
