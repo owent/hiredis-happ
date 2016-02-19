@@ -1,4 +1,4 @@
-#.rst:
+﻿#.rst:
 # FindConfigurePackage
 # ----------------
 #
@@ -154,9 +154,15 @@ macro (FindConfigurePackage)
 
                 find_program(TAR_EXECUTABLE tar PATHS "${CYGWIN_INSTALL_PATH}/bin")
                 if(TAR_EXECUTABLE AND NOT EXISTS "${FindConfigurePackage_WORKING_DIRECTORY}/${FindConfigurePackage_SRC_DIRECTORY_NAME}")
-                    execute_process(COMMAND ${TAR_EXECUTABLE} -axvf "${FindConfigurePackage_WORKING_DIRECTORY}/${DOWNLOAD_FILENAME}"
-                        WORKING_DIRECTORY "${FindConfigurePackage_WORKING_DIRECTORY}"
-                    )
+                    if(APPLE)
+                        execute_process(COMMAND ${TAR_EXECUTABLE} -xvf "${FindConfigurePackage_WORKING_DIRECTORY}/${DOWNLOAD_FILENAME}"
+                            WORKING_DIRECTORY "${FindConfigurePackage_WORKING_DIRECTORY}"
+                        )
+                    else()
+                        execute_process(COMMAND ${TAR_EXECUTABLE} -axvf "${FindConfigurePackage_WORKING_DIRECTORY}/${DOWNLOAD_FILENAME}"
+                            WORKING_DIRECTORY "${FindConfigurePackage_WORKING_DIRECTORY}"
+                        )
+                    endif()
                 endif()
 
                 if(NOT TAR_EXECUTABLE)
