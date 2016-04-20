@@ -208,7 +208,7 @@ namespace hiredis {
 
             // ttl 预判定
             if (0 == cmd->ttl) {
-                log_debug("cmd at slot %d ttl expired", cmd->engine.slot);
+                log_debug("cmd %p at slot %d ttl expired", cmd, cmd->engine.slot);
                 call_cmd(cmd, error_code::REDIS_HAPP_TTL, NULL, NULL);
                 destroy_cmd(cmd);
                 return NULL;
@@ -258,7 +258,7 @@ namespace hiredis {
 
             // ttl 正式判定
             if (0 == cmd->ttl) {
-                log_debug("cmd at slot %d ttl expired", cmd->engine.slot);
+                log_debug("cmd %p at slot %d ttl expired", cmd, cmd->engine.slot);
                 call_cmd(cmd, error_code::REDIS_HAPP_TTL, NULL, NULL);
                 destroy_cmd(cmd);
                 return NULL;

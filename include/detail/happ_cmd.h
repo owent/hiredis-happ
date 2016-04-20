@@ -12,10 +12,12 @@
 namespace hiredis {
     namespace happ {
         class cluster;
+        class raw;
         class connection;
 
         union holder_t {
             cluster* clu;
+            raw* r;
         };
 
         struct cmd_content {
