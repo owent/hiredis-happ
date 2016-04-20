@@ -22,7 +22,7 @@ namespace hiredis {
             typedef cmd_exec cmd_t;
 
             typedef connection connection_t;
-            typedef ::hiredis::happ::unique_ptr<connection_t>::type connection_t;
+            typedef ::hiredis::happ::unique_ptr<connection_t>::type connection_ptr_t;
 
             typedef std::function<void(raw*, connection_t*)> onconnect_fn_t;
             typedef std::function<void (raw*, connection_t*, const struct redisAsyncContext*, int status)> onconnected_fn_t;
@@ -201,7 +201,7 @@ namespace hiredis {
             config_t conf;
 
             // 数据连接信息
-            connection_t conn_;
+            connection_ptr_t conn_;
 
 
             // 定时器重入列表

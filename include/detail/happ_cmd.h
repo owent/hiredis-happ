@@ -69,6 +69,7 @@ namespace hiredis {
             static void destroy(cmd_exec* c);
 
             friend class cluster;
+            friend class raw;
             friend class connection;
         HIREDIS_HAPP_PRIVATE:
             holder_t holder;            // holder

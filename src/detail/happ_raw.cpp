@@ -56,7 +56,7 @@ namespace hiredis {
         int raw::reset() {
             // close connection if it's available
             if (conn_ && NULL != conn_->get_context()) {
-                redisAsyncDisconnect(conn->get_context());
+                redisAsyncDisconnect(conn_->get_context());
             }
 
             // 释放timer pending list
@@ -227,7 +227,7 @@ namespace hiredis {
 
             if (false == is_timer_active() || cmd->ttl > HIREDIS_HAPP_TTL / 2) {
                 if (NULL == conn) {
-                    return exec(NULL, 0, cmd);
+                    return exec(cmd);
                 } else {
                     return exec(conn, cmd);
                 }
@@ -271,7 +271,7 @@ namespace hiredis {
                 redisSetTimeout(&c->c, tv);
             }
 
-            ::hiredis::happ::unique_ptr<connection_t>::type ret_ptr(new connection_t());
+            connection_ptr_t ret_ptr(new connection_t());
             connection_t& ret = *ret_ptr;
             ::hiredis::happ::unique_ptr<connection_t>::swap(conn_, ret_ptr);
             ret.init(h, conf.init_connection);
@@ -389,7 +389,7 @@ namespace hiredis {
                 d.usec = timer_actions.last_update_usec + conf.timer_interval_usec;
                 d.cmd = cmd;
             } else {
-                exec(NULL, 0, cmd);
+                exec(cmd);
             }
         }
 
@@ -409,7 +409,7 @@ namespace hiredis {
                 timer_t::delay_t d = rd;
                 timer_actions.timer_pending.pop_front();
 
-                exec(NULL, 0, d.cmd);
+                exec(d.cmd);
 
                 ++ret;
             }
