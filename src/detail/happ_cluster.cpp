@@ -928,53 +928,6 @@ namespace hiredis {
             }
         }
 
-        void cluster::dump(std::ostream& out, redisReply* reply, int ident) {
-            if (NULL == reply) {
-                return;
-            }
-
-            // dump reply
-            switch(reply->type) {
-            case REDIS_REPLY_NIL: {
-                out << "[NIL]"<< std::endl;
-                break;
-            }
-            case REDIS_REPLY_STATUS: {
-                out << "[STATUS]: "<< reply->str << std::endl;
-                break;
-            }
-            case REDIS_REPLY_ERROR: {
-                out << "[ERROR]: " << reply->str << std::endl;
-                break;
-            }
-            case REDIS_REPLY_INTEGER: {
-                out << reply->integer << std::endl;
-                break;
-            }
-            case REDIS_REPLY_STRING: {
-                out << reply->str << std::endl;
-                break;
-            }
-            case REDIS_REPLY_ARRAY: {
-                std::string ident_str;
-                ident_str.assign(static_cast<size_t>(ident), ' ');
-
-                out << "[ARRAY]: " << std::endl;
-                for (size_t i = 0; i < reply->elements; ++ i) {
-                    out << ident_str << std::setw(7) << (i + 1) << ": ";
-                    dump(out, reply->element[i], ident + 2);
-                }
-
-                break;
-            }
-            default: {
-                log_debug("[UNKNOWN]");
-                break;
-            }
-            }
-
-        }
-
         void cluster::log_debug(const char* fmt, ...) {
             if (NULL == conf.log_fn_debug || 0 == conf.log_max_size ) {
                 return;

@@ -177,21 +177,21 @@ static void dump_callback(hiredis::happ::cmd_exec* cmd, struct redisAsyncContext
     if (cmd->result() != hiredis::happ::error_code::REDIS_HAPP_OK) {
         printf("cmd_exec result: %d\n", cmd->result());
     }
-    g_clu.dump(std::cout, reinterpret_cast<redisReply*>(r), 0);
+    hiredis::happ::cmd_exec::dump(std::cout, reinterpret_cast<redisReply*>(r), 0);
 }
 
 static void subscribe_callback(struct redisAsyncContext*, void* r, void* p) {
     assert(p == reinterpret_cast<void*>(subscribe_callback));
 
     printf(" ===== subscribe message received =====\n");
-    g_clu.dump(std::cout, reinterpret_cast<redisReply*>(r), 0);
+    hiredis::happ::cmd_exec::dump(std::cout, reinterpret_cast<redisReply*>(r), 0);
 }
 
 static void monitor_callback(struct redisAsyncContext*, void* r, void* p) {
     assert(p == reinterpret_cast<void*>(monitor_callback));
 
     printf(" ----- monitor message received ----- \n");
-    g_clu.dump(std::cout, reinterpret_cast<redisReply*>(r), 0);
+    hiredis::happ::cmd_exec::dump(std::cout, reinterpret_cast<redisReply*>(r), 0);
 }
 
 static void on_timer_proc(

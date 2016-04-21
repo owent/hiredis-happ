@@ -9,7 +9,6 @@
 
 #include <vector>
 #include <list>
-#include <ostream>
 
 #include "config.h"
 
@@ -164,8 +163,6 @@ namespace hiredis {
             int proc(time_t sec, time_t usec);
 
             void set_log_writer(log_fn_t info_fn, log_fn_t debug_fn, size_t max_size = 65536);
-
-            void dump(std::ostream& out, redisReply* reply, int ident = 0);
 
         HIREDIS_HAPP_PRIVATE:
             cmd_t* create_cmd(cmd_t::callback_fn_t cbk, void* pridata);

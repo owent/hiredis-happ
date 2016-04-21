@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <ostream>
 #include "config.h"
 
 namespace hiredis {
@@ -56,6 +57,7 @@ namespace hiredis {
             
             const char* pick_cmd(const char** str, size_t* len);
             
+            static void dump(std::ostream& out, redisReply* reply, int ident = 0);
         HIREDIS_HAPP_PRIVATE:
             /**
              * @brief 创建cmd对象

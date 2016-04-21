@@ -416,9 +416,13 @@ namespace hiredis {
 
             // connection timeout
             while(0 != timer_actions.timer_conn.timeout && sec >= timer_actions.timer_conn.timeout) {
+                // sequence expired skip
                 if (conn_ && conn_->get_sequence() == timer_actions.timer_conn.sequence) {
                     release_connection(true, error_code::REDIS_HAPP_TIMEOUT);
                 }
+                
+                timer_actions.timer_conn.timeout = 0;
+                timer_actions.timer_conn.sequence = 0;
             }
 
             return ret;
@@ -536,53 +540,6 @@ namespace hiredis {
 
             // 释放资源
             self->release_connection(false, status);
-        }
-
-        void raw::dump(std::ostream& out, redisReply* reply, int ident) {
-            if (NULL == reply) {
-                return;
-            }
-
-            // dump reply
-            switch(reply->type) {
-            case REDIS_REPLY_NIL: {
-                out << "[NIL]"<< std::endl;
-                break;
-            }
-            case REDIS_REPLY_STATUS: {
-                out << "[STATUS]: "<< reply->str << std::endl;
-                break;
-            }
-            case REDIS_REPLY_ERROR: {
-                out << "[ERROR]: " << reply->str << std::endl;
-                break;
-            }
-            case REDIS_REPLY_INTEGER: {
-                out << reply->integer << std::endl;
-                break;
-            }
-            case REDIS_REPLY_STRING: {
-                out << reply->str << std::endl;
-                break;
-            }
-            case REDIS_REPLY_ARRAY: {
-                std::string ident_str;
-                ident_str.assign(static_cast<size_t>(ident), ' ');
-
-                out << "[ARRAY]: " << std::endl;
-                for (size_t i = 0; i < reply->elements; ++ i) {
-                    out << ident_str << std::setw(7) << (i + 1) << ": ";
-                    dump(out, reply->element[i], ident + 2);
-                }
-
-                break;
-            }
-            default: {
-                log_debug("[UNKNOWN]");
-                break;
-            }
-            }
-
         }
 
         void raw::log_debug(const char* fmt, ...) {
