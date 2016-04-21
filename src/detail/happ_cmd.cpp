@@ -217,7 +217,7 @@ namespace hiredis {
                 break;
             }
             default: {
-                log_debug("[UNKNOWN]");
+                out<< "[UNKNOWN]"<< std::endl;
                 break;
             }
             }
