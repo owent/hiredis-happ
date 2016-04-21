@@ -10,7 +10,6 @@
 #include <sstream>
 #include <ctime>
 #include <detail/happ_cmd.h>
-#include <iomanip>
 
 #include "detail/crc16.h"
 #include "detail/happ_cluster.h"

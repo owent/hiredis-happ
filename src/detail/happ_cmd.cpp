@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
+#include <iomanip>
 #include <assert.h>
 
 #include "detail/happ_cmd.h"
