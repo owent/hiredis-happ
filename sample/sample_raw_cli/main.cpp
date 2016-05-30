@@ -70,7 +70,7 @@ typedef pthread_t thread_t;
 
 
 
-static hiredis::happ::cluster g_clu;
+static hiredis::happ::raw g_raw;
 
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
 static uv_loop_t* main_loop;
@@ -81,7 +81,7 @@ static event_base* main_loop;
 static pthread_mutex_t g_mutex;
 static std::list<std::string> g_cmds;
 
-static void on_connect_cbk(hiredis::happ::cluster*, hiredis::happ::connection* conn) {
+static void on_connect_cbk(hiredis::happ::raw*, hiredis::happ::connection* conn) {
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
     redisLibuvAttach(conn->get_context(), main_loop);
 #elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
@@ -95,7 +95,7 @@ static void on_connect_cbk(hiredis::happ::cluster*, hiredis::happ::connection* c
     }
 }
 
-static void on_connected_cbk(hiredis::happ::cluster*, hiredis::happ::connection* conn, const struct redisAsyncContext* c, int status) {
+static void on_connected_cbk(hiredis::happ::raw*, hiredis::happ::connection* conn, const struct redisAsyncContext* c, int status) {
     if (NULL == conn) {
         printf("error: connection not found when connected\n");
         return;
@@ -113,7 +113,7 @@ static void on_connected_cbk(hiredis::happ::cluster*, hiredis::happ::connection*
     }
 }
 
-static void on_disconnected_cbk(hiredis::happ::cluster*, hiredis::happ::connection* conn, const struct redisAsyncContext* c, int status) {
+static void on_disconnected_cbk(hiredis::happ::raw*, hiredis::happ::connection* conn, const struct redisAsyncContext* c, int status) {
     if (NULL == conn) {
         printf("error: connection not found when connected\n");
         return;
@@ -229,15 +229,7 @@ static void on_timer_proc(
         hiredis::happ::cmd_exec::callback_fn_t cbk = dump_callback;
         redisCallbackFn* raw_cbk;
         bool is_raw = false;
-        int k = 1;
-        if ("INFO" == cmd || "MULTI" == cmd || "EXEC" == cmd || "SLAVEOF" == cmd || "CONFIG" == cmd || "SHUTDOWN" == cmd ||
-            "CLUSTER" == cmd) {
-            k = -1;
-        } else if ("SCRIPT" == cmd) {
-            k = -1;
-        } else if ("EVALSHA" == cmd || "EVAL" == cmd) {
-            k = 3;
-        } else if ("SUBSCRIBE" == cmd || "UNSUBSCRIBE" == cmd || "PSUBSCRIBE" == cmd || "PUNSUBSCRIBE" == cmd) {
+        if ("SUBSCRIBE" == cmd || "UNSUBSCRIBE" == cmd || "PSUBSCRIBE" == cmd || "PUNSUBSCRIBE" == cmd) {
             raw_cbk = subscribe_callback;
             is_raw = true;
         } else if ("MONITOR" == cmd) {
@@ -254,41 +246,23 @@ static void on_timer_proc(
         }
 
         if (is_raw) { // 执行特殊命令
-           
-            const hiredis::happ::cluster::slot_t* slot_info = NULL;
-            if (cmds.size() > 1) {
-                slot_info = g_clu.get_slot_by_key(cmds[1].c_str(), cmds[1].size());
-                assert(slot_info);
-            }
-            
-            const hiredis::happ::connection::key_t* conn_key = g_clu.get_slot_master(NULL == slot_info? -1: slot_info->index);
-            if (NULL == conn_key) {
-                printf("connection not found.\n");
-                continue;
-            }
-            
-            hiredis::happ::connection* conn = g_clu.get_connection(conn_key->name);
+            hiredis::happ::connection* conn = g_raw.get_connection();
             if (NULL == conn) {
-                conn = g_clu.make_connection(*conn_key);
+                conn = g_raw.make_connection();
             }
             
             if (NULL == conn) {
-                printf("connect to %s failed.\n", conn_key->name.c_str());
+                printf("connect to redis failed.\n");
                 continue;
             }
             conn->redis_raw_cmd(raw_cbk, reinterpret_cast<void*>(raw_cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
             
         } else { // 执行请求-回包命令
-            if (k >= 0 && k < static_cast<int>(cmds.size())) {
-                cmd = cmds[k];
-                g_clu.exec(cmd.c_str(), cmd.size(), cbk, reinterpret_cast<void*>(cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
-            } else {
-                g_clu.exec(NULL, 0, cbk, reinterpret_cast<void*>(cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
-            }
+            g_raw.exec(cbk, reinterpret_cast<void*>(cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
         }
     }
 
-    g_clu.proc(sec, usec);
+    g_raw.proc(sec, usec);
 }
 
 static THREAD_FUNC proc_uv_thd(void *) {
@@ -327,7 +301,7 @@ int main(int argc, char* argv[]) {
     lport = strtol(argv[2], NULL, 10);
     uint16_t port = static_cast<uint16_t>(lport);
 
-    g_clu.init(ip, port);
+    g_raw.init(ip, port);
 
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
     main_loop = uv_default_loop();
@@ -336,10 +310,10 @@ int main(int argc, char* argv[]) {
 #endif
 
     // 事件分发器
-    g_clu.set_on_connect(on_connect_cbk);
-    g_clu.set_on_connected(on_connected_cbk);
-    g_clu.set_on_disconnected(on_disconnected_cbk);
-    g_clu.set_timeout(5); // 测试工具，5秒超时
+    g_raw.set_on_connect(on_connect_cbk);
+    g_raw.set_on_connected(on_connected_cbk);
+    g_raw.set_on_disconnected(on_disconnected_cbk);
+    g_raw.set_timeout(5); // 测试工具，5秒超时
 
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
     // 设置定时器
@@ -358,9 +332,9 @@ int main(int argc, char* argv[]) {
 #endif
 
     // 设置日志
-    g_clu.set_log_writer(on_log_fn, on_log_fn, 65536);
+    g_raw.set_log_writer(on_log_fn, on_log_fn, 65536);
 
-    g_clu.start();
+    g_raw.start();
 
     thread_t uv_thd;
     pthread_mutex_init(&g_mutex, NULL);
@@ -389,7 +363,7 @@ int main(int argc, char* argv[]) {
     THREAD_JOIN(uv_thd);
     pthread_mutex_destroy(&g_mutex);
 
-    g_clu.reset();
+    g_raw.reset();
 
     return 0;
 }

@@ -10,7 +10,6 @@
 #include <sstream>
 #include <ctime>
 #include <detail/happ_cmd.h>
-#include <iomanip>
 
 #include "detail/crc16.h"
 #include "detail/happ_cluster.h"
@@ -208,7 +207,7 @@ namespace hiredis {
 
             // ttl 预判定
             if (0 == cmd->ttl) {
-                log_debug("cmd at slot %d ttl expired", cmd->engine.slot);
+                log_debug("cmd %p at slot %d ttl expired", cmd, cmd->engine.slot);
                 call_cmd(cmd, error_code::REDIS_HAPP_TTL, NULL, NULL);
                 destroy_cmd(cmd);
                 return NULL;
@@ -258,7 +257,7 @@ namespace hiredis {
 
             // ttl 正式判定
             if (0 == cmd->ttl) {
-                log_debug("cmd at slot %d ttl expired", cmd->engine.slot);
+                log_debug("cmd %p at slot %d ttl expired", cmd, cmd->engine.slot);
                 call_cmd(cmd, error_code::REDIS_HAPP_TTL, NULL, NULL);
                 destroy_cmd(cmd);
                 return NULL;
@@ -789,7 +788,10 @@ namespace hiredis {
                     std::vector<connection::key_t> hosts;
                     for (size_t j = 2; j < slot_node->elements; ++ j) {
                         redisReply* addr = slot_node->element[j];
-                        if (addr->elements >= 2 && REDIS_REPLY_STRING == addr->element[0]->type && REDIS_REPLY_INTEGER == addr->element[1]->type) {
+                        // cluster 数据不正常时，redis可能返回空地址。这时候要忽略
+                        if (addr->elements >= 2 &&
+                            REDIS_REPLY_STRING == addr->element[0]->type && addr->element[0]->str[0] &&
+                            REDIS_REPLY_INTEGER == addr->element[1]->type) {
                             hosts.push_back(connection::key_t());
                             connection::set_key(
                                 hosts.back(),
@@ -923,53 +925,6 @@ namespace hiredis {
                     hosts.pop_back();
                 }
             }
-        }
-
-        void cluster::dump(std::ostream& out, redisReply* reply, int ident) {
-            if (NULL == reply) {
-                return;
-            }
-
-            // dump reply
-            switch(reply->type) {
-            case REDIS_REPLY_NIL: {
-                out << "[NIL]"<< std::endl;
-                break;
-            }
-            case REDIS_REPLY_STATUS: {
-                out << "[STATUS]: "<< reply->str << std::endl;
-                break;
-            }
-            case REDIS_REPLY_ERROR: {
-                out << "[ERROR]: " << reply->str << std::endl;
-                break;
-            }
-            case REDIS_REPLY_INTEGER: {
-                out << reply->integer << std::endl;
-                break;
-            }
-            case REDIS_REPLY_STRING: {
-                out << reply->str << std::endl;
-                break;
-            }
-            case REDIS_REPLY_ARRAY: {
-                std::string ident_str;
-                ident_str.assign(static_cast<size_t>(ident), ' ');
-
-                out << "[ARRAY]: " << std::endl;
-                for (size_t i = 0; i < reply->elements; ++ i) {
-                    out << ident_str << std::setw(7) << (i + 1) << ": ";
-                    dump(out, reply->element[i], ident + 2);
-                }
-
-                break;
-            }
-            default: {
-                log_debug("[UNKNOWN]");
-                break;
-            }
-            }
-
         }
 
         void cluster::log_debug(const char* fmt, ...) {

@@ -1,15 +1,14 @@
 //
-// Created by 欧文韬 on 2015/08/18.
+// Created by 欧文韬 on 2016/04/20.
 //
 
-#ifndef HIREDIS_HAPP_HIREDIS_HAPP_CLUSTER_H
-#define HIREDIS_HAPP_HIREDIS_HAPP_CLUSTER_H
+#ifndef HIREDIS_HAPP_HIREDIS_HAPP_RAW_H
+#define HIREDIS_HAPP_HIREDIS_HAPP_RAW_H
 
 #pragma once
 
 #include <vector>
 #include <list>
-#include <ostream>
 
 #include "config.h"
 
@@ -17,29 +16,25 @@
 
 namespace hiredis {
     namespace happ {
-        class cluster {
+        class raw {
         public:
             typedef cmd_exec cmd_t;
 
-            struct slot_t {
-                int index;
-                std::vector<connection::key_t> hosts;
-            };
             typedef connection connection_t;
-            typedef HIREDIS_HAPP_MAP(std::string, ::hiredis::happ::unique_ptr<connection_t>::type) connection_map_t;
+            typedef ::hiredis::happ::unique_ptr<connection_t>::type connection_ptr_t;
 
-            typedef std::function<void(cluster*, connection_t*)> onconnect_fn_t;
-            typedef std::function<void (cluster*, connection_t*, const struct redisAsyncContext*, int status)> onconnected_fn_t;
-            typedef std::function<void (cluster*, connection_t*, const struct redisAsyncContext*, int)> ondisconnected_fn_t;
+            typedef std::function<void(raw*, connection_t*)> onconnect_fn_t;
+            typedef std::function<void (raw*, connection_t*, const struct redisAsyncContext*, int status)> onconnected_fn_t;
+            typedef std::function<void (raw*, connection_t*, const struct redisAsyncContext*, int)> ondisconnected_fn_t;
             typedef std::function<void(const char*)> log_fn_t;
 
         private:
-            cluster(const cluster&);
-            cluster& operator=(const cluster&);
+            raw(const raw&);
+            raw& operator=(const raw&);
 
         public:
-            cluster();
-            ~cluster();
+            raw();
+            ~raw();
 
             int init(const std::string& ip, uint16_t port);
 
@@ -49,8 +44,6 @@ namespace hiredis {
 
             /** 
              * @breif send a request to redis server
-             * @param key the key used to calculate slot id
-             * @param ks  key size
              * @param cbk callback
              * @param priv_data private data passed to callback
              * @param argc argument count
@@ -65,12 +58,10 @@ namespace hiredis {
              * @see connection::redis_cmd
              * @return command wrapper of this message, NULL if failed
              */
-            cmd_t* exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, int argc, const char** argv, const size_t* argvlen);
+            cmd_t* exec(cmd_t::callback_fn_t cbk, void* priv_data, int argc, const char** argv, const size_t* argvlen);
 
             /** 
              * @breif send a request to redis server
-             * @param key the key used to calculate slot id
-             * @param ks  key size
              * @param cbk callback
              * @param priv_data private data passed to callback
              * @param fmt format string
@@ -84,12 +75,10 @@ namespace hiredis {
              * @see connection::redis_cmd
              * @return command wrapper of this message, NULL if failed
              */
-            cmd_t* exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, const char* fmt, ...);
+            cmd_t* exec(cmd_t::callback_fn_t cbk, void* priv_data, const char* fmt, ...);
 
             /** 
              * @breif send a request to redis server
-             * @param key the key used to calculate slot id
-             * @param ks  key size
              * @param cbk callback
              * @param priv_data private data passed to callback
              * @param fmt format string
@@ -103,12 +92,10 @@ namespace hiredis {
              * @see connection::redis_cmd
              * @return command wrapper of this message, NULL if failed
              */
-            cmd_t* exec(const char* key, size_t ks, cmd_t::callback_fn_t cbk, void* priv_data, const char* fmt, va_list ap);
+            cmd_t* exec(cmd_t::callback_fn_t cbk, void* priv_data, const char* fmt, va_list ap);
 
             /** 
              * @breif send a request to redis server
-             * @param key the key used to calculate slot id
-             * @param ks  key size
              * @param cmd cmd wrapper
              *   
              * @note it can not be used to send subscribe, unsubscribe or monitor command.(because they are not request-response message)
@@ -119,7 +106,7 @@ namespace hiredis {
              * @see connection::redis_cmd
              * @return command wrapper of this message, NULL if failed
              */
-            cmd_t* exec(const char* key, size_t ks, cmd_t* cmd);
+            cmd_t* exec(cmd_t* cmd);
 
             /** 
              * @breif send a request to specifed redis server
@@ -151,26 +138,11 @@ namespace hiredis {
              */
             cmd_t* retry(cmd_t* cmd, connection_t* conn = NULL);
 
-            bool reload_slots();
+            const connection_t* get_connection() const;
+            connection_t* get_connection();
 
-            const connection::key_t* get_slot_master(int index);
-            
-            /** 
-             * @breif get slot info of a key
-             * @param key the key used to calculate slot id
-             * @param ks  key size
-             * @return slot info of this key
-             */
-            const slot_t* get_slot_by_key(const char* key, size_t ks) const;
-
-            const connection_t* get_connection(const std::string& key) const;
-            connection_t* get_connection(const std::string& key);
-
-            const connection_t* get_connection(const std::string& ip, uint16_t port) const;
-            connection_t* get_connection(const std::string& ip, uint16_t port);
-
-            connection_t* make_connection(const connection::key_t& key);
-            bool release_connection(const connection::key_t& key, bool close_fd, int status);
+            connection_t* make_connection();
+            bool release_connection(bool close_fd, int status);
 
             onconnect_fn_t set_on_connect(onconnect_fn_t cbk);
             onconnected_fn_t set_on_connected(onconnected_fn_t cbk);
@@ -203,8 +175,6 @@ namespace hiredis {
             static void on_connected_wrapper(const struct redisAsyncContext*, int status);
             static void on_disconnected_wrapper(const struct redisAsyncContext*, int status);
 
-
-            void remove_connection_key(const std::string& name);
         private:
 
             void log_debug(const char* fmt, ...);
@@ -227,21 +197,8 @@ namespace hiredis {
             };
             config_t conf;
 
-            // 槽信息
-            struct slot_status {
-                enum type {
-                    INVALID = 0,
-                    UPDATING,
-                    OK
-                };
-            };
-            slot_t slots[HIREDIS_HAPP_SLOT_NUMBER];
-            slot_status::type slot_flag;
-            // 更新完Slot重入列表
-            std::list<cmd_t*> slot_pending;
-
             // 数据连接信息
-            connection_map_t connections;
+            connection_ptr_t conn_;
 
 
             // 定时器重入列表
@@ -257,11 +214,10 @@ namespace hiredis {
                 std::list<delay_t> timer_pending;
 
                 struct conn_timetout_t {
-                    std::string name;
                     uint64_t sequence;
                     time_t timeout;
                 };
-                std::list<conn_timetout_t> timer_conns;
+                conn_timetout_t timer_conn;
             };
             timer_t timer_actions;
 

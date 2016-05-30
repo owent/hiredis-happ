@@ -7,15 +7,18 @@
 
 #pragma once
 
+#include <ostream>
 #include "config.h"
 
 namespace hiredis {
     namespace happ {
         class cluster;
+        class raw;
         class connection;
 
         union holder_t {
             cluster* clu;
+            raw* r;
         };
 
         struct cmd_content {
@@ -54,6 +57,7 @@ namespace hiredis {
             
             const char* pick_cmd(const char** str, size_t* len);
             
+            static void dump(std::ostream& out, redisReply* reply, int ident = 0);
         HIREDIS_HAPP_PRIVATE:
             /**
              * @brief 创建cmd对象
@@ -67,6 +71,7 @@ namespace hiredis {
             static void destroy(cmd_exec* c);
 
             friend class cluster;
+            friend class raw;
             friend class connection;
         HIREDIS_HAPP_PRIVATE:
             holder_t holder;            // holder
