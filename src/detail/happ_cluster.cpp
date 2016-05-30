@@ -789,7 +789,7 @@ namespace hiredis {
                     std::vector<connection::key_t> hosts;
                     for (size_t j = 2; j < slot_node->elements; ++ j) {
                         redisReply* addr = slot_node->element[j];
-                        if (2 == addr->elements && REDIS_REPLY_STRING == addr->element[0]->type && REDIS_REPLY_INTEGER == addr->element[1]->type) {
+                        if (addr->elements >= 2 && REDIS_REPLY_STRING == addr->element[0]->type && REDIS_REPLY_INTEGER == addr->element[1]->type) {
                             hosts.push_back(connection::key_t());
                             connection::set_key(
                                 hosts.back(),
@@ -816,6 +816,8 @@ namespace hiredis {
 
             // 先设置状态，然后重试命令。否则会陷入死循环
             self->slot_flag = slot_status::OK;
+            
+            self->log_info("update %d slots done",static_cast<int>(reply->elements));
 
             // 执行待执行队列
             while(!self->slot_pending.empty()) {
@@ -823,8 +825,6 @@ namespace hiredis {
                 self->slot_pending.pop_front();
                 self->retry(cmd);
             }
-
-            self->log_info("update %d slots done",static_cast<int>(reply->elements));
         }
 
         void cluster::on_reply_asking(redisAsyncContext* c, void* r, void* privdata) {
