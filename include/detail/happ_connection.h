@@ -96,7 +96,17 @@ namespace hiredis {
              */
             int redis_raw_cmd(redisCallbackFn* fn, void* priv_data, int argc, const char** argv, const size_t* argvlen);
 
+            /**
+             * @brief call reply callback of c with reply 
+             * @note if c!=NULL, it will always call callback and be freed
+             */
             int call_reply(cmd_exec* c, void* reply);
+
+            /**
+             * @brief pop specify cmd from pending list, do nothing if c!=NULL and is not in pending list
+             * @note if c!=NULL, all cmds before c will trigger timeout
+             * @return first cmd or c  
+             */
             cmd_exec* pop_reply(cmd_exec* c);
 
             redisAsyncContext* get_context() const;

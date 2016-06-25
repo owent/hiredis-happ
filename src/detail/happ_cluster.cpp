@@ -56,6 +56,12 @@ namespace hiredis {
 
         cluster::~cluster() {
             reset();
+
+            // log buffer
+            if (NULL != conf.log_buffer) {
+                free(conf.log_buffer);
+                conf.log_buffer = NULL;
+            }
         }
 
         int cluster::init(const std::string& ip, uint16_t port) {
@@ -87,6 +93,8 @@ namespace hiredis {
             // disable slot update
             slot_flag = slot_status::UPDATING;
 
+            // disconnect all connections. 
+            // the connected/disconnected callback will be triggered if not in callback 
             for (size_t i = 0; i < all_contexts.size(); ++ i) {
                 redisAsyncDisconnect(all_contexts[i]);
             }
@@ -115,31 +123,34 @@ namespace hiredis {
             }
 
             // connection timeout
-            while(!timer_actions.timer_conns.empty()) {
-                timer_t::conn_timetout_t& conn_expire = timer_actions.timer_conns.front();
+            //while(!timer_actions.timer_conns.empty()) {
+            //    timer_t::conn_timetout_t& conn_expire = timer_actions.timer_conns.front();
 
-                connection_t* conn = get_connection(conn_expire.name);
-                if (NULL != conn && conn->get_sequence() == conn_expire.sequence) {
-                    release_connection(conn->get_key(), true, error_code::REDIS_HAPP_TIMEOUT);
-                }
+            //    connection_t* conn = get_connection(conn_expire.name);
+            //    if (NULL != conn && conn->get_sequence() == conn_expire.sequence) {
+            //        // if connection is in callback mode, the cmds in it will not finish
+            //        // so the connection can not be released right now
+            //        // this will be released after callback in disconnect event
+            //        if (!(conn->get_context()->c.flags & REDIS_IN_CALLBACK)) {
+            //            release_connection(conn->get_key(), true, error_code::REDIS_HAPP_TIMEOUT);
+            //        }
+            //    }
 
-                timer_actions.timer_conns.pop_front();
-            }
+            //    timer_actions.timer_conns.pop_front();
+            //}
 
+            // all connections are marked disconnection or disconnected, so timeout timers are useless
+            timer_actions.timer_conns.clear();
             timer_actions.last_update_sec = 0;
             timer_actions.last_update_usec = 0;
 
-            // clear connections, should be empty here
-            connections.clear();
+            // If in a callback, cmds in this connection will not finished, so it can not be freed.
+            // In this case, it will call disconnect callback after callback is finished and then release the connection.
+            // If not in a callback, this connection is already freed at the begining "redisAsyncDisconnect(all_contexts[i]);"  
+            // connections.clear();  // can not clear connections here
 
             // reset slot status
             slot_flag = slot_status::INVALID;
-
-            // log buffer
-            if (NULL != conf.log_buffer) {
-                free(conf.log_buffer);
-                conf.log_buffer = NULL;
-            }
 
             return 0;
         }
@@ -282,7 +293,7 @@ namespace hiredis {
                     // 尝试释放连接信息,避免下一次使用无效连接
                     remove_connection_key(conn->get_key().name);
 
-                    // fix hiredis 的BUG，可能会漏调用onDisconnect
+                    // Fix hiredis 某个版本 的BUG，可能会漏调用onDisconnect
                     // 只要不在hiredis的回调函数内，一旦标记了REDIS_DISCONNECTING或REDIS_FREEING则是已经释放完毕了
                     // 如果是回调函数，则出回调以后会调用disconnect，从而触发disconnect回调，这里就不需要释放了
                     if (!(conn->get_context()->c.flags & REDIS_IN_CALLBACK)) {
@@ -579,11 +590,13 @@ namespace hiredis {
             }
 
             // connection timeout
+            // this can not be call in callback
             while(!timer_actions.timer_conns.empty() && sec >= timer_actions.timer_conns.front().timeout) {
                 timer_t::conn_timetout_t& conn_expire = timer_actions.timer_conns.front();
 
                 connection_t* conn = get_connection(conn_expire.name);
                 if (NULL != conn && conn->get_sequence() == conn_expire.sequence) {
+                    assert(!(conn->get_context()->c.flags & REDIS_IN_CALLBACK));
                     release_connection(conn->get_key(), true, error_code::REDIS_HAPP_TIMEOUT);
                 }
 

@@ -39,6 +39,12 @@ namespace hiredis {
 
         raw::~raw() {
             reset();
+
+            // log buffer
+            if (NULL != conf.log_buffer) {
+                free(conf.log_buffer);
+                conf.log_buffer = NULL;
+            }
         }
 
         int raw::init(const std::string& ip, uint16_t port) {
@@ -74,14 +80,10 @@ namespace hiredis {
             timer_actions.timer_conn.sequence = 0;
             timer_actions.timer_conn.timeout = 0;
 
-            // reset connection, should be empty here
-            conn_.reset();
-
-            // log buffer
-            if (NULL != conf.log_buffer) {
-                free(conf.log_buffer);
-                conf.log_buffer = NULL;
-            }
+            // If in a callback, cmds in this connection will not finished, so it can not be freed.
+            // In this case, it will call disconnect callback after callback is finished and then release the connection.
+            // If not in a callback, this connection is already freed at the begining "redisAsyncDisconnect(conn_->get_context());"  
+            // conn_.reset(); // can not reset connection
 
             return 0;
         }
@@ -197,7 +199,7 @@ namespace hiredis {
                 // hiredis的代码，仅在网络关闭和命令错误会返回出错
                 // 其他情况都应该直接出错回调
                 if (conn->get_context()->c.flags & (REDIS_DISCONNECTING | REDIS_FREEING)) {
-                    // fix hiredis 的BUG，可能会漏调用onDisconnect
+                    // Fix hiredis 某个版本 的BUG，可能会漏调用onDisconnect
                     // 只要不在hiredis的回调函数内，一旦标记了REDIS_DISCONNECTING或REDIS_FREEING则是已经释放完毕了
                     // 如果是回调函数，则出回调以后会调用disconnect，从而触发disconnect回调，这里就不需要释放了
                     if (conn_.get() == conn && !(conn->get_context()->c.flags & REDIS_IN_CALLBACK)) {
@@ -414,9 +416,11 @@ namespace hiredis {
             }
 
             // connection timeout
+            // can not be call in any callback
             while(0 != timer_actions.timer_conn.timeout && sec >= timer_actions.timer_conn.timeout) {
                 // sequence expired skip
                 if (conn_ && conn_->get_sequence() == timer_actions.timer_conn.sequence) {
+                    assert(!(conn->get_context()->c.flags & REDIS_IN_CALLBACK));
                     release_connection(true, error_code::REDIS_HAPP_TIMEOUT);
                 }
                 

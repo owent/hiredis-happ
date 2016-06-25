@@ -191,32 +191,45 @@ namespace hiredis {
 
         int connection::call_reply(cmd_exec* c, void* r) {
             if (NULL == context) {
+                // 本接口要保证c被消耗掉
+                if (NULL != c) {
+                    c->err = error_code::REDIS_HAPP_NOT_FOUND;
+                    c->call_reply(c->err, context, r);
+                    cmd_exec::destroy(c);
+                }
+                
                 return error_code::REDIS_HAPP_CREATE;
             }
 
-            c = pop_reply(c);
+            cmd_exec* sc = pop_reply(c);
 
-            if (NULL == c) {
+            if (NULL == sc) {
+                // 本接口要保证c被消耗掉
+                if (NULL != c) {
+                    c->err = error_code::REDIS_HAPP_NOT_FOUND;
+                    c->call_reply(c->err, context, r);
+                    cmd_exec::destroy(c);
+                }
                 return error_code::REDIS_HAPP_NOT_FOUND;
             }
 
             // 错误码重定向
             if (REDIS_OK != context->err) {
-                c->err = error_code::REDIS_HAPP_HIREDIS;
+                sc->err = error_code::REDIS_HAPP_HIREDIS;
             } else if (r) {
                 redisReply* reply = reinterpret_cast<redisReply*>(r);
                 if (REDIS_REPLY_ERROR == reply->type) {
-                    c->err = error_code::REDIS_HAPP_HIREDIS;
+                    sc->err = error_code::REDIS_HAPP_HIREDIS;
                 }
             }
 
-            int res = c->call_reply(
-                c->err,
+            int res = sc->call_reply(
+                sc->err,
                 context, 
                 r
             );
 
-            cmd_exec::destroy(c);
+            cmd_exec::destroy(sc);
             return res;
         }
 
