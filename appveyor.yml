@@ -50,7 +50,7 @@ install:
 #
 build_script:
     - 'echo Building...'
-    - '%CYG_BASH% -lc "cd $APPVEYOR_BUILD_FOLDER; exec 0</dev/null; mkdir -p build; cd build; cmake .. && make -j4;"'
+    - '%CYG_BASH% -lc "cd $APPVEYOR_BUILD_FOLDER; exec 0</dev/null; mkdir -p build; cd build; cmake .. -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON && make -j4;"'
 #
 # Run unit test
 # 

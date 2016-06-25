@@ -41,6 +41,11 @@ install(DIRECTORY ${PROJECT_ALL_INCLUDE_DIR} DESTINATION .
 	FILES_MATCHING REGEX ".+\\.h(pp)?$"
 )
 
-add_subdirectory("${PROJECT_SOURCE_DIR}/sample")
-add_subdirectory("${PROJECT_SOURCE_DIR}/test")
+if (PROJECT_ENABLE_SAMPLE)
+    add_subdirectory("${PROJECT_SOURCE_DIR}/sample")
+endif()
+
+if (PROJECT_ENABLE_UNITTEST)
+    add_subdirectory("${PROJECT_SOURCE_DIR}/test")
+endif()
 			

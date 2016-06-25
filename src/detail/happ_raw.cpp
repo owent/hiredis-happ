@@ -9,6 +9,7 @@
 #include <random>
 #include <sstream>
 #include <ctime>
+#include <assert.h>
 #include <detail/happ_cmd.h>
 
 #include "detail/happ_raw.h"
@@ -420,7 +421,7 @@ namespace hiredis {
             while(0 != timer_actions.timer_conn.timeout && sec >= timer_actions.timer_conn.timeout) {
                 // sequence expired skip
                 if (conn_ && conn_->get_sequence() == timer_actions.timer_conn.sequence) {
-                    assert(!(conn->get_context()->c.flags & REDIS_IN_CALLBACK));
+                    assert(!(conn_->get_context()->c.flags & REDIS_IN_CALLBACK));
                     release_connection(true, error_code::REDIS_HAPP_TIMEOUT);
                 }
                 

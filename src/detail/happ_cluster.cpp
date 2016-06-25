@@ -9,6 +9,7 @@
 #include <random>
 #include <sstream>
 #include <ctime>
+#include <assert.h>
 #include <detail/happ_cmd.h>
 
 #include "detail/crc16.h"
