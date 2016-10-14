@@ -67,6 +67,7 @@ target_link_libraries(hiredis-happ-test
     hiredis-happ
     ${EXTENTION_LINK_LIB}
     ${PROJECT_3RDPARTY_LINK_NAME}
+    ${COMPILER_OPTION_EXTERN_CXX_LIBS}
 )
 
 add_test(test hiredis-happ-test)
