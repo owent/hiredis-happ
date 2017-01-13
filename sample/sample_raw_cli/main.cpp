@@ -23,9 +23,17 @@
 
 
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
+#ifdef LIBHIREDIS_USING_SRC
+#include "adapters/libuv.h"
+#else
 #include "hiredis/adapters/libuv.h"
+#endif
 #elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
+#ifdef LIBHIREDIS_USING_SRC
+#include "adapters/libevent.h"
+#else
 #include "hiredis/adapters/libevent.h"
+#endif
 #endif
 
 #ifdef __cplusplus
@@ -33,35 +41,39 @@ extern "C" {
 #endif
 
 #if defined(_MSC_VER)
-    #include <winsock2.h>
-    #include <process.h>
-    #include <sys/locking.h>
-    #include <Windows.h>
-    #define THREAD_SPIN_COUNT 2000
+#include <winsock2.h>
+#include <process.h>
+#include <sys/locking.h>
+#include <Windows.h>
+#define THREAD_SPIN_COUNT 2000
 
-    typedef HANDLE thread_t;
-    #define THREAD_FUNC unsigned __stdcall
-    #define THREAD_CREATE(threadvar, fn, arg) do { \
-        uintptr_t threadhandle = _beginthreadex(NULL,0,fn,(arg),0,NULL); \
-        (threadvar) = (thread_t) threadhandle; \
+typedef HANDLE thread_t;
+#define THREAD_FUNC unsigned __stdcall
+#define THREAD_CREATE(threadvar, fn, arg)                                     \
+    do {                                                                      \
+        uintptr_t threadhandle = _beginthreadex(NULL, 0, fn, (arg), 0, NULL); \
+        (threadvar) = (thread_t)threadhandle;                                 \
     } while (0)
-    #define THREAD_JOIN(th) WaitForSingleObject(th, INFINITE)
-    #define THREAD_RETURN return (0)
+#define THREAD_JOIN(th) WaitForSingleObject(th, INFINITE)
+#define THREAD_RETURN return (0)
 
-    #define THREAD_SLEEP_MS(TM) Sleep(TM)
+#define THREAD_SLEEP_MS(TM) Sleep(TM)
 #elif defined(__GNUC__) || defined(__clang__)
 #include <pthread.h>
 #include <errno.h>
 #include <unistd.h>
 
 typedef pthread_t thread_t;
-#define THREAD_FUNC void*
-#define THREAD_CREATE(threadvar, fn, arg) \
-        pthread_create(&(threadvar), NULL, fn, arg)
+#define THREAD_FUNC void *
+#define THREAD_CREATE(threadvar, fn, arg) pthread_create(&(threadvar), NULL, fn, arg)
 #define THREAD_JOIN(th) pthread_join(th, NULL)
-#define THREAD_RETURN pthread_exit (NULL); return NULL
+#define THREAD_RETURN   \
+    pthread_exit(NULL); \
+    return NULL
 
-#define THREAD_SLEEP_MS(TM) ((TM > 1000)? sleep(TM / 1000): usleep(0)); usleep((TM % 1000) * 1000)
+#define THREAD_SLEEP_MS(TM)                       \
+    ((TM > 1000) ? sleep(TM / 1000) : usleep(0)); \
+    usleep((TM % 1000) * 1000)
 #endif
 
 #ifdef __cplusplus
@@ -69,19 +81,18 @@ typedef pthread_t thread_t;
 #endif
 
 
-
 static hiredis::happ::raw g_raw;
 
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
-static uv_loop_t* main_loop;
+static uv_loop_t *main_loop;
 #elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
-static event_base* main_loop;
+static event_base *main_loop;
 #endif
 
 static pthread_mutex_t g_mutex;
 static std::list<std::string> g_cmds;
 
-static void on_connect_cbk(hiredis::happ::raw*, hiredis::happ::connection* conn) {
+static void on_connect_cbk(hiredis::happ::raw *, hiredis::happ::connection *conn) {
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
     redisLibuvAttach(conn->get_context(), main_loop);
 #elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
@@ -95,7 +106,7 @@ static void on_connect_cbk(hiredis::happ::raw*, hiredis::happ::connection* conn)
     }
 }
 
-static void on_connected_cbk(hiredis::happ::raw*, hiredis::happ::connection* conn, const struct redisAsyncContext* c, int status) {
+static void on_connected_cbk(hiredis::happ::raw *, hiredis::happ::connection *conn, const struct redisAsyncContext *c, int status) {
     if (NULL == conn) {
         printf("error: connection not found when connected\n");
         return;
@@ -105,15 +116,12 @@ static void on_connected_cbk(hiredis::happ::raw*, hiredis::happ::connection* con
         printf("%s connected success\n", conn->get_key().name.c_str());
     } else {
         char no_msg[] = "none";
-        printf("%s connected failed, status %d, err: %d, msg %s\n",
-           conn->get_key().name.c_str(),
-           status, c? c->err: 0,
-           (c && c->errstr)? c->errstr: no_msg
-        );
+        printf("%s connected failed, status %d, err: %d, msg %s\n", conn->get_key().name.c_str(), status, c ? c->err : 0,
+               (c && c->errstr) ? c->errstr : no_msg);
     }
 }
 
-static void on_disconnected_cbk(hiredis::happ::raw*, hiredis::happ::connection* conn, const struct redisAsyncContext* c, int status) {
+static void on_disconnected_cbk(hiredis::happ::raw *, hiredis::happ::connection *conn, const struct redisAsyncContext *c, int status) {
     if (NULL == conn) {
         printf("error: connection not found when connected\n");
         return;
@@ -123,21 +131,17 @@ static void on_disconnected_cbk(hiredis::happ::raw*, hiredis::happ::connection* 
         printf("%s disconnected\n", conn->get_key().name.c_str());
     } else {
         char no_msg[] = "none";
-        printf("%s disconnected status %d, err: %d, msg %s\n",
-               conn->get_key().name.c_str(),
-               status, c? c->err: 0,
-               (c && c->errstr)? c->errstr: no_msg
-        );
+        printf("%s disconnected status %d, err: %d, msg %s\n", conn->get_key().name.c_str(), status, c ? c->err : 0, (c && c->errstr) ? c->errstr : no_msg);
     }
 }
 
-static std::vector<std::string> split_word(const std::string& cmd_line) {
+static std::vector<std::string> split_word(const std::string &cmd_line) {
     std::vector<std::string> ret;
 
     std::string seg;
-    for(size_t i = 0; i < cmd_line.size(); ++ i) {
+    for (size_t i = 0; i < cmd_line.size(); ++i) {
         if (cmd_line[i] == '\r' || cmd_line[i] == '\n' || cmd_line[i] == '\t' || cmd_line[i] == ' ') {
-            if(seg.empty()) {
+            if (seg.empty()) {
                 continue;
             }
 
@@ -146,9 +150,9 @@ static std::vector<std::string> split_word(const std::string& cmd_line) {
         } else {
             char c = cmd_line[i];
             if ('\'' == c || '\"' == c) {
-                for (++ i; i < cmd_line.size() && c != cmd_line[i]; ++ i) {
+                for (++i; i < cmd_line.size() && c != cmd_line[i]; ++i) {
                     if (c == '\"' && '\\' == cmd_line[i]) {
-                        ++ i;
+                        ++i;
                         if (i < cmd_line.size()) {
                             seg.push_back(cmd_line[i]);
                         }
@@ -157,50 +161,50 @@ static std::vector<std::string> split_word(const std::string& cmd_line) {
                     }
                 }
 
-                ++ i;
+                ++i;
             } else {
                 seg.push_back(c);
             }
         }
     }
 
-    if(!seg.empty()) {
+    if (!seg.empty()) {
         ret.push_back(seg);
     }
 
     return ret;
 }
 
-static void dump_callback(hiredis::happ::cmd_exec* cmd, struct redisAsyncContext*, void* r, void* p) {
-    assert(p == reinterpret_cast<void*>(dump_callback));
+static void dump_callback(hiredis::happ::cmd_exec *cmd, struct redisAsyncContext *, void *r, void *p) {
+    assert(p == reinterpret_cast<void *>(dump_callback));
 
     if (cmd->result() != hiredis::happ::error_code::REDIS_HAPP_OK) {
         printf("cmd_exec result: %d\n", cmd->result());
     }
-    hiredis::happ::cmd_exec::dump(std::cout, reinterpret_cast<redisReply*>(r), 0);
+    hiredis::happ::cmd_exec::dump(std::cout, reinterpret_cast<redisReply *>(r), 0);
 }
 
-static void subscribe_callback(struct redisAsyncContext*, void* r, void* p) {
-    assert(p == reinterpret_cast<void*>(subscribe_callback));
+static void subscribe_callback(struct redisAsyncContext *, void *r, void *p) {
+    assert(p == reinterpret_cast<void *>(subscribe_callback));
 
     printf(" ===== subscribe message received =====\n");
-    hiredis::happ::cmd_exec::dump(std::cout, reinterpret_cast<redisReply*>(r), 0);
+    hiredis::happ::cmd_exec::dump(std::cout, reinterpret_cast<redisReply *>(r), 0);
 }
 
-static void monitor_callback(struct redisAsyncContext*, void* r, void* p) {
-    assert(p == reinterpret_cast<void*>(monitor_callback));
+static void monitor_callback(struct redisAsyncContext *, void *r, void *p) {
+    assert(p == reinterpret_cast<void *>(monitor_callback));
 
     printf(" ----- monitor message received ----- \n");
-    hiredis::happ::cmd_exec::dump(std::cout, reinterpret_cast<redisReply*>(r), 0);
+    hiredis::happ::cmd_exec::dump(std::cout, reinterpret_cast<redisReply *>(r), 0);
 }
 
 static void on_timer_proc(
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
-    uv_timer_t* handle
+    uv_timer_t *handle
 #elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
     evutil_socket_t fd, short event, void *arg
 #endif
-) {
+    ) {
     static time_t sec = time(NULL);
     static time_t usec = 0;
 
@@ -213,21 +217,21 @@ static void on_timer_proc(
     // 提取命令
     pthread_mutex_lock(&g_mutex);
     std::list<std::string> pending_cmds;
-    if(!g_cmds.empty()) {
+    if (!g_cmds.empty()) {
         pending_cmds.swap(g_cmds);
     }
     pthread_mutex_unlock(&g_mutex);
 
     // 执行命令
-    while(!pending_cmds.empty()) {
+    while (!pending_cmds.empty()) {
         std::string cmd_line = pending_cmds.front();
         pending_cmds.pop_front();
 
         std::vector<std::string> cmds = split_word(cmd_line);
-        std::string cmd = cmds.empty()? "": cmds.front();
+        std::string cmd = cmds.empty() ? "" : cmds.front();
         std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::toupper);
         hiredis::happ::cmd_exec::callback_fn_t cbk = dump_callback;
-        redisCallbackFn* raw_cbk;
+        redisCallbackFn *raw_cbk;
         bool is_raw = false;
         if ("SUBSCRIBE" == cmd || "UNSUBSCRIBE" == cmd || "PSUBSCRIBE" == cmd || "PUNSUBSCRIBE" == cmd) {
             raw_cbk = subscribe_callback;
@@ -238,27 +242,27 @@ static void on_timer_proc(
         }
 
         // 生成参数
-        std::vector<const char*> pc;
+        std::vector<const char *> pc;
         std::vector<size_t> ps;
-        for(size_t i = 0; i < cmds.size(); ++ i) {
+        for (size_t i = 0; i < cmds.size(); ++i) {
             pc.push_back(cmds[i].c_str());
             ps.push_back(cmds[i].size());
         }
 
         if (is_raw) { // 执行特殊命令
-            hiredis::happ::connection* conn = g_raw.get_connection();
+            hiredis::happ::connection *conn = g_raw.get_connection();
             if (NULL == conn) {
                 conn = g_raw.make_connection();
             }
-            
+
             if (NULL == conn) {
                 printf("connect to redis failed.\n");
                 continue;
             }
-            conn->redis_raw_cmd(raw_cbk, reinterpret_cast<void*>(raw_cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
-            
+            conn->redis_raw_cmd(raw_cbk, reinterpret_cast<void *>(raw_cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
+
         } else { // 执行请求-回包命令
-            g_raw.exec(cbk, reinterpret_cast<void*>(cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
+            g_raw.exec(cbk, reinterpret_cast<void *>(cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
         }
     }
 
@@ -275,11 +279,9 @@ static THREAD_FUNC proc_uv_thd(void *) {
     THREAD_RETURN;
 }
 
-static void on_log_fn(const char* content) {
-    puts(content);
-}
+static void on_log_fn(const char *content) { puts(content); }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     if (argc < 3) {
         printf("usage: %s <ip> <port>\n", argv[0]);
         return 0;
@@ -296,7 +298,7 @@ int main(int argc, char* argv[]) {
     }
 #endif
 
-    const char* ip = argv[1];
+    const char *ip = argv[1];
     long lport = 0;
     lport = strtol(argv[2], NULL, 10);
     uint16_t port = static_cast<uint16_t>(lport);
@@ -341,7 +343,7 @@ int main(int argc, char* argv[]) {
     THREAD_CREATE(uv_thd, proc_uv_thd, NULL);
 
     std::string cmd;
-    while(std::getline(std::cin, cmd)) {
+    while (std::getline(std::cin, cmd)) {
         if (cmd.empty()) {
             continue;
         }

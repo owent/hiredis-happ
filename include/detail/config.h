@@ -18,43 +18,51 @@
 
 
 #if defined(__cplusplus) && __cplusplus >= 201103L
-    #include <atomic>
-    #define HIREDIS_HAPP_ATOMIC_STD
-#elif defined(__clang__) && (__clang_major__ > 3 || (__clang_major__ == 3 && __clang_minor__ >= 1 ) ) && __cplusplus >= 201103L
-    #include <atomic>
-    #define HIREDIS_HAPP_ATOMIC_STD
+#include <atomic>
+#define HIREDIS_HAPP_ATOMIC_STD
+#elif defined(__clang__) && (__clang_major__ > 3 || (__clang_major__ == 3 && __clang_minor__ >= 1)) && __cplusplus >= 201103L
+#include <atomic>
+#define HIREDIS_HAPP_ATOMIC_STD
 #elif defined(_MSC_VER) && _MSC_VER > 1700
-    #include <atomic>
-    #define HIREDIS_HAPP_ATOMIC_STD
+#include <atomic>
+#define HIREDIS_HAPP_ATOMIC_STD
 #elif defined(__GNUC__)
-    #if((__GNUC__ == 4 && __GNUC_MINOR__ >= 5) || __GNUC__ > 4) && defined(__GXX_EXPERIMENTAL_CXX0X__)
-        #include <atomic>
-        #define HIREDIS_HAPP_ATOMIC_STD
-    #endif
+#if ((__GNUC__ == 4 && __GNUC_MINOR__ >= 5) || __GNUC__ > 4) && defined(__GXX_EXPERIMENTAL_CXX0X__)
+#include <atomic>
+#define HIREDIS_HAPP_ATOMIC_STD
+#endif
 #elif defined(__clang__) || defined(__clang__) || defined(__INTEL_COMPILER)
-    #if defined(__GNUC__) && (__GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 1))
-        #error GCC version must be greater or equal than 4.1
-    #endif
-    #if defined(__INTEL_COMPILER) && __INTEL_COMPILER < 1100
-        #error Intel Compiler version must be greater or equal than 11.0
-    #endif
+#if defined(__GNUC__) && (__GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 1))
+#error GCC version must be greater or equal than 4.1
+#endif
+#if defined(__INTEL_COMPILER) && __INTEL_COMPILER < 1100
+#error Intel Compiler version must be greater or equal than 11.0
+#endif
 
-    #if defined(__GCC_ATOMIC_INT_LOCK_FREE)
-        #define HIREDIS_HAPP_ATOMIC_GCC_ATOMIC 1
-    #else
-        #define HIREDIS_HAPP_ATOMIC_GCC 1
-    #endif
+#if defined(__GCC_ATOMIC_INT_LOCK_FREE)
+#define HIREDIS_HAPP_ATOMIC_GCC_ATOMIC 1
+#else
+#define HIREDIS_HAPP_ATOMIC_GCC 1
+#endif
 #elif defined(_MSC_VER)
-    #include <WinBase.h>
-    #define HIREDIS_HAPP_ATOMIC_MSVC 1
+#include <WinBase.h>
+#define HIREDIS_HAPP_ATOMIC_MSVC 1
 #endif
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
+#ifdef LIBHIREDIS_USING_SRC
+#include "hiredis.h"
+#include "async.h"
+#include "sds.h"
+#else
 #include "hiredis/hiredis.h"
 #include "hiredis/async.h"
+#include "hiredis/sds.h"
+#endif
+
 
 #if defined(__cplusplus)
 }
@@ -64,30 +72,30 @@ extern "C" {
 #define HIREDIS_HAPP_SLOT_NUMBER 16384
 
 #if (defined(__cplusplus) && __cplusplus >= 201103L) || (defined(_MSC_VER) && _MSC_VER >= 1600)
-#include <unordered_map> 
-#define HIREDIS_HAPP_MAP(...) std::unordered_map< __VA_ARGS__ > 
+#include <unordered_map>
+#define HIREDIS_HAPP_MAP(...) std::unordered_map<__VA_ARGS__>
 
 #else
 #include <map>
-#define HIREDIS_HAPP_MAP(...) std::map< __VA_ARGS__ > 
+#define HIREDIS_HAPP_MAP(...) std::map<__VA_ARGS__>
 #endif
 
 
-#ifndef  HIREDIS_HAPP_TTL
+#ifndef HIREDIS_HAPP_TTL
 #define HIREDIS_HAPP_TTL 16
 #endif
 
-#ifndef  HIREDIS_HAPP_TIMER_INTERVAL_SEC
+#ifndef HIREDIS_HAPP_TIMER_INTERVAL_SEC
 // 0 s
 #define HIREDIS_HAPP_TIMER_INTERVAL_SEC 0
 #endif
 
-#ifndef  HIREDIS_HAPP_TIMER_INTERVAL_USEC
+#ifndef HIREDIS_HAPP_TIMER_INTERVAL_USEC
 // 100 ms
 #define HIREDIS_HAPP_TIMER_INTERVAL_USEC 100000
 #endif
 
-#ifndef  HIREDIS_HAPP_TIMER_TIMEOUT_SEC
+#ifndef HIREDIS_HAPP_TIMER_TIMEOUT_SEC
 // 30 s
 #define HIREDIS_HAPP_TIMER_TIMEOUT_SEC 30
 #endif
@@ -111,25 +119,23 @@ extern "C" {
 #endif
 
 #ifndef va_copy
-#define va_copy(d,s) ((d) = (s))
+#define va_copy(d, s) ((d) = (s))
 #endif
 
 #ifndef snprintf
 #define snprintf c99_snprintf
 #define vsnprintf c99_vsnprintf
 
-__inline int c99_vsnprintf(char* str, size_t size, const char* format, va_list ap) {
+__inline int c99_vsnprintf(char *str, size_t size, const char *format, va_list ap) {
     int count = -1;
 
-    if (size != 0)
-        count = _vsnprintf_s(str, size, _TRUNCATE, format, ap);
-    if (count == -1)
-        count = _vscprintf(format, ap);
+    if (size != 0) count = _vsnprintf_s(str, size, _TRUNCATE, format, ap);
+    if (count == -1) count = _vscprintf(format, ap);
 
     return count;
 }
 
-__inline int c99_snprintf(char* str, size_t size, const char* format, ...) {
+__inline int c99_snprintf(char *str, size_t size, const char *format, ...) {
     int count;
     va_list ap;
 
@@ -148,18 +154,16 @@ __inline int c99_snprintf(char* str, size_t size, const char* format, ...) {
 namespace hiredis {
     namespace happ {
 #if (defined(__cplusplus) && __cplusplus >= 201103L) || (defined(_MSC_VER) && _MSC_VER >= 1600)
-        template<typename T>
+        template <typename T>
         struct unique_ptr {
             typedef std::unique_ptr<T> type;
-            static void swap(type& l, type& r) {
-                l.swap(r);
-            }
+            static void swap(type &l, type &r) { l.swap(r); }
         };
 #else
-        template<typename T>
+        template <typename T>
         struct unique_ptr {
             typedef std::shared_ptr<T> type;
-            static void swap(type& l, type& r) {
+            static void swap(type &l, type &r) {
                 using std::swap;
                 swap(l, r);
             }
@@ -168,16 +172,16 @@ namespace hiredis {
 
         struct error_code {
             typedef enum {
-                REDIS_HAPP_OK               =  REDIS_OK,
-                REDIS_HAPP_UNKNOWD          = -1001, // unknown error
-                REDIS_HAPP_HIREDIS          = -1002, // error happened in hiredis
-                REDIS_HAPP_TTL              = -1003, // try more than ttl times
-                REDIS_HAPP_CONNECTION       = -1004, // connect lost or connect failed
+                REDIS_HAPP_OK = REDIS_OK,
+                REDIS_HAPP_UNKNOWD = -1001,          // unknown error
+                REDIS_HAPP_HIREDIS = -1002,          // error happened in hiredis
+                REDIS_HAPP_TTL = -1003,              // try more than ttl times
+                REDIS_HAPP_CONNECTION = -1004,       // connect lost or connect failed
                 REDIS_HAPP_SLOT_UNAVAILABLE = -1005, // slot unavailable
-                REDIS_HAPP_CREATE           = -1006, // create failed
-                REDIS_HAPP_PARAM            = -1007, // param error
-                REDIS_HAPP_TIMEOUT          = -1008, // timeout
-                REDIS_HAPP_NOT_FOUND        = -1009, // not found
+                REDIS_HAPP_CREATE = -1006,           // create failed
+                REDIS_HAPP_PARAM = -1007,            // param error
+                REDIS_HAPP_TIMEOUT = -1008,          // timeout
+                REDIS_HAPP_NOT_FOUND = -1009,        // not found
             } type;
         };
     }
@@ -190,4 +194,4 @@ namespace hiredis {
 #define HIREDIS_HAPP_PRIVATE private
 #endif
 
-#endif //HIREDIS_HAPP_HIREDIS_HAPP_CONFIG_H
+#endif // HIREDIS_HAPP_HIREDIS_HAPP_CONFIG_H
