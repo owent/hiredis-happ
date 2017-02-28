@@ -71,6 +71,22 @@ namespace hiredis {
             return error_code::REDIS_HAPP_OK;
         }
 
+        const std::string& cluster::get_auth_password() {
+            return auth.password;
+        }
+
+        void cluster::set_auth_password(const std::string& passwd) {
+            auth.password = passwd;
+        }
+
+        const connection::auth_fn_t& cluster::get_auth_fn() {
+            return auth.auth_fn;
+        }
+
+        void cluster::set_auth_fn(connection::auth_fn_t fn) {
+            auth.auth_fn = fn;
+        }
+
         int cluster::start() {
             reload_slots();
             return error_code::REDIS_HAPP_OK;
@@ -461,7 +477,30 @@ namespace hiredis {
                 conn_expire.timeout = timer_actions.last_update_sec + conf.timer_timeout_sec;
             }
 
-            // event callback
+            // auth command
+            if (auth.auth_fn || !auth.password.empty()) {
+                // AUTH cmd
+                cmd_t *cmd = create_cmd(on_reply_auth, NULL);
+                if (NULL != cmd) {
+                    int len;
+                    if (auth.auth_fn) {
+                        const std::string& passwd = auth.auth_fn(&ret, auth.password);
+                        len = cmd->format("AUTH %b", passwd.c_str(), passwd.size());
+                    } else if (!auth.password.empty()) {
+                        len = cmd->format("AUTH %b", auth.password.c_str(), auth.password.size());
+                    }
+
+                    if (len <= 0) {
+                        log_info("format cmd AUTH failed");
+                        destroy_cmd(cmd);
+                        return false;
+                    }
+
+                    exec(&ret, cmd);
+                }
+            }
+
+            // event callback must be call at the last
             if (callbacks.on_connect) {
                 callbacks.on_connect(this, &ret);
             }
@@ -912,6 +951,40 @@ namespace hiredis {
 
             // 释放资源
             self->release_connection(conn->get_key(), false, status);
+        }
+
+        void cluster::on_reply_auth(cmd_exec *cmd, redisAsyncContext * rctx, void *r, void *privdata) {
+            redisReply *reply = reinterpret_cast<redisReply *>(r);
+            cluster *self = cmd->holder.clu;
+            assert(rctx);
+
+            // 出错，重新拉取
+            if (NULL == reply || 0 != HIREDIS_HAPP_STRNCASE_CMP("OK", reply->str, 2)) {
+                if (REDIS_CONN_TCP == rctx->c.connection_type) {
+                    self->log_info("tcp:%s:%d AUTH failed. %s", 
+                        rctx->c.tcp.host? rctx->c.tcp.host: (rctx->c.tcp.source_addr? rctx->c.tcp.source_addr: "UNKNOWN"),
+                        rctx->c.tcp.port, reply->str? reply->str: ""
+                    );
+                } else if (REDIS_CONN_UNIX == rctx->c.connection_type) {
+                    self->log_info("unix:%s AUTH failed. %s", 
+                    rctx->c.unix_sock.path? rctx->c.unix_sock.path: "NULL",
+                        reply->str? reply->str: ""
+                    );
+                } else {
+                    self->log_info("AUTH failed. %s", reply->str? reply->str: "");
+                }
+            } else {
+                if (REDIS_CONN_TCP == rctx->c.connection_type) {
+                    self->log_info("tcp:%s:%d AUTH success.", 
+                        rctx->c.tcp.host? rctx->c.tcp.host: (rctx->c.tcp.source_addr? rctx->c.tcp.source_addr: "UNKNOWN"),
+                        rctx->c.tcp.port
+                    );
+                } else if (REDIS_CONN_UNIX == rctx->c.connection_type) {
+                    self->log_info("unix:%s AUTH success.", rctx->c.unix_sock.path? rctx->c.unix_sock.path: "NULL");
+                } else {
+                    self->log_info("AUTH success.");
+                }
+            }
         }
 
         void cluster::remove_connection_key(const std::string &name) {

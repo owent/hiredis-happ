@@ -308,7 +308,7 @@ static void on_log_fn(const char *content) { puts(content); }
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-        printf("usage: %s <ip> <port>\n", argv[0]);
+        printf("usage: %s <ip> <port> [passowrd]\n", argv[0]);
         return 0;
     }
 
@@ -329,6 +329,10 @@ int main(int argc, char *argv[]) {
     uint16_t port = static_cast<uint16_t>(lport);
 
     g_clu.init(ip, port);
+
+    if (argc > 3) {
+        g_clu.set_auth_password(argv[3]);
+    }
 
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
     main_loop = uv_default_loop();

@@ -29,6 +29,12 @@ namespace hiredis {
                 std::string ip;
             };
 
+            typedef std::function<const std::string& (connection*, const std::string&)> auth_fn_t;
+            struct auth_info_t {
+                auth_fn_t auth_fn;
+                std::string password;
+            };
+
             connection();
             ~connection();
 

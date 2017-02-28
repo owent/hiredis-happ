@@ -43,6 +43,12 @@ namespace hiredis {
 
             int init(const std::string &ip, uint16_t port);
 
+            const std::string& get_auth_password();
+            void set_auth_password(const std::string& passwd);
+
+            const connection::auth_fn_t& get_auth_fn();
+            void set_auth_fn(connection::auth_fn_t fn);
+
             int start();
 
             int reset();
@@ -202,6 +208,7 @@ namespace hiredis {
             static void on_connected_wrapper(const struct redisAsyncContext *, int status);
             static void on_disconnected_wrapper(const struct redisAsyncContext *, int status);
 
+            static void on_reply_auth(cmd_exec *cmd, redisAsyncContext *c, void *r, void *privdata);
 
             void remove_connection_key(const std::string &name);
 
@@ -224,6 +231,9 @@ namespace hiredis {
                 size_t cmd_buffer_size;
             };
             config_t conf;
+
+            // 登入信息
+            connection::auth_info_t auth;
 
             // 槽信息
             struct slot_status {

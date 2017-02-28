@@ -54,6 +54,22 @@ namespace hiredis {
             return error_code::REDIS_HAPP_OK;
         }
 
+        const std::string& raw::get_auth_password() {
+            return auth.password;
+        }
+
+        void raw::set_auth_password(const std::string& passwd) {
+            auth.password = passwd;
+        }
+
+        const connection::auth_fn_t& raw::get_auth_fn() {
+            return auth.auth_fn;
+        }
+
+        void raw::set_auth_fn(connection::auth_fn_t fn) {
+            auth.auth_fn = fn;
+        }
+
         int raw::start() {
             // just do nothing
             return error_code::REDIS_HAPP_OK;
@@ -537,6 +553,40 @@ namespace hiredis {
 
             // 释放资源
             self->release_connection(false, status);
+        }
+
+        void raw::on_reply_auth(cmd_exec *cmd, redisAsyncContext * rctx, void *r, void *privdata) {
+            redisReply *reply = reinterpret_cast<redisReply *>(r);
+            raw *self = cmd->holder.r;
+            assert(rctx);
+
+            // 出错，重新拉取
+            if (NULL == reply || 0 != HIREDIS_HAPP_STRNCASE_CMP("OK", reply->str, 2)) {
+                if (REDIS_CONN_TCP == rctx->c.connection_type) {
+                    self->log_info("tcp:%s:%d AUTH failed. %s", 
+                        rctx->c.tcp.host? rctx->c.tcp.host: (rctx->c.tcp.source_addr? rctx->c.tcp.source_addr: "UNKNOWN"),
+                        rctx->c.tcp.port, reply->str? reply->str: ""
+                    );
+                } else if (REDIS_CONN_UNIX == rctx->c.connection_type) {
+                    self->log_info("unix:%s AUTH failed. %s", 
+                    rctx->c.unix_sock.path? rctx->c.unix_sock.path: "NULL",
+                        reply->str? reply->str: ""
+                    );
+                } else {
+                    self->log_info("AUTH failed. %s", reply->str? reply->str: "");
+                }
+            } else {
+                if (REDIS_CONN_TCP == rctx->c.connection_type) {
+                    self->log_info("tcp:%s:%d AUTH success.", 
+                        rctx->c.tcp.host? rctx->c.tcp.host: (rctx->c.tcp.source_addr? rctx->c.tcp.source_addr: "UNKNOWN"),
+                        rctx->c.tcp.port
+                    );
+                } else if (REDIS_CONN_UNIX == rctx->c.connection_type) {
+                    self->log_info("unix:%s AUTH success.", rctx->c.unix_sock.path? rctx->c.unix_sock.path: "NULL");
+                } else {
+                    self->log_info("AUTH success.");
+                }
+            }
         }
 
         void raw::log_debug(const char *fmt, ...) {
