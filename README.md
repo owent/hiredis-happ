@@ -6,7 +6,7 @@ Function
 ------
 1. auto reconnect
 2. support redis cluster
-3. [TODO] support redis sential
+3. ~~[TODO] support redis sential~~
 4. support raw redis connection
 
 Usage
@@ -25,7 +25,8 @@ make;
 make install
 ```
 
-### Windows + MSVC(hiredis do not support MS VC now, so it's untested)
+### Windows + MSVC
+[hiredis](https://github.com/redis/hiredis) does not support windows and the [Microsoft's branch](https://github.com/MSOpenTech/redis) has no implement *[redisFormatSdsCommandArgv](https://github.com/redis/hiredis/blob/41b07dab5ed4c5d5679ba4b8a0fb68503c127dda/hiredis.h#L130)*, so it's unavailable on Windows now.
 ```bat
 git clone https://github.com/owt5008137/hiredis-happ.git
 mkdir hiredis-happ/build
@@ -53,6 +54,13 @@ msbuild hiredis-happ.sln /p:Configuration=RelWithDebInfo
 + **LIBHIREDIS_INCLUDE_DIRS** and **LIBHIREDIS_LIBRARIES**: Where to find hiredis libraries and include directory, these two option should be set both.
 + **LIBHIREDIS_USING_SRC**: If **LIBHIREDIS_INCLUDE_DIRS** is the source directory of hiredis
 
+### Sample
+See [sample_cluster_cli](sample/sample_cluster_cli) for redis cluster practice and [sample_raw_cli](sample/sample_raw_cli) for raw redis connection.
+
+Both [happ_cluster](include/detail/happ_cluster.h) and [happ_raw](include/detail/happ_raw.h) support auto reconnecting and retry when cmd failed.
+
+You can also custom how to print log by using *set_log_writer* to help you to find any problem.
+
 Document
 ------
 See [doc](doc) 
@@ -66,9 +74,10 @@ This lib only support Request-Response commands now.(means every request should 
 + unsubscribe
 + monitor
 
-Environment  | Linux (GCC)         | Windows 
+Environment  | Linux+OSX (GCC+Clang)         | Windows 
 -------------|---------------------|---------
 Build Status | [![Build Status](https://travis-ci.org/owt5008137/hiredis-happ.svg)](https://travis-ci.org/owt5008137/hiredis-happ) | [![Build status](https://ci.appveyor.com/api/projects/status/tp0bkc9ltorakfvs?svg=true)](https://ci.appveyor.com/project/owt5008137/hiredis-happ)
+Compiler | linux-gcc-4.4 <br /> linux-gcc-4.8 <br /> linux-gcc-4.9 <br /> linux-gcc-6 <br /> linux-clang-3.5 <br /> osx-apple-clang-6.0 <br /> | ~~MSVC 14~~<br /> ~~MSVC 15~~<br /> Cygwin
 
 
 ### Directory list

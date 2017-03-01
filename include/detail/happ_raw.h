@@ -200,14 +200,14 @@ namespace hiredis {
             };
             config_t conf;
 
-            // 登入信息
+            // authorization information
             connection::auth_info_t auth;
 
-            // 数据连接信息
+            // current connection
             connection_ptr_t conn_;
 
 
-            // 定时器重入列表
+            // timers
             struct timer_t {
                 time_t last_update_sec;
                 time_t last_update_usec;
@@ -227,7 +227,7 @@ namespace hiredis {
             };
             timer_t timer_actions;
 
-            // 回调接口列表
+            // callbacks
             struct callback_set_t {
                 onconnect_fn_t on_connect;
                 onconnected_fn_t on_connected;

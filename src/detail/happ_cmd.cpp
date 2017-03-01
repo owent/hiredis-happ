@@ -19,7 +19,7 @@ namespace hiredis {
     namespace happ {
         cmd_exec* cmd_exec::create(holder_t holder, callback_fn_t cbk, void* pridata, size_t buffer_len) {
             size_t sum_len = sizeof(cmd_exec) + buffer_len;
-            // 对齐到sizeof(void*)字节，以便执行内存对齐
+            // padding to sizeof(void*)
             sum_len = (sum_len + sizeof(void*) - 1) & (~(sizeof(void*) - 1));
 
             cmd_exec* ret = reinterpret_cast<cmd_exec*>(malloc(sum_len));

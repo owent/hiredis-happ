@@ -60,12 +60,12 @@ namespace hiredis {
             static void dump(std::ostream& out, redisReply* reply, int ident = 0);
         HIREDIS_HAPP_PRIVATE:
             /**
-             * @brief 创建cmd对象
-             * @param holder 持有者
-             * @param cbk 回调函数
-             * @param pridata 回调参数指针
-             * @param buff_len 额外分配的内存块（如果回调参数指针不够大，可用于减少内存分配次数）
-             * @return 政工返回创建的cmd对象
+             * @brief create cmd object
+             * @param holder owner of this
+             * @param cbk callback when cmd finished
+             * @param pridata private data
+             * @param buff_len alloacte some memory inner cmd(this can be used to store some more data for later usage)
+             * @return address of cmd object if success
              */
             static cmd_exec* create(holder_t holder, callback_fn_t cbk, void* pridata, size_t buffer_len);
             static void destroy(cmd_exec* c);

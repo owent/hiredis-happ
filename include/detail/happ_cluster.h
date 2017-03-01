@@ -232,23 +232,23 @@ namespace hiredis {
             };
             config_t conf;
 
-            // 登入信息
+            // authorization information
             connection::auth_info_t auth;
 
-            // 槽信息
+            // slot information
             struct slot_status {
                 enum type { INVALID = 0, UPDATING, OK };
             };
             slot_t slots[HIREDIS_HAPP_SLOT_NUMBER];
             slot_status::type slot_flag;
-            // 更新完Slot重入列表
+            // retry cmd queue after slots reloaded
             std::list<cmd_t *> slot_pending;
 
-            // 数据连接信息
+            // connection pool
             connection_map_t connections;
 
 
-            // 定时器重入列表
+            // timer
             struct timer_t {
                 time_t last_update_sec;
                 time_t last_update_usec;
@@ -269,7 +269,7 @@ namespace hiredis {
             };
             timer_t timer_actions;
 
-            // 回调接口列表
+            // callbacks 
             struct callback_set_t {
                 onconnect_fn_t on_connect;
                 onconnected_fn_t on_connected;

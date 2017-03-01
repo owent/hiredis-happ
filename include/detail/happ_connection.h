@@ -138,7 +138,7 @@ namespace hiredis {
             holder_t holder;
             redisAsyncContext *context;
 
-            // 回包响应列表
+            // cmds inner this connection
             std::list<cmd_exec *> reply_list;
             status::type conn_status;
         };

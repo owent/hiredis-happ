@@ -88,12 +88,13 @@ namespace hiredis {
             }
 
             switch (conn_status) {
-            case status::DISCONNECTED: { // 未连接则直接失败
+            case status::DISCONNECTED: { // failed if diconnected
                 return error_code::REDIS_HAPP_CONNECTION;
             }
 
-            // 正在连接也直接发送，hiredis底层会缓存队列
-            // 不发送会导致连接回调不被触发
+            // call redisAsyncFormattedCommand if connecting or connected. 
+            // this request will be added to hiredis's request queue
+            // we should send data in order to trigger callback
             case status::CONNECTING:
             case status::CONNECTED: {
                 int res = 0;
@@ -142,7 +143,7 @@ namespace hiredis {
             }
             }
 
-            // 未知异常，回收cmd
+            // unknown error, recycle cmd
             c->call_reply(error_code::REDIS_HAPP_UNKNOWD, context, NULL);
             cmd_exec::destroy(c);
 
@@ -188,7 +189,7 @@ namespace hiredis {
 
         int connection::call_reply(cmd_exec *c, void *r) {
             if (NULL == context) {
-                // 本接口要保证c被消耗掉
+                // make sure to destroy cmd
                 if (NULL != c) {
                     c->err = error_code::REDIS_HAPP_NOT_FOUND;
                     c->call_reply(c->err, context, r);
@@ -201,7 +202,7 @@ namespace hiredis {
             cmd_exec *sc = pop_reply(c);
 
             if (NULL == sc) {
-                // 本接口要保证c被消耗掉
+                // make sure to destroy cmd
                 if (NULL != c) {
                     c->err = error_code::REDIS_HAPP_NOT_FOUND;
                     c->call_reply(c->err, context, r);
@@ -210,7 +211,7 @@ namespace hiredis {
                 return error_code::REDIS_HAPP_NOT_FOUND;
             }
 
-            // 错误码重定向
+            // translate error code
             if (REDIS_OK != context->err) {
                 sc->err = error_code::REDIS_HAPP_HIREDIS;
             } else if (r) {
@@ -242,7 +243,7 @@ namespace hiredis {
                 return NULL;
             }
 
-            // 先处理掉所有过期请求
+            // first, deal with all expired cmd
             while (!reply_list.empty() && reply_list.front() != c) {
                 cmd_exec *expired_c = reply_list.front();
                 reply_list.pop_front();
@@ -264,12 +265,12 @@ namespace hiredis {
                 redisAsyncDisconnect(context);
             }
 
-            // 回包列表
+            // reply list
             while (!reply_list.empty()) {
                 cmd_exec *expired_c = reply_list.front();
                 reply_list.pop_front();
 
-                // context 已被关闭
+                // context may already be closed here
                 expired_c->call_reply(error_code::REDIS_HAPP_CONNECTION, NULL, NULL);
                 cmd_exec::destroy(expired_c);
             }
@@ -280,7 +281,8 @@ namespace hiredis {
 
         void connection::make_sequence() {
             do {
-// ID主要用于判定超时的时候，防止地址或名称重用，超时时间内64位整数不可能会重复
+// sequence will be used to make a distinction between connections when address is reused
+// it can not be duplicated in a short time
 #if defined(HIREDIS_HAPP_ATOMIC_STD)
                 static std::atomic<uint64_t> seq_alloc(0);
                 sequence = seq_alloc.fetch_add(1);

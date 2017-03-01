@@ -81,7 +81,7 @@ namespace hiredis {
                 redisAsyncDisconnect(conn_->get_context());
             }
 
-            // 释放timer pending list
+            // release timer pending list
             while (!timer_actions.timer_pending.empty()) {
                 cmd_t *cmd = timer_actions.timer_pending.front().cmd;
                 timer_actions.timer_pending.pop_front();
@@ -169,7 +169,7 @@ namespace hiredis {
                 return NULL;
             }
 
-            // 转发到建立连接
+            // move cmd into connection
             connection_t *conn_inst = get_connection();
             if (NULL == conn_inst) {
                 conn_inst = make_connection();
@@ -209,22 +209,22 @@ namespace hiredis {
                 return NULL;
             }
 
-            // 主循环逻辑回包处理
+            // main loop
             int res = conn->redis_cmd(cmd, on_reply_wrapper);
 
             if (REDIS_OK != res) {
-                // hiredis的代码，仅在网络关闭和命令错误会返回出错
-                // 其他情况都应该直接出错回调
+                // some version of hiredis will miss onDisconnect, patch it
+                // other situation should trigger error
                 if (conn->get_context()->c.flags & (REDIS_DISCONNECTING | REDIS_FREEING)) {
-                    // Fix hiredis 某个版本 的BUG，可能会漏调用onDisconnect
-                    // 只要不在hiredis的回调函数内，一旦标记了REDIS_DISCONNECTING或REDIS_FREEING则是已经释放完毕了
-                    // 如果是回调函数，则出回调以后会调用disconnect，从而触发disconnect回调，这里就不需要释放了
+                    // Patch: hiredis will miss onDisconnect in some older version
+                    // If not in hiredis's callback, REDIS_DISCONNECTING or REDIS_FREEING means resource is freed
+                    // If in hiredis's callback, disconnect will be called after callback finished, so do nothing here
                     if (conn_.get() == conn && !(conn->get_context()->c.flags & REDIS_IN_CALLBACK)) {
                         release_connection(false, error_code::REDIS_HAPP_CONNECTION);
                     }
 
                     // conn = NULL;
-                    // 连接丢失需要重连，先随机重新找可用连接
+                    // retry if the connection lost
                     return retry(cmd, NULL);
                 } else {
                     call_cmd(cmd, error_code::REDIS_HAPP_HIREDIS, conn->get_context(), NULL);
@@ -238,11 +238,11 @@ namespace hiredis {
         }
 
         raw::cmd_t *raw::retry(cmd_t *cmd, connection_t *conn) {
-            // 重试次数较少则直接重试
             if (NULL == cmd) {
                 return NULL;
             }
 
+            // First, retry immediately for several times.
             if (false == is_timer_active() || cmd->ttl > HIREDIS_HAPP_TTL / 2) {
                 if (NULL == conn) {
                     return exec(cmd);
@@ -251,8 +251,8 @@ namespace hiredis {
                 }
             }
 
-            // 重试次数较多则等一会重试
-            // 延迟重试的命令不记录连接信息，因为可能到时候连接已经丢失
+            // If it's still failed, maybe it will take some more time to recover the connection,
+            // so wait for a while and retry again.
             add_timer_cmd(cmd);
             return cmd;
         }
@@ -299,6 +299,29 @@ namespace hiredis {
                 timer_actions.timer_conn.timeout = timer_actions.last_update_sec + conf.timer_timeout_sec;
             }
 
+            // auth command
+            if (auth.auth_fn || !auth.password.empty()) {
+                // AUTH cmd
+                cmd_t *cmd = create_cmd(on_reply_auth, NULL);
+                if (NULL != cmd) {
+                    int len = 0;
+                    if (auth.auth_fn) {
+                        const std::string& passwd = auth.auth_fn(&ret, auth.password);
+                        len = cmd->format("AUTH %b", passwd.c_str(), passwd.size());
+                    } else if (!auth.password.empty()) {
+                        len = cmd->format("AUTH %b", auth.password.c_str(), auth.password.size());
+                    }
+
+                    if (len <= 0) {
+                        log_info("format cmd AUTH failed");
+                        destroy_cmd(cmd);
+                        return NULL;
+                    }
+
+                    exec(&ret, cmd);
+                }
+            }
+            
             // event callback
             if (callbacks.on_connect) {
                 callbacks.on_connect(this, &ret);
@@ -316,11 +339,11 @@ namespace hiredis {
 
             connection_t::status::type from_status = conn_->set_disconnected(close_fd);
             switch (from_status) {
-            // 递归调用，直接退出
+            // recursion, exit
             case connection_t::status::DISCONNECTED:
                 return true;
 
-            // 正在连接，响应connected事件
+            // connecting, call on_connected event
             case connection_t::status::CONNECTING:
                 if (callbacks.on_connected) {
                     callbacks.on_connected(this, conn_.get(), conn_->get_context(),
@@ -328,7 +351,7 @@ namespace hiredis {
                 }
                 break;
 
-            // 已连接，响应disconnected事件
+            // connecting, call on_disconnected event
             case connection_t::status::CONNECTED:
                 if (callbacks.on_disconnected) {
                     callbacks.on_disconnected(this, conn_.get(), conn_->get_context(), status);
@@ -449,7 +472,7 @@ namespace hiredis {
                 return;
             }
 
-            // 丢失连接
+            // lost connection
             if (NULL != c->callback) {
                 call_cmd(c, error_code::REDIS_HAPP_UNKNOWD, NULL, NULL);
             }
@@ -483,7 +506,7 @@ namespace hiredis {
             cmd_t *cmd = reinterpret_cast<cmd_t *>(privdata);
             raw *self = cmd->holder.r;
 
-            // 正在释放的连接重试也只会死循环，所以直接失败退出
+            // retry if disconnecting will lead to a infinite loop
             if (c->c.flags & REDIS_DISCONNECTING) {
                 self->log_debug("redis cmd %p reply when disconnecting context err %d,msg %s", cmd, c->err, NULL == c->errstr ? detail::NONE_MSG : c->errstr);
                 cmd->err = error_code::REDIS_HAPP_CONNECTION;
@@ -493,7 +516,7 @@ namespace hiredis {
 
             if (REDIS_ERR_IO == c->err && REDIS_ERR_EOF == c->err) {
                 self->log_debug("redis cmd %p reply context err %d and will retry, %s", cmd, c->err, c->errstr);
-                // 网络错误则重试
+                // retry if it's a network error
                 conn->pop_reply(cmd);
                 self->retry(cmd);
                 return;
@@ -501,22 +524,22 @@ namespace hiredis {
 
             if (REDIS_OK != c->err || NULL == r) {
                 self->log_debug("redis cmd %p reply context err %d and abort, %s", cmd, c->err, NULL == c->errstr ? detail::NONE_MSG : c->errstr);
-                // 其他错误则向上传递
+                // other errors will be passed to caller
                 conn->call_reply(cmd, r);
                 return;
             }
 
             redisReply *reply = reinterpret_cast<redisReply *>(r);
 
-            // 错误处理
+            // error handler
             if (REDIS_REPLY_ERROR == reply->type) {
                 self->log_debug("redis cmd %p reply error and abort, msg: %s", cmd, NULL == reply->str ? detail::NONE_MSG : reply->str);
-                // 其他错误则向上传递
+                // other errors will be passed to caller
                 conn->call_reply(cmd, r);
                 return;
             }
 
-            // 正常回调
+            // success and call callback
             self->log_debug("redis cmd %p got reply success.(ttl=%3d)", cmd, NULL == cmd ? -1 : static_cast<int>(cmd->ttl));
             conn->call_reply(cmd, r);
         }
@@ -535,7 +558,7 @@ namespace hiredis {
                 self->callbacks.on_connected(self, conn, c, status);
             }
 
-            // 失败则释放资源
+            // failed, release resource
             if (REDIS_OK != status) {
                 self->log_debug("connect to %s failed, status: %d, msg: %s", conn->get_key().name.c_str(), status, c->errstr);
                 self->release_connection(false, status);
@@ -551,7 +574,7 @@ namespace hiredis {
             connection_t *conn = reinterpret_cast<connection_t *>(c->data);
             raw *self = conn->get_holder().r;
 
-            // 释放资源
+            // release rreource
             self->release_connection(false, status);
         }
 
@@ -560,7 +583,7 @@ namespace hiredis {
             raw *self = cmd->holder.r;
             assert(rctx);
 
-            // 出错，重新拉取
+            // error and log
             if (NULL == reply || 0 != HIREDIS_HAPP_STRNCASE_CMP("OK", reply->str, 2)) {
                 if (REDIS_CONN_TCP == rctx->c.connection_type) {
                     self->log_info("tcp:%s:%d AUTH failed. %s", 

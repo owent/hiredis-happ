@@ -9,10 +9,10 @@
 #
 environment:
     global:
-        CYG_ROOT: C:\cygwin64
+        CYG_ROOT: C:/cygwin64
         CYG_MIRROR: http://cygwin.mirror.constant.com
-        CYG_CACHE: C:\cygwin64\var\cache\setup
-        CYG_BASH: C:\cygwin64\bin\bash
+        CYG_CACHE: C:/cygwin64/var/cache/setup
+        CYG_BASH: C:/cygwin64/bin/bash.exe
 
 #
 # Cache Cygwin files to speed up build
@@ -36,9 +36,15 @@ init:
 # Install needed build dependencies
 # 
 install:
-    - ps: 'Start-FileDownload "http://cygwin.com/setup-x86_64.exe" -FileName "setup-x86_64.exe"'
-    - 'setup-x86_64.exe --quiet-mode --no-shortcuts --only-site --root "%CYG_ROOT%" --site "%CYG_MIRROR%" --local-package-dir "%CYG_CACHE%" --packages autoconf,automake,bison,gcc-core,gcc-g++,libtool,make,python,gettext-devel,gettext,intltool,libiconv,pkg-config,git,curl,wget,cmake > NUL 2>&1'
-    - '%CYG_BASH% -lc "cygcheck -dc cygwin"'
+    - set
+    - ps: |
+        Start-FileDownload "http://cygwin.com/setup-x86_64.exe" -FileName "setup-x86_64.exe"
+
+        echo "Installing cygwin64"
+
+        Invoke-Expression -Command ".\setup-x86_64.exe --quiet-mode --no-shortcuts --only-site --root '$env:CYG_ROOT' --site '$env:CYG_MIRROR' --local-package-dir '$env:CYG_CACHE' --packages 'autoconf,automake,bison,gcc-core,gcc-g++,libtool,make,python,gettext-devel,gettext,intltool,libiconv,pkg-config,git,curl,wget,cmake,libevent-devel'"
+
+        Invoke-Expression -Command "$env:CYG_BASH -lc 'cygcheck -dc cygwin'"
 
 # Cygwin build script
 #
@@ -49,13 +55,20 @@ install:
 # default file handles. Ensure a dummy file descriptor is opened with 'exec'.
 #
 build_script:
-    - 'echo Building...'
-    - '%CYG_BASH% -lc "cd $APPVEYOR_BUILD_FOLDER; exec 0</dev/null; mkdir -p build; cd build; cmake .. -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON && make -j4;"'
+    - ps: |
+        $CYGWIN_DIR=$env:APPVEYOR_BUILD_FOLDER -Replace "\\","/"
+
+        echo "Building... $env:CYG_BASH -lc 'cd ""$CYGWIN_DIR""; pwd; mkdir -p build; cd build; cmake .. -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON && make -j4;'"
+
+        Invoke-Expression -Command "$env:CYG_BASH -lc 'cd ""$CYGWIN_DIR""; pwd; mkdir -p build; cd build; cmake .. -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON && make -j4;'"
 #
 # Run unit test
 # 
 test_script:
-    - '%CYG_BASH% -lc "cd $APPVEYOR_BUILD_FOLDER; exec 0</dev/null; build/test/hiredis-happ-test"'
+    - ps: |
+        $CYGWIN_DIR=$env:APPVEYOR_BUILD_FOLDER -Replace "\\","/"
+
+        Invoke-Expression -Command "$env:CYG_BASH -lc 'cd ""$CYGWIN_DIR""; pwd; build/test/hiredis-happ-test'"
 
 #
 # Only build the master branch

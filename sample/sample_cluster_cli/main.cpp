@@ -47,12 +47,12 @@ extern "C" {
 #include <Windows.h>
 #define THREAD_SPIN_COUNT 2000
 
-typedef HANDLE thread_t;
+typedef HANDLE sample_thread_t;
 #define THREAD_FUNC unsigned __stdcall
 #define THREAD_CREATE(threadvar, fn, arg)                                     \
     do {                                                                      \
         uintptr_t threadhandle = _beginthreadex(NULL, 0, fn, (arg), 0, NULL); \
-        (threadvar) = (thread_t)threadhandle;                                 \
+        (threadvar) = (sample_thread_t)threadhandle;                                 \
     } while (0)
 #define THREAD_JOIN(th) WaitForSingleObject(th, INFINITE)
 #define THREAD_RETURN return (0)
@@ -63,7 +63,7 @@ typedef HANDLE thread_t;
 #include <errno.h>
 #include <unistd.h>
 
-typedef pthread_t thread_t;
+typedef pthread_t sample_thread_t;
 #define THREAD_FUNC void *
 #define THREAD_CREATE(threadvar, fn, arg) pthread_create(&(threadvar), NULL, fn, arg)
 #define THREAD_JOIN(th) pthread_join(th, NULL)
@@ -214,7 +214,7 @@ static void on_timer_proc(
         usec %= 10000000;
     }
 
-    // 提取命令
+    // get command for cli
     pthread_mutex_lock(&g_mutex);
     std::list<std::string> pending_cmds;
     if (!g_cmds.empty()) {
@@ -222,7 +222,7 @@ static void on_timer_proc(
     }
     pthread_mutex_unlock(&g_mutex);
 
-    // 执行命令
+    // run command
     while (!pending_cmds.empty()) {
         std::string cmd_line = pending_cmds.front();
         pending_cmds.pop_front();
@@ -248,7 +248,7 @@ static void on_timer_proc(
             is_raw = true;
         }
 
-        // 生成参数
+        // get parameters
         std::vector<const char *> pc;
         std::vector<size_t> ps;
         for (size_t i = 0; i < cmds.size(); ++i) {
@@ -256,7 +256,7 @@ static void on_timer_proc(
             ps.push_back(cmds[i].size());
         }
 
-        if (is_raw) { // 执行特殊命令
+        if (is_raw) { // run special command
 
             const hiredis::happ::cluster::slot_t *slot_info = NULL;
             if (cmds.size() > 1) {
@@ -281,7 +281,7 @@ static void on_timer_proc(
             }
             conn->redis_raw_cmd(raw_cbk, reinterpret_cast<void *>(raw_cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
 
-        } else { // 执行请求-回包命令
+        } else { // run Request-Response command
             if (k >= 0 && k < static_cast<int>(cmds.size())) {
                 cmd = cmds[k];
                 g_clu.exec(cmd.c_str(), cmd.size(), cbk, reinterpret_cast<void *>(cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
@@ -340,20 +340,20 @@ int main(int argc, char *argv[]) {
     main_loop = event_init();
 #endif
 
-    // 事件分发器
+    // set callbacks
     g_clu.set_on_connect(on_connect_cbk);
     g_clu.set_on_connected(on_connected_cbk);
     g_clu.set_on_disconnected(on_disconnected_cbk);
-    g_clu.set_timeout(5); // 测试工具，5秒超时
+    g_clu.set_timeout(5); // set timeout
 
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
-    // 设置定时器
+    // setup timer using libuv
     uv_timer_t timer_obj;
     uv_timer_init(main_loop, &timer_obj);
     uv_timer_start(&timer_obj, on_timer_proc, 1000, 100);
 
 #elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
-    // 设置定时器
+    // setup timer using libevent
     struct timeval tv;
     struct event ev;
     event_assign(&ev, main_loop, -1, EV_PERSIST, on_timer_proc, NULL);
@@ -362,12 +362,12 @@ int main(int argc, char *argv[]) {
     evtimer_add(&ev, &tv);
 #endif
 
-    // 设置日志
+    // set log writer to write everything to console
     g_clu.set_log_writer(on_log_fn, on_log_fn, 65536);
 
     g_clu.start();
 
-    thread_t uv_thd;
+    sample_thread_t uv_thd;
     pthread_mutex_init(&g_mutex, NULL);
     THREAD_CREATE(uv_thd, proc_uv_thd, NULL);
 
@@ -377,7 +377,7 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        // 追加命令
+        // append command
         pthread_mutex_lock(&g_mutex);
         g_cmds.push_back(cmd);
         pthread_mutex_unlock(&g_mutex);

@@ -1,11 +1,12 @@
 language: cpp
 
-
 env:
   global:
     - LANG="zh_CN.UTF-8"
-    - CMAKE_PREFIX=$HOME/prebuilt/cmake ;
-    - CMAKE_VERSION=3.5.2 ;
+    - CMAKE_PREFIX=$HOME/prebuilt/cmake
+    - CMAKE_URL=https://cmake.org/files/v3.7/cmake-3.7.2-Linux-x86_64.sh
+    - CMAKE_BIN=$HOME/prebuilt/cmake/bin/cmake
+
 matrix:
   include:
     - os: osx
@@ -14,33 +15,35 @@ matrix:
       env: USE_CC=gcc USE_CXX=g++
     - os: linux
       dist: trusty
-      sudo: required
+      sudo: false
       env: USE_CC=gcc USE_CXX=g++
     - os: linux
       dist: trusty
-      sudo: required
+      sudo: false
       env: USE_CC=gcc-4.4 USE_CXX=g++-4.4
     - os: linux
       dist: trusty
-      sudo: required
+      sudo: false
       env: USE_CC=gcc-4.9 USE_CXX=g++-4.9
     - os: linux
       dist: trusty
-      sudo: required
+      sudo: false
       env: USE_CC=gcc-6 USE_CXX=g++-6
     - os: linux
       dist: trusty
-      sudo: required
+      sudo: false
       env: USE_CC=clang USE_CXX=clang++
     # - os: linux
     #   dist: trusty
-    #   sudo: required
+    #   sudo: false
     #   env: USE_CC=clang-3.8 USE_CXX=clang++-3.8
 
 addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
+      #- sourceline: 'ppa:george-edison55/cmake-3.x'
+      #  key_url: null
       # - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.8 main'
       #   key_url: 'http://apt.llvm.org/llvm-snapshot.gpg.key'
 
@@ -66,23 +69,35 @@ addons:
       # - libclang-common-3.8-dev
       # - libclang-3.8-dev
 
-before_script:
-  - REPO_DIR=$PWD;
-  - cd /tmp
-  - if [ ! -e "$CMAKE_PREFIX/bin/cmake" ]; then
-        mkdir -p "$CMAKE_PREFIX";
-        wget -c "https://github.com/Kitware/CMake/archive/v$CMAKE_VERSION.tar.gz" -O CMake-$CMAKE_VERSION.tar.gz ;
-        tar -xvf CMake-$CMAKE_VERSION.tar.gz;
-        cd CMake-$CMAKE_VERSION ;
-        ./bootstrap --prefix=$CMAKE_PREFIX;
-        make -j4 install;
-        cd -;
-        rm -rf CMake-$CMAKE_VERSION CMake-$CMAKE_VERSION.tar.gz;
+before_install:
+  # - if [ "$TRAVIS_OS_NAME" == "linux" ]; then apt-get -qq -y update; fi # sudo: false can not install package through apt-get
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; fi
+
+install: >-
+    if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+
+      if [ ! -e "$CMAKE_BIN" ]; then
+
+        curl -L --insecure "$CMAKE_URL" -o "cmake-Linux-x86_64.sh";
+
+        sh cmake-Linux-x86_64.sh --prefix=$CMAKE_PREFIX --skip-license ;
+
+      fi
+
     fi
-  - cd "$REPO_DIR";
+
+    if [ "$TRAVIS_OS_NAME" == "osx" ]; then 
+
+      brew upgrade cmake; 
+
+      brew install --HEAD libuv; 
+
+      export CMAKE_BIN=$(which cmake); 
+
+    fi
 
 after_success:
-  - bin/hiredis-happ-test
+  - test/hiredis-happ-test
   
 script: 
   - export CC=$USE_CC
@@ -90,14 +105,13 @@ script:
   - REPO_DIR=$PWD;
   - mkdir -p tools && cd tools
   - mkdir -p $REPO_DIR/build && cd $REPO_DIR/build ;
-  - echo "$CMAKE_PREFIX/bin/cmake .. -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON -DCMAKE_C_COMPILER=$USE_CC -DCMAKE_CXX_COMPILER=$USE_CXX" ;
-  - $CMAKE_PREFIX/bin/cmake .. -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON -DCMAKE_C_COMPILER=$USE_CC -DCMAKE_CXX_COMPILER=$USE_CXX ;
+  - echo "$CMAKE_BIN .. -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON -DCMAKE_C_COMPILER=$USE_CC -DCMAKE_CXX_COMPILER=$USE_CXX" ;
+  - $CMAKE_BIN .. -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON -DCMAKE_C_COMPILER=$USE_CC -DCMAKE_CXX_COMPILER=$USE_CXX ;
   - make -j4 ;
-
-install: true
 
 cache: 
     apt: true
+    ccache: true
     directories:
     - $CMAKE_PREFIX
     

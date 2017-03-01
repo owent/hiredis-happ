@@ -96,7 +96,7 @@ namespace hiredis {
             std::vector<redisAsyncContext *> all_contexts;
             all_contexts.reserve(connections.size());
 
-            // 先预存所有连接，再关闭
+            // Store connections first, the iterator may be invalid when connections changed
             {
                 connection_map_t::const_iterator it_b = connections.begin();
                 connection_map_t::const_iterator it_e = connections.end();
@@ -116,7 +116,7 @@ namespace hiredis {
                 redisAsyncDisconnect(all_contexts[i]);
             }
 
-            // 释放slot pending list
+            // release slot pending list
             while (!slot_pending.empty()) {
                 cmd_t *cmd = slot_pending.front();
                 slot_pending.pop_front();
@@ -130,7 +130,7 @@ namespace hiredis {
             }
 
 
-            // 释放timer pending list
+            // release timer pending list
             while (!timer_actions.timer_pending.empty()) {
                 cmd_t *cmd = timer_actions.timer_pending.front().cmd;
                 timer_actions.timer_pending.pop_front();
@@ -229,12 +229,12 @@ namespace hiredis {
                 return NULL;
             }
 
-            // 需要在这里转发cmd_t的所有权
+            // calculate the slot index
             if (NULL != key && 0 != ks) {
                 cmd->engine.slot = static_cast<int>(crc16(key, ks) % HIREDIS_HAPP_SLOT_NUMBER);
             }
 
-            // ttl 预判定
+            // ttl pre-judge
             if (0 == cmd->ttl) {
                 log_debug("cmd %p at slot %d ttl expired", cmd, cmd->engine.slot);
                 call_cmd(cmd, error_code::REDIS_HAPP_TTL, NULL, NULL);
@@ -251,7 +251,7 @@ namespace hiredis {
                 return cmd;
             }
 
-            // 指定或随机获取服务器地址
+            // get a connection in the specified slot
             const connection::key_t *conn_key = get_slot_master(cmd->engine.slot);
 
             if (NULL == conn_key) {
@@ -261,7 +261,7 @@ namespace hiredis {
                 return NULL;
             }
 
-            // 转发到建立连接
+            // move cmd into connection
             connection_t *conn_inst = get_connection(conn_key->name);
             if (NULL == conn_inst) {
                 conn_inst = make_connection(*conn_key);
@@ -284,7 +284,7 @@ namespace hiredis {
                 return NULL;
             }
 
-            // ttl 正式判定
+            // ttl
             if (0 == cmd->ttl) {
                 log_debug("cmd %p at slot %d ttl expired", cmd, cmd->engine.slot);
                 call_cmd(cmd, error_code::REDIS_HAPP_TTL, NULL, NULL);
@@ -301,25 +301,25 @@ namespace hiredis {
                 return NULL;
             }
 
-            // 主循环逻辑回包处理
+            // main loop
             int res = conn->redis_cmd(cmd, on_reply_wrapper);
 
             if (REDIS_OK != res) {
-                // hiredis的代码，仅在网络关闭和命令错误会返回出错
-                // 其他情况都应该直接出错回调
+                // some version of hiredis will miss onDisconnect, patch it
+                // other situation should trigger error
                 if (conn->get_context()->c.flags & (REDIS_DISCONNECTING | REDIS_FREEING)) {
-                    // 尝试释放连接信息,避免下一次使用无效连接
+                    // remove the invalid connection, so this connection will not be selected next time.
                     remove_connection_key(conn->get_key().name);
 
-                    // Fix hiredis 某个版本 的BUG，可能会漏调用onDisconnect
-                    // 只要不在hiredis的回调函数内，一旦标记了REDIS_DISCONNECTING或REDIS_FREEING则是已经释放完毕了
-                    // 如果是回调函数，则出回调以后会调用disconnect，从而触发disconnect回调，这里就不需要释放了
+                    // Patch: hiredis will miss onDisconnect in some older version
+                    // If not in hiredis's callback, REDIS_DISCONNECTING or REDIS_FREEING means resource is freed
+                    // If in hiredis's callback, disconnect will be called after callback finished, so do nothing here
                     if (!(conn->get_context()->c.flags & REDIS_IN_CALLBACK)) {
                         release_connection(conn->get_key(), false, error_code::REDIS_HAPP_CONNECTION);
                     }
 
                     // conn = NULL;
-                    // 连接丢失需要重连，先随机重新找可用连接
+                    // retry and reload slot information if the connection lost
                     cmd->engine.slot = -1;
                     return retry(cmd, NULL);
                 } else {
@@ -334,11 +334,11 @@ namespace hiredis {
         }
 
         cluster::cmd_t *cluster::retry(cmd_t *cmd, connection_t *conn) {
-            // 重试次数较少则直接重试
             if (NULL == cmd) {
                 return NULL;
             }
 
+            // First, retry immediately for several times.
             if (false == is_timer_active() || cmd->ttl > HIREDIS_HAPP_TTL / 2) {
                 if (NULL == conn) {
                     return exec(NULL, 0, cmd);
@@ -347,8 +347,8 @@ namespace hiredis {
                 }
             }
 
-            // 重试次数较多则等一会重试
-            // 延迟重试的命令不记录连接信息，因为可能到时候连接已经丢失
+            // If it's still failed, maybe it will take some more time to recover the connection,
+            // so wait for a while and retry again.
             add_timer_cmd(cmd);
             return cmd;
         }
@@ -397,7 +397,7 @@ namespace hiredis {
                 return &slots[index].hosts.front();
             }
 
-            // 随机获取地址
+            // random a address
             index = (detail::random() & 0xFFFF) % HIREDIS_HAPP_SLOT_NUMBER;
             if (slots[index].hosts.empty()) {
                 return &conf.init_connection;
@@ -482,7 +482,7 @@ namespace hiredis {
                 // AUTH cmd
                 cmd_t *cmd = create_cmd(on_reply_auth, NULL);
                 if (NULL != cmd) {
-                    int len;
+                    int len = 0;
                     if (auth.auth_fn) {
                         const std::string& passwd = auth.auth_fn(&ret, auth.password);
                         len = cmd->format("AUTH %b", passwd.c_str(), passwd.size());
@@ -493,7 +493,7 @@ namespace hiredis {
                     if (len <= 0) {
                         log_info("format cmd AUTH failed");
                         destroy_cmd(cmd);
-                        return false;
+                        return NULL;
                     }
 
                     exec(&ret, cmd);
@@ -518,11 +518,11 @@ namespace hiredis {
 
             connection_t::status::type from_status = it->second->set_disconnected(close_fd);
             switch (from_status) {
-            // 递归调用，直接退出
+            // recursion, exit
             case connection_t::status::DISCONNECTED:
                 return true;
 
-            // 正在连接，响应connected事件
+            // connecting, call on_connected event
             case connection_t::status::CONNECTING:
                 if (callbacks.on_connected) {
                     callbacks.on_connected(this, it->second.get(), it->second->get_context(),
@@ -530,7 +530,7 @@ namespace hiredis {
                 }
                 break;
 
-            // 已连接，响应disconnected事件
+            // connecting, call on_disconnected event
             case connection_t::status::CONNECTED:
                 if (callbacks.on_disconnected) {
                     callbacks.on_disconnected(this, it->second.get(), it->second->get_context(), status);
@@ -650,7 +650,7 @@ namespace hiredis {
                 return;
             }
 
-            // 丢失连接
+            // lost connection
             if (NULL != c->callback) {
                 call_cmd(c, error_code::REDIS_HAPP_UNKNOWD, NULL, NULL);
             }
@@ -684,7 +684,7 @@ namespace hiredis {
             cmd_t *cmd = reinterpret_cast<cmd_t *>(privdata);
             cluster *self = cmd->holder.clu;
 
-            // 正在释放的连接重试也只会死循环，所以直接失败退出
+            // retry if disconnecting will lead to a infinite loop
             if (c->c.flags & REDIS_DISCONNECTING) {
                 self->log_debug("redis cmd %p reply when disconnecting context err %d,msg %s", cmd, c->err, NULL == c->errstr ? detail::NONE_MSG : c->errstr);
                 cmd->err = error_code::REDIS_HAPP_CONNECTION;
@@ -694,7 +694,7 @@ namespace hiredis {
 
             if (REDIS_ERR_IO == c->err && REDIS_ERR_EOF == c->err) {
                 self->log_debug("redis cmd %p reply context err %d and will retry, %s", cmd, c->err, c->errstr);
-                // 网络错误则重试
+                // retry if it's a network error
                 conn->pop_reply(cmd);
                 self->retry(cmd);
                 return;
@@ -702,22 +702,22 @@ namespace hiredis {
 
             if (REDIS_OK != c->err || NULL == r) {
                 self->log_debug("redis cmd %p reply context err %d and abort, %s", cmd, c->err, NULL == c->errstr ? detail::NONE_MSG : c->errstr);
-                // 其他错误则向上传递
+                // other errors will be passed to caller
                 conn->call_reply(cmd, r);
                 return;
             }
 
             redisReply *reply = reinterpret_cast<redisReply *>(r);
 
-            // 错误处理
+            // error handler
             if (REDIS_REPLY_ERROR == reply->type) {
                 int slot_index = 0;
                 char addr[260] = {0};
 
-                // 检测 MOVED，ASK和CLUSTERDOWN指令
+                // detect MOVED,ASK and CLUSTERDOWN
                 if (0 == HIREDIS_HAPP_STRNCASE_CMP("ASK", reply->str, 3)) {
                     self->log_debug("redis cmd %p %s", cmd, reply->str);
-                    // 发送ASK到目标connection
+                    // send ASK to another connection
                     HIREDIS_HAPP_SSCANF(reply->str + 4, " %d %s", &slot_index, addr);
                     std::string ip;
                     uint16_t port;
@@ -725,23 +725,22 @@ namespace hiredis {
                         connection::key_t conn_key;
                         connection::set_key(conn_key, ip, port);
 
-                        // ASKING 请求
+                        // ASKING request
                         connection_t *ask_conn = self->get_connection(conn_key.name);
                         if (NULL == ask_conn) {
                             ask_conn = self->make_connection(conn_key);
                         }
 
-                        // cmd转移到新的connection，并在完成后执行
+                        // pop from old connection, and run it
                         conn->pop_reply(cmd);
 
                         if (NULL != ask_conn) {
-                            // 先从原始conn队列弹出
                             if (REDIS_OK == redisAsyncCommand(ask_conn->get_context(), on_reply_asking, cmd, "ASKING")) {
                                 return;
                             }
                         }
 
-                        // ASK 不成功则重试
+                        // retry if ASK failed
                         self->retry(cmd);
                         return;
                     }
@@ -758,7 +757,7 @@ namespace hiredis {
                     std::string ip;
                     uint16_t port;
                     if (connection::pick_name(addr, ip, port)) {
-                        // 更新一条slot
+                        // update slot
                         self->slots[slot_index].hosts.clear();
                         self->slots[slot_index].hosts.push_back(connection::key_t());
                         connection::set_key(self->slots[slot_index].hosts.back(), ip, port);
@@ -767,10 +766,11 @@ namespace hiredis {
                         conn->pop_reply(cmd);
                         self->retry(cmd);
 
-                        // 重新拉取slot列表
-                        // TODO 这里是否要强制拉取slots列表？
-                        // 如果不拉取可能丢失从节点信息，但是拉取的话迁移过程中可能会导致更新多次？
-                        // 并且更新slots也是一个比较耗费CPU的操作（16384次list的清空和复制）
+                        // reload all slots
+                        // FIXME: Is it necessary to reload all slots here?
+                        //        If we don't reload all slots, many slot may be expired and will make many cmd has a long delay later.
+                        //        But if we reload all slots, there may be too often to do this if network is not stable for a short time
+                        //        Reload slots will use much more CPU resource than a cmd (clear and copy 16384 lists)
                         self->reload_slots();
                         return;
                     } else {
@@ -784,12 +784,12 @@ namespace hiredis {
                 }
 
                 self->log_debug("redis cmd %p reply error and abort, msg: %s", cmd, NULL == reply->str ? detail::NONE_MSG : reply->str);
-                // 其他错误则向上传递
+                // other errors will be passed to caller
                 conn->call_reply(cmd, r);
                 return;
             }
 
-            // 正常回调
+            // success and call callback
             self->log_debug("redis cmd %p got reply success.(ttl=%3d)", cmd, NULL == cmd ? -1 : static_cast<int>(cmd->ttl));
             conn->call_reply(cmd, r);
         }
@@ -798,17 +798,16 @@ namespace hiredis {
             redisReply *reply = reinterpret_cast<redisReply *>(r);
             cluster *self = cmd->holder.clu;
 
-            // 出错，重新拉取
+            // failed and retry
             if (NULL == reply || reply->elements <= 0 || REDIS_REPLY_ARRAY != reply->element[0]->type) {
                 self->slot_flag = slot_status::INVALID;
 
                 if (!self->slot_pending.empty()) {
                     self->log_info("update slots failed and try to retry again.");
 
-                    // 断线则稍后重试
-                    // 如果没有开启定时器且只有一条连接且该链接处于关闭状态
-                    // 这条消息将会重试TTL次后失败
-                    // 更新slots的命令永远随机slot，不缓存连接信息
+                    // Wait for a while if it's network problem
+                    // this message will also retry for TTL times
+                    // update slots always random a connection
                     cmd->engine.slot = -1;
                     self->add_timer_cmd(cmd);
                 } else {
@@ -832,7 +831,7 @@ namespace hiredis {
                     std::vector<connection::key_t> hosts;
                     for (size_t j = 2; j < slot_node->elements; ++j) {
                         redisReply *addr = slot_node->element[j];
-                        // cluster 数据不正常时，redis可能返回空地址。这时候要忽略
+                        // redis cluster may response a empty list when some error happened
                         if (addr->elements >= 2 && REDIS_REPLY_STRING == addr->element[0]->type && addr->element[0]->str[0] &&
                             REDIS_REPLY_INTEGER == addr->element[1]->type) {
                             hosts.push_back(connection::key_t());
@@ -847,19 +846,19 @@ namespace hiredis {
                             self->log_debug(" -- %s", hosts[j].name.c_str());
                         }
                     }
-                    // 16384次复制
+                    // copy for 16384 times
                     for (; si <= ei; ++si) {
                         self->slots[si].hosts = hosts;
                     }
                 }
             }
 
-            // 先设置状态，然后重试命令。否则会陷入死循环
+            // set status first and then retry, or there will be a infinite loop
             self->slot_flag = slot_status::OK;
 
             self->log_info("update %d slots done", static_cast<int>(reply->elements));
 
-            // 执行待执行队列
+            // run pending list
             while (!self->slot_pending.empty()) {
                 cmd_t *cmd = self->slot_pending.front();
                 self->slot_pending.pop_front();
@@ -873,12 +872,12 @@ namespace hiredis {
             connection_t *conn = reinterpret_cast<connection_t *>(c->data);
             cluster *self = conn->get_holder().clu;
 
-            // ask命令带回的cmd不在任何conn队列中
-            // 所以不需要弹出cmd，直接retry或者调用回调即可
+            // cmd in ask command is not in any connection
+            // so there is no need to pop it, directly retry will be OK
 
             if (REDIS_ERR_IO == c->err && REDIS_ERR_EOF == c->err) {
                 self->log_debug("redis asking err %d and will retry, %s", c->err, c->errstr);
-                // 网络错误则重试
+                // retry if network error
                 self->retry(cmd);
                 return;
             }
@@ -890,7 +889,7 @@ namespace hiredis {
                     cmd->err = error_code::REDIS_HAPP_CONNECTION;
                 }
 
-                // 其他错误则向上传递
+                // other errors should be passed to callback
                 self->call_cmd(cmd, error_code::REDIS_HAPP_CONNECTION, conn->get_context(), r);
                 self->destroy_cmd(cmd);
                 return;
@@ -902,7 +901,7 @@ namespace hiredis {
             }
 
             self->log_debug("redis reply asking err %d and abort, %s", reply->type, NULL == reply->str ? detail::NONE_MSG : reply->str);
-            // 其他错误则向上传递
+            // other errors should be passed to callback
             self->call_cmd(cmd, error_code::REDIS_HAPP_CONNECTION, conn->get_context(), r);
             self->destroy_cmd(cmd);
         }
@@ -921,19 +920,19 @@ namespace hiredis {
                 self->callbacks.on_connected(self, conn, c, status);
             }
 
-            // 失败则释放资源
+            // failed, release resource
             if (REDIS_OK != status) {
                 self->log_debug("connect to %s failed, status: %d, msg: %s", conn->get_key().name.c_str(), status, c->errstr);
                 self->release_connection(conn->get_key(), false, status);
 
-                // 连接失败则更新slot列表
+                // update slots if connect failed
                 self->reload_slots();
             } else {
                 conn->set_connected();
 
                 self->log_debug("connect to %s success", conn->get_key().name.c_str());
 
-                // 更新slot
+                // reload slots
                 if (slot_status::INVALID == self->slot_flag) {
                     self->reload_slots();
                 }
@@ -944,12 +943,12 @@ namespace hiredis {
             connection_t *conn = reinterpret_cast<connection_t *>(c->data);
             cluster *self = conn->get_holder().clu;
 
-            // 如果网络错误断开，则下一次命令需要更新slots
+            // We should update slots on next cmd if there is any connection disconnected
             if (REDIS_OK != status) {
                 self->remove_connection_key(conn->get_key().name);
             }
 
-            // 释放资源
+            // release resource
             self->release_connection(conn->get_key(), false, status);
         }
 
@@ -958,7 +957,7 @@ namespace hiredis {
             cluster *self = cmd->holder.clu;
             assert(rctx);
 
-            // 出错，重新拉取
+            // error and log
             if (NULL == reply || 0 != HIREDIS_HAPP_STRNCASE_CMP("OK", reply->str, 2)) {
                 if (REDIS_CONN_TCP == rctx->c.connection_type) {
                     self->log_info("tcp:%s:%d AUTH failed. %s", 
