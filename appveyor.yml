@@ -42,7 +42,7 @@ install:
 
         echo "Installing cygwin64"
 
-        Invoke-Expression -Command ".\setup-x86_64.exe --quiet-mode --no-shortcuts --only-site --root '$env:CYG_ROOT' --site '$env:CYG_MIRROR' --local-package-dir '$env:CYG_CACHE' --packages 'autoconf,automake,bison,gcc-core,gcc-g++,libtool,make,python,gettext-devel,gettext,intltool,libiconv,pkg-config,git,curl,wget,cmake,libevent-devel'"
+        Invoke-Expression -Command ".\setup-x86_64.exe --wait --quiet-mode --no-shortcuts --only-site --root '$env:CYG_ROOT' --site '$env:CYG_MIRROR' --local-package-dir '$env:CYG_CACHE' --upgrade-also --packages 'autoconf,automake,bison,gcc-core,gcc-g++,libtool,make,python,gettext-devel,gettext,intltool,libiconv,pkg-config,git,curl,wget,cmake,libevent-devel'"
 
         Invoke-Expression -Command "$env:CYG_BASH -lc 'cygcheck -dc cygwin cmake gcc-g++'"
 
@@ -58,9 +58,9 @@ build_script:
     - ps: |
         $CYGWIN_DIR=$env:APPVEYOR_BUILD_FOLDER -Replace "\\","/"
 
-        echo "Building... $env:CYG_BASH -lc 'cd ""$CYGWIN_DIR""; pwd; mkdir -p build; cd build; cmake .. -G ""Unix Makefiles"" -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON && make -j4;'"
+        echo "Building... $env:CYG_BASH -lc 'cd ""$CYGWIN_DIR""; pwd; mkdir -p build; cd build; cmake .. -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON && make -j4;'"
 
-        Invoke-Expression -Command "$env:CYG_BASH -lc 'cd ""$CYGWIN_DIR""; pwd; mkdir -p build; cd build; cmake .. -G ""Unix Makefiles"" -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON && make -j4;'"
+        Invoke-Expression -Command "$env:CYG_BASH -lc 'cd ""$CYGWIN_DIR""; pwd; mkdir -p build; cd build; cmake .. -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON && make -j4;'"
 #
 # Run unit test
 # 
