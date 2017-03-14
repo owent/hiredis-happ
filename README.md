@@ -2,7 +2,12 @@ hiredis-happ
 ======
 Redis HA connector
 
-Function
+Environment  | Linux+OSX (GCC+Clang)         | Windows 
+-------------|---------------------|---------
+Build Status | [![Build Status](https://travis-ci.org/owt5008137/hiredis-happ.svg)](https://travis-ci.org/owt5008137/hiredis-happ) | [![Build status](https://ci.appveyor.com/api/projects/status/tp0bkc9ltorakfvs?svg=true)](https://ci.appveyor.com/project/owt5008137/hiredis-happ)
+Compiler | linux-gcc-4.4 <br /> linux-gcc-4.8 <br /> linux-gcc-4.9 <br /> linux-gcc-6 <br /> linux-clang-3.5 <br /> osx-apple-clang-6.0 <br /> | ~~MSVC 14~~<br /> ~~MSVC 15~~<br /> Cygwin
+
+Tips
 ------
 1. auto reconnect
 2. support redis cluster
@@ -73,12 +78,6 @@ This lib only support Request-Response commands now.(means every request should 
 + subscribe
 + unsubscribe
 + monitor
-
-Environment  | Linux+OSX (GCC+Clang)         | Windows 
--------------|---------------------|---------
-Build Status | [![Build Status](https://travis-ci.org/owt5008137/hiredis-happ.svg)](https://travis-ci.org/owt5008137/hiredis-happ) | [![Build status](https://ci.appveyor.com/api/projects/status/tp0bkc9ltorakfvs?svg=true)](https://ci.appveyor.com/project/owt5008137/hiredis-happ)
-Compiler | linux-gcc-4.4 <br /> linux-gcc-4.8 <br /> linux-gcc-4.9 <br /> linux-gcc-6 <br /> linux-clang-3.5 <br /> osx-apple-clang-6.0 <br /> | ~~MSVC 14~~<br /> ~~MSVC 15~~<br /> Cygwin
-
 
 ### Directory list
 
