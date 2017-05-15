@@ -54,21 +54,13 @@ namespace hiredis {
             return error_code::REDIS_HAPP_OK;
         }
 
-        const std::string& raw::get_auth_password() {
-            return auth.password;
-        }
+        const std::string &raw::get_auth_password() { return auth.password; }
 
-        void raw::set_auth_password(const std::string& passwd) {
-            auth.password = passwd;
-        }
+        void raw::set_auth_password(const std::string &passwd) { auth.password = passwd; }
 
-        const connection::auth_fn_t& raw::get_auth_fn() {
-            return auth.auth_fn;
-        }
+        const connection::auth_fn_t &raw::get_auth_fn() { return auth.auth_fn; }
 
-        void raw::set_auth_fn(connection::auth_fn_t fn) {
-            auth.auth_fn = fn;
-        }
+        void raw::set_auth_fn(connection::auth_fn_t fn) { auth.auth_fn = fn; }
 
         int raw::start() {
             // just do nothing
@@ -306,7 +298,7 @@ namespace hiredis {
                 if (NULL != cmd) {
                     int len = 0;
                     if (auth.auth_fn) {
-                        const std::string& passwd = auth.auth_fn(&ret, auth.password);
+                        const std::string &passwd = auth.auth_fn(&ret, auth.password);
                         len = cmd->format("AUTH %b", passwd.c_str(), passwd.size());
                     } else if (!auth.password.empty()) {
                         len = cmd->format("AUTH %b", auth.password.c_str(), auth.password.size());
@@ -321,7 +313,7 @@ namespace hiredis {
                     exec(&ret, cmd);
                 }
             }
-            
+
             // event callback
             if (callbacks.on_connect) {
                 callbacks.on_connect(this, &ret);
@@ -578,34 +570,32 @@ namespace hiredis {
             self->release_connection(false, status);
         }
 
-        void raw::on_reply_auth(cmd_exec *cmd, redisAsyncContext * rctx, void *r, void *privdata) {
+        void raw::on_reply_auth(cmd_exec *cmd, redisAsyncContext *rctx, void *r, void *privdata) {
             redisReply *reply = reinterpret_cast<redisReply *>(r);
             raw *self = cmd->holder.r;
             assert(rctx);
 
             // error and log
             if (NULL == reply || 0 != HIREDIS_HAPP_STRNCASE_CMP("OK", reply->str, 2)) {
+                const char *error_text = "";
+                if (NULL != reply && NULL != reply->str) {
+                    error_text = reply->str;
+                }
                 if (REDIS_CONN_TCP == rctx->c.connection_type) {
-                    self->log_info("tcp:%s:%d AUTH failed. %s", 
-                        rctx->c.tcp.host? rctx->c.tcp.host: (rctx->c.tcp.source_addr? rctx->c.tcp.source_addr: "UNKNOWN"),
-                        rctx->c.tcp.port, reply->str? reply->str: ""
-                    );
+                    self->log_info("tcp:%s:%d AUTH failed. %s",
+                                   rctx->c.tcp.host ? rctx->c.tcp.host : (rctx->c.tcp.source_addr ? rctx->c.tcp.source_addr : "UNKNOWN"), rctx->c.tcp.port,
+                                   error_text;
                 } else if (REDIS_CONN_UNIX == rctx->c.connection_type) {
-                    self->log_info("unix:%s AUTH failed. %s", 
-                    rctx->c.unix_sock.path? rctx->c.unix_sock.path: "NULL",
-                        reply->str? reply->str: ""
-                    );
+                    self->log_info("unix:%s AUTH failed. %s", rctx->c.unix_sock.path ? rctx->c.unix_sock.path : "NULL", error_text);
                 } else {
-                    self->log_info("AUTH failed. %s", reply->str? reply->str: "");
+                    self->log_info("AUTH failed. %s", error_text);
                 }
             } else {
                 if (REDIS_CONN_TCP == rctx->c.connection_type) {
-                    self->log_info("tcp:%s:%d AUTH success.", 
-                        rctx->c.tcp.host? rctx->c.tcp.host: (rctx->c.tcp.source_addr? rctx->c.tcp.source_addr: "UNKNOWN"),
-                        rctx->c.tcp.port
-                    );
+                    self->log_info("tcp:%s:%d AUTH success.",
+                                   rctx->c.tcp.host ? rctx->c.tcp.host : (rctx->c.tcp.source_addr ? rctx->c.tcp.source_addr : "UNKNOWN"), rctx->c.tcp.port);
                 } else if (REDIS_CONN_UNIX == rctx->c.connection_type) {
-                    self->log_info("unix:%s AUTH success.", rctx->c.unix_sock.path? rctx->c.unix_sock.path: "NULL");
+                    self->log_info("unix:%s AUTH success.", rctx->c.unix_sock.path ? rctx->c.unix_sock.path : "NULL");
                 } else {
                     self->log_info("AUTH success.");
                 }
