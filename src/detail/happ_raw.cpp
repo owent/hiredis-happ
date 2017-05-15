@@ -584,7 +584,7 @@ namespace hiredis {
                 if (REDIS_CONN_TCP == rctx->c.connection_type) {
                     self->log_info("tcp:%s:%d AUTH failed. %s",
                                    rctx->c.tcp.host ? rctx->c.tcp.host : (rctx->c.tcp.source_addr ? rctx->c.tcp.source_addr : "UNKNOWN"), rctx->c.tcp.port,
-                                   error_text;
+                                   error_text);
                 } else if (REDIS_CONN_UNIX == rctx->c.connection_type) {
                     self->log_info("unix:%s AUTH failed. %s", rctx->c.unix_sock.path ? rctx->c.unix_sock.path : "NULL", error_text);
                 } else {
