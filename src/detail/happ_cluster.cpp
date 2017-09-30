@@ -34,7 +34,7 @@ namespace hiredis {
             }
 
             static char NONE_MSG[] = "none";
-        }
+        } // namespace detail
 
         cluster::cluster() : slot_flag(slot_status::INVALID) {
             conf.log_fn_debug = conf.log_fn_info = NULL;
@@ -367,7 +367,8 @@ namespace hiredis {
             // CLUSTER SLOTS cmd
             cmd_t *cmd = create_cmd(on_reply_update_slot, NULL);
             if (NULL == cmd) {
-                return error_code::REDIS_HAPP_CREATE;
+                log_info("create cmd CLUSTER SLOTS failed");
+                return false;
             }
 
             int len = cmd->format("CLUSTER SLOTS");
@@ -1035,5 +1036,5 @@ namespace hiredis {
 
             conf.log_fn_info(conf.log_buffer);
         }
-    }
-}
+    } // namespace happ
+} // namespace hiredis

@@ -29,10 +29,10 @@ matrix:
       dist: trusty
       sudo: false
       env: USE_CC=gcc-7 USE_CXX=g++-7
-    - os: linux
-      dist: trusty
-      sudo: false
-      env: USE_CC=clang USE_CXX=clang++
+    #- os: linux
+    #  dist: trusty
+    #  sudo: false
+    #  env: USE_CC=clang USE_CXX=clang++
     # - os: linux
     #   dist: trusty
     #   sudo: false
