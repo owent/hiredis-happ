@@ -10,33 +10,33 @@ env:
 matrix:
   include:
     - os: osx
-      env: USE_CC=clang USE_CXX=clang++
+      env: USE_CC=clang USE_CXX=clang++ CMAKE_BIN=cmake CTEST_BIN=ctest
     - os: osx
-      env: USE_CC=gcc USE_CXX=g++
+      env: USE_CC=gcc USE_CXX=g++ CMAKE_BIN=cmake CTEST_BIN=ctest
     - os: linux
       dist: trusty
       sudo: false
-      env: USE_CC=gcc USE_CXX=g++
+      env: USE_CC=gcc USE_CXX=g++ CMAKE_BIN=$CMAKE_PREFIX/bin/cmake CTEST_BIN=$CMAKE_PREFIX/bin/ctest
     - os: linux
       dist: trusty
       sudo: false
-      env: USE_CC=gcc-4.4 USE_CXX=g++-4.4
+      env: USE_CC=gcc-4.4 USE_CXX=g++-4.4 CMAKE_BIN=$CMAKE_PREFIX/bin/cmake CTEST_BIN=$CMAKE_PREFIX/bin/ctest
     - os: linux
       dist: trusty
       sudo: false
-      env: USE_CC=gcc-4.9 USE_CXX=g++-4.9
+      env: USE_CC=gcc-4.9 USE_CXX=g++-4.9 CMAKE_BIN=$CMAKE_PREFIX/bin/cmake CTEST_BIN=$CMAKE_PREFIX/bin/ctest
     - os: linux
       dist: trusty
       sudo: false
-      env: USE_CC=gcc-7 USE_CXX=g++-7
+      env: USE_CC=gcc-7 USE_CXX=g++-7 CMAKE_BIN=$CMAKE_PREFIX/bin/cmake CTEST_BIN=$CMAKE_PREFIX/bin/ctest
     #- os: linux
     #  dist: trusty
     #  sudo: false
-    #  env: USE_CC=clang USE_CXX=clang++
+    #  env: USE_CC=clang USE_CXX=clang++ CMAKE_BIN=$CMAKE_PREFIX/bin/cmake CTEST_BIN=$CMAKE_PREFIX/bin/ctest
     # - os: linux
     #   dist: trusty
     #   sudo: false
-    #   env: USE_CC=clang-3.8 USE_CXX=clang++-3.8
+    #   env: USE_CC=clang-3.8 USE_CXX=clang++-3.8 CMAKE_BIN=$CMAKE_PREFIX/bin/cmake CTEST_BIN=$CMAKE_PREFIX/bin/ctest
 
 addons:
   apt:
@@ -71,7 +71,7 @@ addons:
 
 before_install:
   # - if [ "$TRAVIS_OS_NAME" == "linux" ]; then apt-get -qq -y update; fi # sudo: false can not install package through apt-get
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; brew upgrade cmake; fi
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; fi
 
 install: >-
     if [ "$TRAVIS_OS_NAME" == "linux" ]; then
@@ -97,7 +97,7 @@ install: >-
     fi
 
 after_success:
-  - test/hiredis-happ-test
+  - $CTEST_BIN . -V
   
 script: 
   - export CC=$USE_CC

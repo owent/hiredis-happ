@@ -1,6 +1,6 @@
 
 # ============ sample - [...] ============
-set(EXECUTABLE_OUTPUT_PATH "${EXECUTABLE_OUTPUT_PATH}/sample")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${EXECUTABLE_OUTPUT_PATH}/sample")
 
 file(GLOB ALL_SAMPLE_DIRS "${PROJECT_SAMPLE_BAS_DIR}/*")
 foreach(SAMPLE_DIR ${ALL_SAMPLE_DIRS})

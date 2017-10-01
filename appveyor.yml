@@ -68,7 +68,7 @@ test_script:
     - ps: |
         $CYGWIN_DIR=$env:APPVEYOR_BUILD_FOLDER -Replace "\\","/"
 
-        Invoke-Expression -Command "$env:CYG_BASH -lc 'cd ""$CYGWIN_DIR""; pwd; build/test/hiredis-happ-test'"
+        Invoke-Expression -Command "$env:CYG_BASH -lc 'cd ""$CYGWIN_DIR""; cd build; ctest . -V'"
 
 #
 # Only build the master branch

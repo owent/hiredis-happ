@@ -1,6 +1,5 @@
 # import gtest
 
-enable_testing()
 find_package(GTest)
 
 # =========== find gtest ===========
@@ -54,7 +53,7 @@ file(GLOB_RECURSE ALL_TEST_SRC_LIST
 # ================ multi thread ================
 
 # ============ test - coroutine test frame ============
-set(EXECUTABLE_OUTPUT_PATH "${PROJECT_BINARY_DIR}/test")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/test")
 
 add_compiler_define(HIREDIS_HAPP_UNIT_TEST_HACK=1)
 
