@@ -4,6 +4,7 @@ find_package(Libuv)
 if(Libuv_FOUND OR Libevent_FOUND)
 
     get_filename_component(SAMPLE_NAME ${CMAKE_CURRENT_LIST_DIR} NAME)
+    set(SAMPLE_NAME "hiredis-happ-${SAMPLE_NAME}")
 
     include_directories(${CMAKE_CURRENT_LIST_DIR})
 
