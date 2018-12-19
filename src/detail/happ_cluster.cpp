@@ -38,20 +38,22 @@ namespace hiredis {
 
         cluster::cluster() : slot_flag(slot_status::INVALID) {
             conf.log_fn_debug = conf.log_fn_info = NULL;
-            conf.log_buffer = NULL;
-            conf.log_max_size = 0;
-            conf.timer_interval_sec = HIREDIS_HAPP_TIMER_INTERVAL_SEC;
-            conf.timer_interval_usec = HIREDIS_HAPP_TIMER_INTERVAL_USEC;
-            conf.timer_timeout_sec = HIREDIS_HAPP_TIMER_TIMEOUT_SEC;
-            conf.cmd_buffer_size = 0;
+            conf.log_buffer                      = NULL;
+            conf.log_max_size                    = 0;
+            conf.timer_interval_sec              = HIREDIS_HAPP_TIMER_INTERVAL_SEC;
+            conf.timer_interval_usec             = HIREDIS_HAPP_TIMER_INTERVAL_USEC;
+            conf.timer_timeout_sec               = HIREDIS_HAPP_TIMER_TIMEOUT_SEC;
+            conf.cmd_buffer_size                 = 0;
 
             for (int i = 0; i < HIREDIS_HAPP_SLOT_NUMBER; ++i) {
                 slots[i].index = i;
             }
 
-            memset(&callbacks, 0, sizeof(callbacks));
+            callbacks.on_connect      = NULL;
+            callbacks.on_connected    = NULL;
+            callbacks.on_disconnected = NULL;
 
-            timer_actions.last_update_sec = 0;
+            timer_actions.last_update_sec  = 0;
             timer_actions.last_update_usec = 0;
         }
 
@@ -150,7 +152,7 @@ namespace hiredis {
 
             // all connections are marked disconnection or disconnected, so timeout timers are useless
             timer_actions.timer_conns.clear();
-            timer_actions.last_update_sec = 0;
+            timer_actions.last_update_sec  = 0;
             timer_actions.last_update_usec = 0;
 
             // If in a callback, cmds in this connection will not finished, so it can not be freed.
@@ -429,7 +431,7 @@ namespace hiredis {
         cluster::connection_t *cluster::get_connection(const std::string &ip, uint16_t port) { return get_connection(connection::make_name(ip, port)); }
 
         cluster::connection_t *cluster::make_connection(const connection::key_t &key) {
-            holder_t h;
+            holder_t                   h;
             connection_map_t::iterator check_it = connections.find(key.name);
             if (check_it != connections.end()) {
                 log_debug("connection %s already exists", key.name.c_str());
@@ -448,13 +450,13 @@ namespace hiredis {
             redisEnableKeepAlive(&c->c);
             if (conf.timer_timeout_sec > 0) {
                 struct timeval tv;
-                tv.tv_sec = conf.timer_timeout_sec;
+                tv.tv_sec  = conf.timer_timeout_sec;
                 tv.tv_usec = 0;
                 redisSetTimeout(&c->c, tv);
             }
 
             ::hiredis::happ::unique_ptr<connection_t>::type ret_ptr(new connection_t());
-            connection_t &ret = *ret_ptr;
+            connection_t &                                  ret = *ret_ptr;
             ::hiredis::happ::unique_ptr<connection_t>::swap(connections[key.name], ret_ptr);
             ret.init(h, key);
             ret.set_connecting(c);
@@ -465,9 +467,9 @@ namespace hiredis {
             if (conf.timer_timeout_sec > 0 && is_timer_active()) {
                 timer_actions.timer_conns.push_back(timer_t::conn_timetout_t());
                 timer_t::conn_timetout_t &conn_expire = timer_actions.timer_conns.back();
-                conn_expire.name = key.name;
-                conn_expire.sequence = ret.get_sequence();
-                conn_expire.timeout = timer_actions.last_update_sec + conf.timer_timeout_sec;
+                conn_expire.name                      = key.name;
+                conn_expire.sequence                  = ret.get_sequence();
+                conn_expire.timeout                   = timer_actions.last_update_sec + conf.timer_timeout_sec;
             }
 
             // auth command
@@ -478,7 +480,7 @@ namespace hiredis {
                     int len = 0;
                     if (auth.auth_fn) {
                         const std::string &passwd = auth.auth_fn(&ret, auth.password);
-                        len = cmd->format("AUTH %b", passwd.c_str(), passwd.size());
+                        len                       = cmd->format("AUTH %b", passwd.c_str(), passwd.size());
                     } else if (!auth.password.empty()) {
                         len = cmd->format("AUTH %b", auth.password.c_str(), auth.password.size());
                     }
@@ -570,7 +572,7 @@ namespace hiredis {
         }
 
         void cluster::set_timer_interval(time_t sec, time_t usec) {
-            conf.timer_interval_sec = sec;
+            conf.timer_interval_sec  = sec;
             conf.timer_interval_usec = usec;
         }
 
@@ -584,9 +586,9 @@ namespace hiredis {
             if (is_timer_active()) {
                 timer_actions.timer_pending.push_back(timer_t::delay_t());
                 timer_t::delay_t &d = timer_actions.timer_pending.back();
-                d.sec = timer_actions.last_update_sec + conf.timer_interval_sec;
-                d.usec = timer_actions.last_update_usec + conf.timer_interval_usec;
-                d.cmd = cmd;
+                d.sec               = timer_actions.last_update_sec + conf.timer_interval_sec;
+                d.usec              = timer_actions.last_update_usec + conf.timer_interval_usec;
+                d.cmd               = cmd;
             } else {
                 exec(NULL, 0, cmd);
             }
@@ -595,7 +597,7 @@ namespace hiredis {
         int cluster::proc(time_t sec, time_t usec) {
             int ret = 0;
 
-            timer_actions.last_update_sec = sec;
+            timer_actions.last_update_sec  = sec;
             timer_actions.last_update_usec = usec;
 
             while (!timer_actions.timer_pending.empty()) {
@@ -632,7 +634,7 @@ namespace hiredis {
 
         cluster::cmd_t *cluster::create_cmd(cmd_t::callback_fn_t cbk, void *pridata) {
             holder_t h;
-            h.clu = this;
+            h.clu      = this;
             cmd_t *ret = cmd_t::create(h, cbk, pridata, conf.cmd_buffer_size);
             return ret;
         }
@@ -662,7 +664,7 @@ namespace hiredis {
 
         void cluster::set_log_writer(log_fn_t info_fn, log_fn_t debug_fn, size_t max_size) {
             using std::swap;
-            conf.log_fn_info = info_fn;
+            conf.log_fn_info  = info_fn;
             conf.log_fn_debug = debug_fn;
             conf.log_max_size = max_size;
 
@@ -674,8 +676,8 @@ namespace hiredis {
 
         void cluster::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
             connection_t *conn = reinterpret_cast<connection_t *>(c->data);
-            cmd_t *cmd = reinterpret_cast<cmd_t *>(privdata);
-            cluster *self = cmd->holder.clu;
+            cmd_t *       cmd  = reinterpret_cast<cmd_t *>(privdata);
+            cluster *     self = cmd->holder.clu;
 
             // retry if disconnecting will lead to a infinite loop
             if (c->c.flags & REDIS_DISCONNECTING) {
@@ -704,8 +706,8 @@ namespace hiredis {
 
             // error handler
             if (REDIS_REPLY_ERROR == reply->type) {
-                int slot_index = 0;
-                char addr[260] = {0};
+                int  slot_index = 0;
+                char addr[260]  = {0};
 
                 // detect MOVED,ASK and CLUSTERDOWN
                 if (0 == HIREDIS_HAPP_STRNCASE_CMP("ASK", reply->str, 3)) {
@@ -713,7 +715,7 @@ namespace hiredis {
                     // send ASK to another connection
                     HIREDIS_HAPP_SSCANF(reply->str + 4, " %d %s", &slot_index, addr);
                     std::string ip;
-                    uint16_t port;
+                    uint16_t    port;
                     if (connection::pick_name(addr, ip, port)) {
                         connection::key_t conn_key;
                         connection::set_key(conn_key, ip, port);
@@ -748,7 +750,7 @@ namespace hiredis {
                     }
 
                     std::string ip;
-                    uint16_t port;
+                    uint16_t    port;
                     if (connection::pick_name(addr, ip, port)) {
                         // update slot
                         self->slots[slot_index].hosts.clear();
@@ -789,7 +791,7 @@ namespace hiredis {
 
         void cluster::on_reply_update_slot(cmd_exec *cmd, redisAsyncContext *, void *r, void *privdata) {
             redisReply *reply = reinterpret_cast<redisReply *>(r);
-            cluster *self = cmd->holder.clu;
+            cluster *   self  = cmd->holder.clu;
 
             // failed and retry
             if (NULL == reply || reply->elements <= 0 || REDIS_REPLY_ARRAY != reply->element[0]->type) {
@@ -860,10 +862,10 @@ namespace hiredis {
         }
 
         void cluster::on_reply_asking(redisAsyncContext *c, void *r, void *privdata) {
-            cmd_t *cmd = reinterpret_cast<cmd_t *>(privdata);
-            redisReply *reply = reinterpret_cast<redisReply *>(r);
-            connection_t *conn = reinterpret_cast<connection_t *>(c->data);
-            cluster *self = conn->get_holder().clu;
+            cmd_t *       cmd   = reinterpret_cast<cmd_t *>(privdata);
+            redisReply *  reply = reinterpret_cast<redisReply *>(r);
+            connection_t *conn  = reinterpret_cast<connection_t *>(c->data);
+            cluster *     self  = conn->get_holder().clu;
 
             // cmd in ask command is not in any connection
             // so there is no need to pop it, directly retry will be OK
@@ -901,7 +903,7 @@ namespace hiredis {
 
         void cluster::on_connected_wrapper(const struct redisAsyncContext *c, int status) {
             connection_t *conn = reinterpret_cast<connection_t *>(c->data);
-            cluster *self = conn->get_holder().clu;
+            cluster *     self = conn->get_holder().clu;
 
             // hiredis bug, sometimes 0 == status but c is already closed
             if (REDIS_OK == status && hiredis::happ::connection::status::DISCONNECTED == conn->get_status()) {
@@ -934,7 +936,7 @@ namespace hiredis {
 
         void cluster::on_disconnected_wrapper(const struct redisAsyncContext *c, int status) {
             connection_t *conn = reinterpret_cast<connection_t *>(c->data);
-            cluster *self = conn->get_holder().clu;
+            cluster *     self = conn->get_holder().clu;
 
             // We should update slots on next cmd if there is any connection disconnected
             if (REDIS_OK != status) {
@@ -947,7 +949,7 @@ namespace hiredis {
 
         void cluster::on_reply_auth(cmd_exec *cmd, redisAsyncContext *rctx, void *r, void *privdata) {
             redisReply *reply = reinterpret_cast<redisReply *>(r);
-            cluster *self = cmd->holder.clu;
+            cluster *   self  = cmd->holder.clu;
             assert(rctx);
 
             // error and log

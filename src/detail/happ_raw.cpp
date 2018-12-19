@@ -22,20 +22,22 @@ namespace hiredis {
 
         raw::raw() {
             conf.log_fn_debug = conf.log_fn_info = NULL;
-            conf.log_buffer = NULL;
-            conf.log_max_size = 0;
-            conf.timer_interval_sec = HIREDIS_HAPP_TIMER_INTERVAL_SEC;
-            conf.timer_interval_usec = HIREDIS_HAPP_TIMER_INTERVAL_USEC;
-            conf.timer_timeout_sec = HIREDIS_HAPP_TIMER_TIMEOUT_SEC;
-            conf.cmd_buffer_size = 0;
+            conf.log_buffer                      = NULL;
+            conf.log_max_size                    = 0;
+            conf.timer_interval_sec              = HIREDIS_HAPP_TIMER_INTERVAL_SEC;
+            conf.timer_interval_usec             = HIREDIS_HAPP_TIMER_INTERVAL_USEC;
+            conf.timer_timeout_sec               = HIREDIS_HAPP_TIMER_TIMEOUT_SEC;
+            conf.cmd_buffer_size                 = 0;
 
-            memset(&callbacks, 0, sizeof(callbacks));
+            callbacks.on_connect      = NULL;
+            callbacks.on_connected    = NULL;
+            callbacks.on_disconnected = NULL;
 
-            timer_actions.last_update_sec = 0;
+            timer_actions.last_update_sec  = 0;
             timer_actions.last_update_usec = 0;
 
             timer_actions.timer_conn.sequence = 0;
-            timer_actions.timer_conn.timeout = 0;
+            timer_actions.timer_conn.timeout  = 0;
         }
 
         raw::~raw() {
@@ -82,12 +84,12 @@ namespace hiredis {
                 destroy_cmd(cmd);
             }
 
-            timer_actions.last_update_sec = 0;
+            timer_actions.last_update_sec  = 0;
             timer_actions.last_update_usec = 0;
 
             // reset timeout
             timer_actions.timer_conn.sequence = 0;
-            timer_actions.timer_conn.timeout = 0;
+            timer_actions.timer_conn.timeout  = 0;
 
             // If in a callback, cmds in this connection will not finished, so it can not be freed.
             // In this case, it will call disconnect callback after callback is finished and then release the connection.
@@ -272,13 +274,13 @@ namespace hiredis {
             redisEnableKeepAlive(&c->c);
             if (conf.timer_timeout_sec > 0) {
                 struct timeval tv;
-                tv.tv_sec = conf.timer_timeout_sec;
+                tv.tv_sec  = conf.timer_timeout_sec;
                 tv.tv_usec = 0;
                 redisSetTimeout(&c->c, tv);
             }
 
             connection_ptr_t ret_ptr(new connection_t());
-            connection_t &ret = *ret_ptr;
+            connection_t &   ret = *ret_ptr;
             ::hiredis::happ::unique_ptr<connection_t>::swap(conn_, ret_ptr);
             ret.init(h, conf.init_connection);
             ret.set_connecting(c);
@@ -288,7 +290,7 @@ namespace hiredis {
             // timeout timer
             if (conf.timer_timeout_sec > 0 && is_timer_active()) {
                 timer_actions.timer_conn.sequence = ret.get_sequence();
-                timer_actions.timer_conn.timeout = timer_actions.last_update_sec + conf.timer_timeout_sec;
+                timer_actions.timer_conn.timeout  = timer_actions.last_update_sec + conf.timer_timeout_sec;
             }
 
             // auth command
@@ -299,7 +301,7 @@ namespace hiredis {
                     int len = 0;
                     if (auth.auth_fn) {
                         const std::string &passwd = auth.auth_fn(&ret, auth.password);
-                        len = cmd->format("AUTH %b", passwd.c_str(), passwd.size());
+                        len                       = cmd->format("AUTH %b", passwd.c_str(), passwd.size());
                     } else if (!auth.password.empty()) {
                         len = cmd->format("AUTH %b", auth.password.c_str(), auth.password.size());
                     }
@@ -360,7 +362,7 @@ namespace hiredis {
             // can not use conf.init_connection any more
             conn_.reset();
             timer_actions.timer_conn.sequence = 0;
-            timer_actions.timer_conn.timeout = 0;
+            timer_actions.timer_conn.timeout  = 0;
 
             return true;
         }
@@ -392,7 +394,7 @@ namespace hiredis {
         }
 
         void raw::set_timer_interval(time_t sec, time_t usec) {
-            conf.timer_interval_sec = sec;
+            conf.timer_interval_sec  = sec;
             conf.timer_interval_usec = usec;
         }
 
@@ -406,9 +408,9 @@ namespace hiredis {
             if (is_timer_active()) {
                 timer_actions.timer_pending.push_back(timer_t::delay_t());
                 timer_t::delay_t &d = timer_actions.timer_pending.back();
-                d.sec = timer_actions.last_update_sec + conf.timer_interval_sec;
-                d.usec = timer_actions.last_update_usec + conf.timer_interval_usec;
-                d.cmd = cmd;
+                d.sec               = timer_actions.last_update_sec + conf.timer_interval_sec;
+                d.usec              = timer_actions.last_update_usec + conf.timer_interval_usec;
+                d.cmd               = cmd;
             } else {
                 exec(cmd);
             }
@@ -417,7 +419,7 @@ namespace hiredis {
         int raw::proc(time_t sec, time_t usec) {
             int ret = 0;
 
-            timer_actions.last_update_sec = sec;
+            timer_actions.last_update_sec  = sec;
             timer_actions.last_update_usec = usec;
 
             while (!timer_actions.timer_pending.empty()) {
@@ -444,7 +446,7 @@ namespace hiredis {
                     release_connection(true, error_code::REDIS_HAPP_TIMEOUT);
                 }
 
-                timer_actions.timer_conn.timeout = 0;
+                timer_actions.timer_conn.timeout  = 0;
                 timer_actions.timer_conn.sequence = 0;
             }
 
@@ -453,7 +455,7 @@ namespace hiredis {
 
         raw::cmd_t *raw::create_cmd(cmd_t::callback_fn_t cbk, void *pridata) {
             holder_t h;
-            h.r = this;
+            h.r        = this;
             cmd_t *ret = cmd_t::create(h, cbk, pridata, conf.cmd_buffer_size);
             return ret;
         }
@@ -483,7 +485,7 @@ namespace hiredis {
 
         void raw::set_log_writer(log_fn_t info_fn, log_fn_t debug_fn, size_t max_size) {
             using std::swap;
-            conf.log_fn_info = info_fn;
+            conf.log_fn_info  = info_fn;
             conf.log_fn_debug = debug_fn;
             conf.log_max_size = max_size;
 
@@ -495,8 +497,8 @@ namespace hiredis {
 
         void raw::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
             connection_t *conn = reinterpret_cast<connection_t *>(c->data);
-            cmd_t *cmd = reinterpret_cast<cmd_t *>(privdata);
-            raw *self = cmd->holder.r;
+            cmd_t *       cmd  = reinterpret_cast<cmd_t *>(privdata);
+            raw *         self = cmd->holder.r;
 
             // retry if disconnecting will lead to a infinite loop
             if (c->c.flags & REDIS_DISCONNECTING) {
@@ -538,7 +540,7 @@ namespace hiredis {
 
         void raw::on_connected_wrapper(const struct redisAsyncContext *c, int status) {
             connection_t *conn = reinterpret_cast<connection_t *>(c->data);
-            raw *self = conn->get_holder().r;
+            raw *         self = conn->get_holder().r;
 
             // hiredis bug, sometimes 0 == status but c is already closed
             if (REDIS_OK == status && hiredis::happ::connection::status::DISCONNECTED == conn->get_status()) {
@@ -564,7 +566,7 @@ namespace hiredis {
 
         void raw::on_disconnected_wrapper(const struct redisAsyncContext *c, int status) {
             connection_t *conn = reinterpret_cast<connection_t *>(c->data);
-            raw *self = conn->get_holder().r;
+            raw *         self = conn->get_holder().r;
 
             // release rreource
             self->release_connection(false, status);
@@ -572,7 +574,7 @@ namespace hiredis {
 
         void raw::on_reply_auth(cmd_exec *cmd, redisAsyncContext *rctx, void *r, void *privdata) {
             redisReply *reply = reinterpret_cast<redisReply *>(r);
-            raw *self = cmd->holder.r;
+            raw *       self  = cmd->holder.r;
             assert(rctx);
 
             // error and log
@@ -645,5 +647,5 @@ namespace hiredis {
 
             conf.log_fn_info(conf.log_buffer);
         }
-    }
-}
+    } // namespace happ
+} // namespace hiredis
