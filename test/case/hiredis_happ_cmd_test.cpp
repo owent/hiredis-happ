@@ -1,39 +1,38 @@
-#include <iostream>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
-#include <set>
 #include <detail/happ_cmd.h>
+#include <iostream>
+#include <set>
 
-#include "hiredis_happ.h"
 #include "frame/test_macros.h"
+#include "hiredis_happ.h"
 
 
-static void happ_cmd_basic_1(hiredis::happ::cmd_exec* cmd, struct redisAsyncContext* c, void* r, void* pridata) {
+static void happ_cmd_basic_1(hiredis::happ::cmd_exec *cmd, struct redisAsyncContext *c, void *r, void *pridata) {
     CASE_EXPECT_EQ(cmd, pridata);
     CASE_EXPECT_EQ(c, r);
 
-    CASE_EXPECT_NE(r, NULL);
-    CASE_EXPECT_NE(pridata, NULL);
+    CASE_EXPECT_NE(r, nullptr);
+    CASE_EXPECT_NE(pridata, nullptr);
 
-    CASE_EXPECT_EQ(131313131, *reinterpret_cast<int*>(cmd->buffer()));
+    CASE_EXPECT_EQ(131313131, *reinterpret_cast<int *>(cmd->buffer()));
 }
 
-CASE_TEST(happ_cmd, basic)
-{
+CASE_TEST(happ_cmd, basic) {
     hiredis::happ::holder_t h;
-    hiredis::happ::cluster clu;
-    redisAsyncContext vir_ontext;
+    hiredis::happ::cluster  clu;
+    redisAsyncContext       vir_ontext;
     h.clu = &clu;
 
-    hiredis::happ::cmd_exec* cmd = hiredis::happ::cmd_exec::create(h, happ_cmd_basic_1, &clu, sizeof(int));
+    hiredis::happ::cmd_exec *cmd = hiredis::happ::cmd_exec::create(h, happ_cmd_basic_1, &clu, sizeof(int));
 
     CASE_EXPECT_EQ(cmd->holder.clu, &clu);
     CASE_EXPECT_EQ(cmd->pri_data, &clu);
     CASE_EXPECT_EQ(cmd->callback, happ_cmd_basic_1);
 
-    cmd->pri_data = cmd;
-    *reinterpret_cast<int*>(cmd->buffer()) = 131313131;
+    cmd->pri_data                           = cmd;
+    *reinterpret_cast<int *>(cmd->buffer()) = 131313131;
 
     int len = cmd->format("GET %s", "HERO");
     CASE_EXPECT_EQ(static_cast<size_t>(len), cmd->cmd.raw_len);
@@ -41,9 +40,9 @@ CASE_TEST(happ_cmd, basic)
     std::string cmd_content_1, cmd_content_2;
     cmd_content_1.assign(cmd->cmd.content.raw, cmd->cmd.raw_len);
 
-    const char* argv[] = { "GET", "HERO" };
-    size_t argvlen[] = {strlen(argv[0]), strlen(argv[1])};
-    len = cmd->vformat(2, argv, argvlen);
+    const char *argv[]    = {"GET", "HERO"};
+    size_t      argvlen[] = {strlen(argv[0]), strlen(argv[1])};
+    len                   = cmd->vformat(2, argv, argvlen);
     CASE_EXPECT_EQ(static_cast<size_t>(0), cmd->cmd.raw_len);
 
     cmd_content_2.assign(cmd->cmd.content.redis_sds, static_cast<size_t>(len));
@@ -54,9 +53,9 @@ CASE_TEST(happ_cmd, basic)
     CASE_EXPECT_EQ(res, hiredis::happ::error_code::REDIS_HAPP_OK);
     CASE_EXPECT_EQ(cmd->err, hiredis::happ::error_code::REDIS_HAPP_TTL);
 
-    CASE_EXPECT_EQ(cmd->callback, NULL);
+    CASE_EXPECT_EQ(cmd->callback, nullptr);
 
-    res = cmd->call_reply(hiredis::happ::error_code::REDIS_HAPP_TTL, &vir_ontext, NULL);
+    res = cmd->call_reply(hiredis::happ::error_code::REDIS_HAPP_TTL, &vir_ontext, nullptr);
     CASE_EXPECT_EQ(res, hiredis::happ::error_code::REDIS_HAPP_OK);
 
     hiredis::happ::cmd_exec::destroy(cmd);

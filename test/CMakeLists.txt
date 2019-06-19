@@ -1,73 +1,45 @@
-# import gtest
 
-find_package(GTest)
+EchoWithColor(COLOR GREEN "-- Configure Unit Test ${CMAKE_CURRENT_LIST_DIR}")
 
-# =========== find gtest ===========
-if (GTEST_FOUND)
-    message(STATUS "GTest Found: ${GTEST_LIBRARIES}")
-	add_compiler_define(UTILS_TEST_MACRO_TEST_ENABLE_GTEST=1)
-	list (APPEND EXTENTION_LINK_LIB ${GTEST_LIBRARIES})
-    include_directories(${GTEST_INCLUDE_DIRS})
-
-# =========== enable find boost.test ===========
-elseif(ENABLE_BOOST_UNIT_TEST)
-    
-    find_package(Boost COMPONENTS unit_test_framework)
-    set(Boost_AUTO_LIBS "${Boost_LIBRARIES}")
-    
-    if(Boost_FOUND)
-        set(Boost_USE_STATIC_LIBS ON)
-        find_package(Boost COMPONENTS unit_test_framework)
-        if(NOT Boost_FOUND)
-            set(Boost_USE_STATIC_LIBS OFF)
-            find_package(Boost COMPONENTS unit_test_framework)
-        elseif(NOT "${Boost_LIBRARIES}" EQUAL "${Boost_AUTO_LIBS}")
-            set(Boost_USE_STATIC_LIBS OFF)
-            find_package(Boost COMPONENTS unit_test_framework)
-        endif()
-        
-        add_compiler_define(UTILS_TEST_MACRO_TEST_ENABLE_BOOST_TEST=1)
-        list (APPEND EXTENTION_LINK_LIB ${Boost_LIBRARIES})
-        include_directories(${Boost_INCLUDE_DIRS})
-        message(STATUS "Boost.test Found: ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}")
-        
-        if (NOT Boost_USE_STATIC_LIBS)
-            message(STATUS "Boost.test using dynamic library define BOOST_TEST_DYN_LINK")
-            add_compiler_define(BOOST_TEST_DYN_LINK)
-        endif()
-    endif()
+## 导入工程项目
+if(TARGET ${3RD_PARTY_ATFRAME_UTILS_LINK_NAME})
+    message(STATUS "[hiredis-happ] ${3RD_PARTY_ATFRAME_UTILS_LINK_NAME} already exist, use it directly.")
+else()
+    if (NOT EXISTS "${CMAKE_BINARY_DIR}/deps/${3RD_PARTY_ATFRAME_UTILS_LINK_NAME}")
+        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/deps/${3RD_PARTY_ATFRAME_UTILS_LINK_NAME}")
+    endif ()
+    add_subdirectory(${3RD_PARTY_ATFRAME_UTILS_PKG_DIR} "${CMAKE_BINARY_DIR}/deps/${3RD_PARTY_ATFRAME_UTILS_LINK_NAME}")
 endif()
 
-include_directories(${PROJECT_TEST_INC_DIR})
+include("${PROJECT_TEST_BAS_DIR}/test.build_bin.cmake")
 
-file(GLOB_RECURSE ALL_TEST_SRC_LIST 
-    ${PROJECT_TEST_SRC_DIR}/*.h 
-    ${PROJECT_TEST_SRC_DIR}/*.hpp 
-    ${PROJECT_TEST_SRC_DIR}/*.c 
-    ${PROJECT_TEST_SRC_DIR}/*.cpp
-    ${PROJECT_TEST_SRC_DIR}/*.cc 
-    ${PROJECT_TEST_SRC_DIR}/*.cxx
+include_directories(${3RD_PARTY_ATFRAME_UTILS_INC_DIR} ${PROJECT_LIBATBUS_ROOT_SRC_DIR})
+
+file(GLOB_RECURSE PROJECT_TEST_SRC_LIST
+    ${PROJECT_TEST_SRC_DIR}/app/*.cpp
+    ${PROJECT_TEST_SRC_DIR}/frame/*.h
+    ${PROJECT_TEST_SRC_DIR}/frame/*.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/*.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/*.h
+    ${CMAKE_CURRENT_LIST_DIR}/*.c
+    ${CMAKE_CURRENT_LIST_DIR}/*.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/*.cc
+    ${CMAKE_CURRENT_LIST_DIR}/*.cxx
 )
-# source_group_by_dir(ALL_TEST_SRC_LIST)
-
-# ================ multi thread ================
+source_group_by_dir(PROJECT_TEST_SRC_LIST)
 
 # ============ test - coroutine test frame ============
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/test")
 
+add_compiler_define(_CRT_SECURE_NO_WARNINGS=1)
 add_compiler_define(HIREDIS_HAPP_UNIT_TEST_HACK=1)
 
-if (NOT MSVC)
-    set(EXTENTION_LINK_LIB ${EXTENTION_LINK_LIB} pthread)
-endif()
-    
-add_executable(hiredis-happ-test ${ALL_TEST_SRC_LIST})
+add_executable(hiredis-happ-test ${PROJECT_TEST_SRC_LIST})
 target_link_libraries(hiredis-happ-test
     hiredis-happ
-    ${EXTENTION_LINK_LIB}
+    ${3RD_PARTY_ATFRAME_UTILS_LINK_NAME}
     ${PROJECT_3RDPARTY_LINK_NAME}
     ${COMPILER_OPTION_EXTERN_CXX_LIBS}
 )
 
 add_test(test hiredis-happ-test)
-

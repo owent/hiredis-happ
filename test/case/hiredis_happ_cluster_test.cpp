@@ -1,40 +1,39 @@
-#include <iostream>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
-#include <set>
 #include <detail/happ_cmd.h>
+#include <iostream>
+#include <set>
 
-#include "hiredis_happ.h"
 #include "frame/test_macros.h"
+#include "hiredis_happ.h"
 
-static int happ_cluster_f = 0;
-static void on_connect_cbk_1(hiredis::happ::cluster* clu, hiredis::happ::connection* conn) {
-    CASE_EXPECT_NE(NULL, conn);
-    CASE_EXPECT_NE(NULL, clu);
+static int  happ_cluster_f = 0;
+static void on_connect_cbk_1(hiredis::happ::cluster *clu, hiredis::happ::connection *conn) {
+    CASE_EXPECT_NE(nullptr, conn);
+    CASE_EXPECT_NE(nullptr, clu);
 
     CASE_EXPECT_EQ(1, happ_cluster_f);
-    ++ happ_cluster_f;
+    ++happ_cluster_f;
 }
 
-static void on_connected_cbk_1(hiredis::happ::cluster* clu, hiredis::happ::connection* conn, const struct redisAsyncContext* c, int status) {
-    CASE_EXPECT_NE(NULL, conn);
-    CASE_EXPECT_NE(NULL, clu);
+static void on_connected_cbk_1(hiredis::happ::cluster *clu, hiredis::happ::connection *conn, const struct redisAsyncContext *c, int status) {
+    CASE_EXPECT_NE(nullptr, conn);
+    CASE_EXPECT_NE(nullptr, clu);
 
     CASE_EXPECT_EQ(2, happ_cluster_f);
-    ++ happ_cluster_f;
+    ++happ_cluster_f;
 }
 
-static void on_disconnected_cbk_1(hiredis::happ::cluster* clu, hiredis::happ::connection* conn, const struct redisAsyncContext* c, int status) {
-    CASE_EXPECT_NE(NULL, conn);
-    CASE_EXPECT_NE(NULL, clu);
+static void on_disconnected_cbk_1(hiredis::happ::cluster *clu, hiredis::happ::connection *conn, const struct redisAsyncContext *c, int status) {
+    CASE_EXPECT_NE(nullptr, conn);
+    CASE_EXPECT_NE(nullptr, clu);
 
     CASE_EXPECT_EQ(2, happ_cluster_f);
-    ++ happ_cluster_f;
+    ++happ_cluster_f;
 }
 
-CASE_TEST(happ_cluster, connection_callback)
-{
+CASE_TEST(happ_cluster, connection_callback) {
     hiredis::happ::cluster clu;
 
     clu.init("127.0.0.1", 6370);
