@@ -28,7 +28,6 @@ if(Libuv_FOUND OR Libevent_FOUND)
     target_link_libraries(${SAMPLE_NAME}
         hiredis-happ
         ${SAMPLE_EXT_LIBS}
-        ${PROJECT_3RDPARTY_LINK_NAME}
         ${COMPILER_OPTION_EXTERN_CXX_LIBS}
     )
 

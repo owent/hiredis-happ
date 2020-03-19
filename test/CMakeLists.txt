@@ -38,7 +38,6 @@ add_executable(hiredis-happ-test ${PROJECT_TEST_SRC_LIST})
 target_link_libraries(hiredis-happ-test
     hiredis-happ
     ${3RD_PARTY_ATFRAME_UTILS_LINK_NAME}
-    ${PROJECT_3RDPARTY_LINK_NAME}
     ${COMPILER_OPTION_EXTERN_CXX_LIBS}
 )
 

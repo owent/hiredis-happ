@@ -36,38 +36,96 @@ EchoWithColor(COLOR GREEN "-- Build Type: ${CMAKE_BUILD_TYPE}")
 ########################################################################
 # 导入项目配置
 ## 导入所有 macro 定义
+unset(PROJECT_HIREDIS_HAPP_PUBLIC_LINK_NAMES)
+unset(PROJECT_HIREDIS_HAPP_INTERFACE_LINK_NAMES)
+unset(PROJECT_HIREDIS_HAPP_PRIVATE_COMPILE_OPTIONS)
 include ("${CMAKE_CURRENT_LIST_DIR}/3rd_party/3rd_party.happ-macro.cmake")
 
 # ================ multi thread ================
 find_package(Threads)
 if (CMAKE_USE_PTHREADS_INIT)
-    add_definitions(-D_POSIX_MT_)
     if(NOT ANDROID)
-        list(APPEND COMPILER_OPTION_EXTERN_CXX_LIBS pthread)
+        if (TARGET Threads::Threads)
+            list(APPEND PROJECT_HIREDIS_HAPP_PUBLIC_LINK_NAMES Threads::Threads)
+        else ()
+            list(APPEND PROJECT_HIREDIS_HAPP_PUBLIC_LINK_NAMES pthread)
+        endif ()
     endif ()
     if (THREADS_PREFER_PTHREAD_FLAG)
-        add_definitions(${THREADS_PREFER_PTHREAD_FLAG})
+        list(APPEND PROJECT_HIREDIS_HAPP_PRIVATE_COMPILE_OPTIONS ${THREADS_PREFER_PTHREAD_FLAG})
     endif ()
 endif ()
 
 # 设置输出目录 
-set(PROJECT_ALL_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
-set(PROJECT_ALL_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src")
-include_directories (${PROJECT_ALL_INCLUDE_DIR})
+set(PROJECT_HIREDIS_HAPP_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
+set(PROJECT_HIREDIS_HAPP_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src")
 
-file(GLOB_RECURSE SRC_LIST "${PROJECT_ALL_SOURCE_DIR}/*.c" "${PROJECT_ALL_SOURCE_DIR}/*.cpp")
-file(GLOB_RECURSE HEADER_LIST "${PROJECT_ALL_INCLUDE_DIR}/*.h" "${PROJECT_ALL_INCLUDE_DIR}/*.hpp")
+file(GLOB_RECURSE PROJECT_HIREDIS_HAPP_SRC_LIST "${PROJECT_HIREDIS_HAPP_SOURCE_DIR}/*.c" "${PROJECT_HIREDIS_HAPP_SOURCE_DIR}/*.cpp")
+file(GLOB_RECURSE PROJECT_HIREDIS_HAPP_HEADER_LIST "${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}/*.h" "${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}/*.hpp")
 
-add_library(hiredis-happ ${SRC_LIST})
+include(GNUInstallDirs)
+
+#if(BUILD_SHARED_LIBS) 
+#    add_library(hiredis-happ SHARED ${PROJECT_HIREDIS_HAPP_SRC_LIST} ${PROJECT_HIREDIS_HAPP_HEADER_LIST})
+#else ()
+    add_library(hiredis-happ STATIC ${PROJECT_HIREDIS_HAPP_SRC_LIST} ${PROJECT_HIREDIS_HAPP_HEADER_LIST})
+    set_target_properties(hiredis-happ PROPERTIES 
+        C_VISIBILITY_PRESET "default"
+        CXX_VISIBILITY_PRESET "default"
+        WINDOWS_EXPORT_ALL_SYMBOLS TRUE
+    )
+#endif ()
+
+target_include_directories(hiredis-happ
+    PUBLIC 
+        "$<BUILD_INTERFACE:${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}>"
+        "$<INSTALL_INTERFACE:include>"
+)
+
+list(APPEND PROJECT_HIREDIS_HAPP_PUBLIC_LINK_NAMES hiredis)
+
+if(WIN32)
+    list(APPEND PROJECT_HIREDIS_HAPP_INTERFACE_LINK_NAMES psapi iphlpapi userenv ws2_32)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    list(APPEND PROJECT_HIREDIS_HAPP_INTERFACE_LINK_NAMES dl rt)
+elseif(CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|NetBSD|OpenBSD")
+    list(APPEND PROJECT_HIREDIS_HAPP_INTERFACE_LINK_NAMES kvm)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+    list(APPEND PROJECT_HIREDIS_HAPP_INTERFACE_LINK_NAMES kstat nsl sendfile socket)
+endif ()
+
+target_link_libraries(hiredis-happ
+    PUBLIC ${PROJECT_HIREDIS_HAPP_PUBLIC_LINK_NAMES}
+    INTERFACE ${PROJECT_HIREDIS_HAPP_INTERFACE_LINK_NAMES}
+)
+
+if (PROJECT_HIREDIS_HAPP_PRIVATE_COMPILE_OPTIONS)
+    target_compile_options(hiredis-happ PRIVATE ${PROJECT_HIREDIS_HAPP_PRIVATE_COMPILE_OPTIONS})
+endif ()
 
 install(TARGETS hiredis-happ
+    EXPORT hiredis-happ-target
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
 )
 	
-install(DIRECTORY ${PROJECT_ALL_INCLUDE_DIR} DESTINATION .
-	FILES_MATCHING REGEX ".+\\.h(pp)?$"
+install(DIRECTORY ${PROJECT_HIREDIS_HAPP_INCLUDE_DIR} DESTINATION .
+    FILES_MATCHING REGEX ".+\\.h(pp)?$"
+    PATTERN ".svn" EXCLUDE
+    PATTERN ".git" EXCLUDE
+)
+
+export(TARGETS hiredis-happ
+    FILE "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/cmake/hiredis-happ-target.cmake"
+    NAMESPACE hiredis::
+    EXPORT_LINK_INTERFACE_LIBRARIES
+)
+
+install(
+    EXPORT hiredis-happ-target
+    NAMESPACE "hiredis::"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake"
 )
 
 if (PROJECT_ENABLE_SAMPLE)
