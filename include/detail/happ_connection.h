@@ -38,7 +38,7 @@ namespace hiredis {
             connection();
             ~connection();
 
-            inline const uint64_t get_sequence() const { return sequence; }
+            inline uint64_t get_sequence() const { return sequence; }
 
             void init(holder_t h, const std::string &ip, uint16_t port);
 
