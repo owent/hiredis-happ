@@ -30,3 +30,4 @@
 /build
 /.idea
 /3rd_party/prebuilt
+/include/detail/hiredis_happ_config.h

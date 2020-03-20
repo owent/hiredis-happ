@@ -8,7 +8,7 @@
 #pragma once
 
 #include <ostream>
-#include "config.h"
+#include "hiredis_happ_config.h"
 
 namespace hiredis {
     namespace happ {

@@ -10,7 +10,7 @@
 #include <vector>
 #include <list>
 
-#include "config.h"
+#include "hiredis_happ_config.h"
 
 #include "happ_connection.h"
 

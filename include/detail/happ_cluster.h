@@ -11,7 +11,7 @@
 #include <list>
 #include <ostream>
 
-#include "config.h"
+#include "hiredis_happ_config.h"
 
 #include "happ_connection.h"
 

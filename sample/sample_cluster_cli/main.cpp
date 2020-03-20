@@ -23,13 +23,13 @@
 
 
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
-#ifdef LIBHIREDIS_USING_SRC
+#if defined(HOREDIS_HAPP_LIBHIREDIS_USING_SRC) && HOREDIS_HAPP_LIBHIREDIS_USING_SRC
 #include "adapters/libuv.h"
 #else
 #include "hiredis/adapters/libuv.h"
 #endif
 #elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
-#ifdef LIBHIREDIS_USING_SRC
+#if defined(HOREDIS_HAPP_LIBHIREDIS_USING_SRC) && HOREDIS_HAPP_LIBHIREDIS_USING_SRC
 #include "adapters/libevent.h"
 #else
 #include "hiredis/adapters/libevent.h"

@@ -7,6 +7,8 @@ enable_testing()
 
 project(hiredis-happ)
 
+option(HOREDIS_HAPP_LIBHIREDIS_USING_SRC "Using include hiredis.h instead of hiredis/hiredis.h" OFF)
+
 
 # 准备下载依赖组件
 include ("${CMAKE_CURRENT_LIST_DIR}/3rd_party/atframe_utils/libatframe_utils.prepare.cmake")
@@ -63,6 +65,8 @@ set(PROJECT_HIREDIS_HAPP_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src")
 file(GLOB_RECURSE PROJECT_HIREDIS_HAPP_SRC_LIST "${PROJECT_HIREDIS_HAPP_SOURCE_DIR}/*.c" "${PROJECT_HIREDIS_HAPP_SOURCE_DIR}/*.cpp")
 file(GLOB_RECURSE PROJECT_HIREDIS_HAPP_HEADER_LIST "${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}/*.h" "${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}/*.hpp")
 
+configure_file("${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}/detail/hiredis_happ_config.h.in" "${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}/detail/hiredis_happ_config.h" @ONLY)
+
 include(GNUInstallDirs)
 
 #if(BUILD_SHARED_LIBS) 
@@ -105,9 +109,9 @@ endif ()
 
 install(TARGETS hiredis-happ
     EXPORT hiredis-happ-target
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 	
 install(DIRECTORY ${PROJECT_HIREDIS_HAPP_INCLUDE_DIR} DESTINATION .
@@ -119,7 +123,6 @@ install(DIRECTORY ${PROJECT_HIREDIS_HAPP_INCLUDE_DIR} DESTINATION .
 export(TARGETS hiredis-happ
     FILE "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/cmake/hiredis-happ-target.cmake"
     NAMESPACE hiredis::
-    EXPORT_LINK_INTERFACE_LIBRARIES
 )
 
 install(
