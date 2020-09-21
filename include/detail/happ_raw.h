@@ -1,5 +1,5 @@
 //
-// Created by 欧文韬 on 2016/04/20.
+// Created by owent on 2016/04/20.
 //
 
 #ifndef HIREDIS_HAPP_HIREDIS_HAPP_RAW_H
@@ -7,8 +7,8 @@
 
 #pragma once
 
-#include <vector>
 #include <list>
+#include <vector>
 
 #include "hiredis_happ_config.h"
 
@@ -20,33 +20,33 @@ namespace hiredis {
         public:
             typedef cmd_exec cmd_t;
 
-            typedef connection connection_t;
+            typedef connection                                      connection_t;
             typedef ::hiredis::happ::unique_ptr<connection_t>::type connection_ptr_t;
 
-            typedef std::function<void(raw *, connection_t *)> onconnect_fn_t;
+            typedef std::function<void(raw *, connection_t *)>                                               onconnect_fn_t;
             typedef std::function<void(raw *, connection_t *, const struct redisAsyncContext *, int status)> onconnected_fn_t;
-            typedef std::function<void(raw *, connection_t *, const struct redisAsyncContext *, int)> ondisconnected_fn_t;
-            typedef std::function<void(const char *)> log_fn_t;
+            typedef std::function<void(raw *, connection_t *, const struct redisAsyncContext *, int)>        ondisconnected_fn_t;
+            typedef std::function<void(const char *)>                                                        log_fn_t;
 
         private:
             raw(const raw &);
             raw &operator=(const raw &);
 
         public:
-            raw();
-            ~raw();
+            HIREDIS_HAPP_API raw();
+            HIREDIS_HAPP_API ~raw();
 
-            int init(const std::string &ip, uint16_t port);
+            HIREDIS_HAPP_API int init(const std::string &ip, uint16_t port);
 
-            const std::string& get_auth_password();
-            void set_auth_password(const std::string& passwd);
+            HIREDIS_HAPP_API const std::string &get_auth_password();
+            HIREDIS_HAPP_API void               set_auth_password(const std::string &passwd);
 
-            const connection::auth_fn_t& get_auth_fn();
-            void set_auth_fn(connection::auth_fn_t fn);
+            HIREDIS_HAPP_API const connection::auth_fn_t &get_auth_fn();
+            HIREDIS_HAPP_API void                         set_auth_fn(connection::auth_fn_t fn);
 
-            int start();
+            HIREDIS_HAPP_API int start();
 
-            int reset();
+            HIREDIS_HAPP_API int reset();
 
             /**
              * @breif send a request to redis server
@@ -64,7 +64,7 @@ namespace hiredis {
              * @see connection::redis_cmd
              * @return command wrapper of this message, NULL if failed
              */
-            cmd_t *exec(cmd_t::callback_fn_t cbk, void *priv_data, int argc, const char **argv, const size_t *argvlen);
+            HIREDIS_HAPP_API cmd_t *exec(cmd_t::callback_fn_t cbk, void *priv_data, int argc, const char **argv, const size_t *argvlen);
 
             /**
              * @breif send a request to redis server
@@ -81,7 +81,7 @@ namespace hiredis {
              * @see connection::redis_cmd
              * @return command wrapper of this message, NULL if failed
              */
-            cmd_t *exec(cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt, ...);
+            HIREDIS_HAPP_API cmd_t *exec(cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt, ...);
 
             /**
              * @breif send a request to redis server
@@ -98,7 +98,7 @@ namespace hiredis {
              * @see connection::redis_cmd
              * @return command wrapper of this message, NULL if failed
              */
-            cmd_t *exec(cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt, va_list ap);
+            HIREDIS_HAPP_API cmd_t *exec(cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt, va_list ap);
 
             /**
              * @breif send a request to redis server
@@ -112,7 +112,7 @@ namespace hiredis {
              * @see connection::redis_cmd
              * @return command wrapper of this message, NULL if failed
              */
-            cmd_t *exec(cmd_t *cmd);
+            HIREDIS_HAPP_API cmd_t *exec(cmd_t *cmd);
 
             /**
              * @breif send a request to specifed redis server
@@ -127,7 +127,7 @@ namespace hiredis {
              * @see connection::redis_cmd
              * @return command wrapper of this message, NULL if failed
              */
-            cmd_t *exec(connection_t *conn, cmd_t *cmd);
+            HIREDIS_HAPP_API cmd_t *exec(connection_t *conn, cmd_t *cmd);
 
             /**
              * @breif retry to send a request to redis server
@@ -142,55 +142,55 @@ namespace hiredis {
              * @see connection::redis_cmd
              * @return command wrapper of this message, NULL if failed
              */
-            cmd_t *retry(cmd_t *cmd, connection_t *conn = NULL);
+            HIREDIS_HAPP_API cmd_t *retry(cmd_t *cmd, connection_t *conn = NULL);
 
-            const connection_t *get_connection() const;
-            connection_t *get_connection();
+            HIREDIS_HAPP_API const connection_t *get_connection() const;
+            HIREDIS_HAPP_API connection_t *get_connection();
 
-            connection_t *make_connection();
-            bool release_connection(bool close_fd, int status);
+            HIREDIS_HAPP_API connection_t *make_connection();
+            HIREDIS_HAPP_API bool          release_connection(bool close_fd, int status);
 
-            onconnect_fn_t set_on_connect(onconnect_fn_t cbk);
-            onconnected_fn_t set_on_connected(onconnected_fn_t cbk);
-            ondisconnected_fn_t set_on_disconnected(ondisconnected_fn_t cbk);
+            HIREDIS_HAPP_API onconnect_fn_t      set_on_connect(onconnect_fn_t cbk);
+            HIREDIS_HAPP_API onconnected_fn_t    set_on_connected(onconnected_fn_t cbk);
+            HIREDIS_HAPP_API ondisconnected_fn_t set_on_disconnected(ondisconnected_fn_t cbk);
 
-            void set_cmd_buffer_size(size_t s);
+            HIREDIS_HAPP_API void set_cmd_buffer_size(size_t s);
 
-            size_t get_cmd_buffer_size() const;
+            HIREDIS_HAPP_API size_t get_cmd_buffer_size() const;
 
-            bool is_timer_active() const;
+            HIREDIS_HAPP_API bool is_timer_active() const;
 
-            void set_timer_interval(time_t sec, time_t usec);
+            HIREDIS_HAPP_API void set_timer_interval(time_t sec, time_t usec);
 
-            void set_timeout(time_t sec);
+            HIREDIS_HAPP_API void set_timeout(time_t sec);
 
-            void add_timer_cmd(cmd_t *cmd);
+            HIREDIS_HAPP_API void add_timer_cmd(cmd_t *cmd);
 
-            int proc(time_t sec, time_t usec);
+            HIREDIS_HAPP_API int proc(time_t sec, time_t usec);
 
-            void set_log_writer(log_fn_t info_fn, log_fn_t debug_fn, size_t max_size = 65536);
+            HIREDIS_HAPP_API void set_log_writer(log_fn_t info_fn, log_fn_t debug_fn, size_t max_size = 65536);
 
-            HIREDIS_HAPP_PRIVATE : cmd_t *create_cmd(cmd_t::callback_fn_t cbk, void *pridata);
-            void destroy_cmd(cmd_t *c);
-            int call_cmd(cmd_t *c, int err, redisAsyncContext *context, void *reply);
+            HIREDIS_HAPP_PRIVATE : HIREDIS_HAPP_API cmd_t *create_cmd(cmd_t::callback_fn_t cbk, void *pridata);
+            HIREDIS_HAPP_API void                          destroy_cmd(cmd_t *c);
+            HIREDIS_HAPP_API int                           call_cmd(cmd_t *c, int err, redisAsyncContext *context, void *reply);
 
+        private:
             static void on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata);
             static void on_connected_wrapper(const struct redisAsyncContext *, int status);
             static void on_disconnected_wrapper(const struct redisAsyncContext *, int status);
 
             static void on_reply_auth(cmd_exec *cmd, redisAsyncContext *c, void *r, void *privdata);
-            
-        private:
+
             void log_debug(const char *fmt, ...);
 
             void log_info(const char *fmt, ...);
 
             HIREDIS_HAPP_PRIVATE : struct config_t {
                 connection::key_t init_connection;
-                log_fn_t log_fn_info;
-                log_fn_t log_fn_debug;
-                char *log_buffer;
-                size_t log_max_size;
+                log_fn_t          log_fn_info;
+                log_fn_t          log_fn_debug;
+                char *            log_buffer;
+                size_t            log_max_size;
 
                 time_t timer_interval_sec;
                 time_t timer_interval_usec;
@@ -221,7 +221,7 @@ namespace hiredis {
 
                 struct conn_timetout_t {
                     uint64_t sequence;
-                    time_t timeout;
+                    time_t   timeout;
                 };
                 conn_timetout_t timer_conn;
             };
@@ -229,13 +229,13 @@ namespace hiredis {
 
             // callbacks
             struct callback_set_t {
-                onconnect_fn_t on_connect;
-                onconnected_fn_t on_connected;
+                onconnect_fn_t      on_connect;
+                onconnected_fn_t    on_connected;
                 ondisconnected_fn_t on_disconnected;
             };
             callback_set_t callbacks;
         };
-    }
-}
+    } // namespace happ
+} // namespace hiredis
 
 #endif // HIREDIS_HAPP_HIREDIS_HAPP_CLUSTER_H

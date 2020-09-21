@@ -10,9 +10,6 @@ enable_testing()
 
 project(hiredis-happ)
 
-option(HOREDIS_HAPP_LIBHIREDIS_USING_SRC "Using include hiredis.h instead of hiredis/hiredis.h" OFF)
-
-
 # 准备下载依赖组件
 include ("${CMAKE_CURRENT_LIST_DIR}/3rd_party/atframe_utils/libatframe_utils.prepare.cmake")
 
@@ -64,32 +61,50 @@ endif ()
 # 设置输出目录 
 set(PROJECT_HIREDIS_HAPP_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
 set(PROJECT_HIREDIS_HAPP_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src")
-
-file(GLOB_RECURSE PROJECT_HIREDIS_HAPP_SRC_LIST "${PROJECT_HIREDIS_HAPP_SOURCE_DIR}/*.c" "${PROJECT_HIREDIS_HAPP_SOURCE_DIR}/*.cpp")
-file(GLOB_RECURSE PROJECT_HIREDIS_HAPP_HEADER_LIST "${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}/*.h" "${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}/*.hpp")
+set(HIREDIS_HAPP_VERSION "0.6.0")
 
 configure_file("${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}/detail/hiredis_happ_config.h.in" "${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}/detail/hiredis_happ_config.h" @ONLY)
 
+file(GLOB_RECURSE PROJECT_HIREDIS_HAPP_SRC_LIST "${PROJECT_HIREDIS_HAPP_SOURCE_DIR}/*.cpp")
+file(GLOB_RECURSE PROJECT_HIREDIS_HAPP_HEADER_LIST "${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}/*.h")
+
 include(GNUInstallDirs)
 
-#if(BUILD_SHARED_LIBS) 
-#    add_library(hiredis-happ SHARED ${PROJECT_HIREDIS_HAPP_SRC_LIST} ${PROJECT_HIREDIS_HAPP_HEADER_LIST})
-#else ()
+if(BUILD_SHARED_LIBS OR ATFRAMEWORK_USE_DYNAMIC_LIBRARY)
+    add_library(hiredis-happ SHARED ${PROJECT_HIREDIS_HAPP_SRC_LIST} ${PROJECT_HIREDIS_HAPP_HEADER_LIST})
+    set_target_properties(hiredis-happ PROPERTIES 
+        C_VISIBILITY_PRESET "hidden"
+        CXX_VISIBILITY_PRESET "hidden"
+        VERSION ${HIREDIS_HAPP_VERSION}
+        SOVERSION ${HIREDIS_HAPP_VERSION}
+        INTERFACE_COMPILE_DEFINITIONS HIREDIS_HAPP_API_DLL=1
+    )
+    target_compile_definitions(hiredis-happ
+        PRIVATE HIREDIS_HAPP_API_NATIVE=1 HIREDIS_HAPP_API_DLL=1
+    )
+    target_compile_options(hiredis-happ
+        PRIVATE ${COMPILER_STRICT_EXTRA_CFLAGS} ${COMPILER_STRICT_CFLAGS}
+    )
+else ()
     add_library(hiredis-happ STATIC ${PROJECT_HIREDIS_HAPP_SRC_LIST} ${PROJECT_HIREDIS_HAPP_HEADER_LIST})
     set_target_properties(hiredis-happ PROPERTIES 
-        C_VISIBILITY_PRESET "default"
-        CXX_VISIBILITY_PRESET "default"
-        WINDOWS_EXPORT_ALL_SYMBOLS TRUE
+        C_VISIBILITY_PRESET "hidden"
+        CXX_VISIBILITY_PRESET "hidden"
+        VERSION ${HIREDIS_HAPP_VERSION}
     )
-#endif ()
+    target_compile_definitions(hiredis-happ
+        PRIVATE HIREDIS_HAPP_API_NATIVE=1
+    )
+    target_compile_options(hiredis-happ
+        PRIVATE ${COMPILER_STRICT_EXTRA_CFLAGS} ${COMPILER_STRICT_CFLAGS}
+    )
+endif ()
 
 target_include_directories(hiredis-happ
     PUBLIC 
         "$<BUILD_INTERFACE:${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}>"
         "$<INSTALL_INTERFACE:include>"
 )
-
-list(APPEND PROJECT_HIREDIS_HAPP_PUBLIC_LINK_NAMES hiredis)
 
 if(WIN32)
     list(APPEND PROJECT_HIREDIS_HAPP_INTERFACE_LINK_NAMES psapi iphlpapi userenv ws2_32)

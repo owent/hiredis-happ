@@ -7,17 +7,13 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-    uint16_t crc16(const char *buf, size_t len);
-
-#ifdef __cplusplus
-}
-#endif
+namespace hiredis {
+    namespace happ {
+        uint16_t crc16(const char *buf, size_t len);
+    }
+} // namespace hiredis
 
 #endif

@@ -8,32 +8,24 @@
 #include <sys/time.h>
 #endif
 
+#include <algorithm>
 #include <assert.h>
 #include <cstdio>
-#include <cstring>
 #include <cstdlib>
-#include <iostream>
-#include <string>
-#include <sstream>
-#include <list>
+#include <cstring>
 #include <ctime>
-#include <algorithm>
+#include <iostream>
+#include <list>
+#include <sstream>
+#include <string>
 
 #include "hiredis_happ.h"
 
 
 #if defined(HIREDIS_HAPP_ENABLE_LIBUV)
-#if defined(HOREDIS_HAPP_LIBHIREDIS_USING_SRC) && HOREDIS_HAPP_LIBHIREDIS_USING_SRC
-#include "adapters/libuv.h"
-#else
 #include "hiredis/adapters/libuv.h"
-#endif
 #elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
-#if defined(HOREDIS_HAPP_LIBHIREDIS_USING_SRC) && HOREDIS_HAPP_LIBHIREDIS_USING_SRC
-#include "adapters/libevent.h"
-#else
 #include "hiredis/adapters/libevent.h"
-#endif
 #endif
 
 #ifdef __cplusplus
@@ -41,10 +33,10 @@ extern "C" {
 #endif
 
 #if defined(_MSC_VER)
-#include <winsock2.h>
+#include <Windows.h>
 #include <process.h>
 #include <sys/locking.h>
-#include <Windows.h>
+#include <winsock2.h>
 #define THREAD_SPIN_COUNT 2000
 
 typedef HANDLE sample_thread_t;
@@ -52,18 +44,18 @@ typedef HANDLE sample_thread_t;
 #define THREAD_CREATE(threadvar, fn, arg)                                     \
     do {                                                                      \
         uintptr_t threadhandle = _beginthreadex(NULL, 0, fn, (arg), 0, NULL); \
-        (threadvar) = (sample_thread_t)threadhandle;                                 \
+        (threadvar)            = (sample_thread_t)threadhandle;               \
     } while (0)
 #define THREAD_JOIN(th) WaitForSingleObject(th, INFINITE)
 #define THREAD_RETURN return (0)
 
 #define THREAD_SLEEP_MS(TM) Sleep(TM)
 #elif defined(__GNUC__) || defined(__clang__)
-#include <pthread.h>
 #include <errno.h>
+#include <pthread.h>
 #include <unistd.h>
 
-typedef pthread_t sample_thread_t;
+typedef pthread_t  sample_thread_t;
 #define THREAD_FUNC void *
 #define THREAD_CREATE(threadvar, fn, arg) pthread_create(&(threadvar), NULL, fn, arg)
 #define THREAD_JOIN(th) pthread_join(th, NULL)
@@ -89,7 +81,7 @@ static uv_loop_t *main_loop;
 static event_base *main_loop;
 #endif
 
-static pthread_mutex_t g_mutex;
+static pthread_mutex_t        g_mutex;
 static std::list<std::string> g_cmds;
 
 static void on_connect_cbk(hiredis::happ::cluster *, hiredis::happ::connection *conn) {
@@ -204,8 +196,8 @@ static void on_timer_proc(
 #elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
     evutil_socket_t fd, short event, void *arg
 #endif
-    ) {
-    static time_t sec = time(NULL);
+) {
+    static time_t sec  = time(NULL);
     static time_t usec = 0;
 
     usec += 100000;
@@ -228,12 +220,12 @@ static void on_timer_proc(
         pending_cmds.pop_front();
 
         std::vector<std::string> cmds = split_word(cmd_line);
-        std::string cmd = cmds.empty() ? "" : cmds.front();
+        std::string              cmd  = cmds.empty() ? "" : cmds.front();
         std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::toupper);
         hiredis::happ::cmd_exec::callback_fn_t cbk = dump_callback;
-        redisCallbackFn *raw_cbk;
-        bool is_raw = false;
-        int k = 1;
+        redisCallbackFn *                      raw_cbk;
+        bool                                   is_raw = false;
+        int                                    k      = 1;
         if ("INFO" == cmd || "MULTI" == cmd || "EXEC" == cmd || "SLAVEOF" == cmd || "CONFIG" == cmd || "SHUTDOWN" == cmd || "CLUSTER" == cmd) {
             k = -1;
         } else if ("SCRIPT" == cmd) {
@@ -242,15 +234,15 @@ static void on_timer_proc(
             k = 3;
         } else if ("SUBSCRIBE" == cmd || "UNSUBSCRIBE" == cmd || "PSUBSCRIBE" == cmd || "PUNSUBSCRIBE" == cmd) {
             raw_cbk = subscribe_callback;
-            is_raw = true;
+            is_raw  = true;
         } else if ("MONITOR" == cmd) {
             raw_cbk = monitor_callback;
-            is_raw = true;
+            is_raw  = true;
         }
 
         // get parameters
         std::vector<const char *> pc;
-        std::vector<size_t> ps;
+        std::vector<size_t>       ps;
         for (size_t i = 0; i < cmds.size(); ++i) {
             pc.push_back(cmds[i].c_str());
             ps.push_back(cmds[i].size());
@@ -314,7 +306,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef _MSC_VER
     {
-        WORD wVersionRequested;
+        WORD    wVersionRequested;
         WSADATA wsaData;
 
         wVersionRequested = MAKEWORD(2, 2);
@@ -323,10 +315,10 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
-    const char *ip = argv[1];
-    long lport = 0;
-    lport = strtol(argv[2], NULL, 10);
-    uint16_t port = static_cast<uint16_t>(lport);
+    const char *ip    = argv[1];
+    long        lport = 0;
+    lport             = strtol(argv[2], NULL, 10);
+    uint16_t port     = static_cast<uint16_t>(lport);
 
     g_clu.init(ip, port);
 
@@ -355,9 +347,9 @@ int main(int argc, char *argv[]) {
 #elif defined(HIREDIS_HAPP_ENABLE_LIBEVENT)
     // setup timer using libevent
     struct timeval tv;
-    struct event ev;
+    struct event   ev;
     event_assign(&ev, main_loop, -1, EV_PERSIST, on_timer_proc, NULL);
-    tv.tv_sec = 0;
+    tv.tv_sec  = 0;
     tv.tv_usec = 100000;
     evtimer_add(&ev, &tv);
 #endif

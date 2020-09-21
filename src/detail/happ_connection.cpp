@@ -1,27 +1,29 @@
 
-#include <assert.h>
-#include <cstring>
-#include <cstdlib>
 #include <algorithm>
+#include <assert.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "detail/happ_connection.h"
 
 
 namespace hiredis {
     namespace happ {
-        connection::connection() : sequence(0), context(NULL), conn_status(status::DISCONNECTED) {
+        HIREDIS_HAPP_API connection::connection() : sequence(0), context(NULL), conn_status(status::DISCONNECTED) {
             make_sequence();
             holder.clu = NULL;
         }
 
-        connection::~connection() { release(true); }
+        HIREDIS_HAPP_API connection::~connection() { release(true); }
 
-        void connection::init(holder_t h, const std::string &ip, uint16_t port) {
+        HIREDIS_HAPP_API uint64_t connection::get_sequence() const { return sequence; }
+
+        HIREDIS_HAPP_API void connection::init(holder_t h, const std::string &ip, uint16_t port) {
             set_key(key, ip, port);
             init(h, key);
         }
 
-        void connection::init(holder_t h, const key_t &k) {
+        HIREDIS_HAPP_API void connection::init(holder_t h, const key_t &k) {
             if (&key != &k) {
                 key = k;
             }
@@ -29,7 +31,7 @@ namespace hiredis {
             holder = h;
         }
 
-        connection::status::type connection::set_connecting(redisAsyncContext *c) {
+        HIREDIS_HAPP_API connection::status::type connection::set_connecting(redisAsyncContext *c) {
             status::type ret = conn_status;
             if (status::CONNECTING == conn_status) {
                 return ret;
@@ -39,16 +41,16 @@ namespace hiredis {
                 return ret;
             }
 
-            context = c;
+            context     = c;
             conn_status = status::CONNECTING;
-            c->data = this;
+            c->data     = this;
 
             // new operation sequence
             make_sequence();
             return ret;
         }
 
-        connection::status::type connection::set_disconnected(bool close_fd) {
+        HIREDIS_HAPP_API connection::status::type connection::set_disconnected(bool close_fd) {
             status::type ret = conn_status;
             if (status::DISCONNECTED == conn_status) {
                 return ret;
@@ -64,7 +66,7 @@ namespace hiredis {
             return ret;
         }
 
-        connection::status::type connection::set_connected() {
+        HIREDIS_HAPP_API connection::status::type connection::set_connected() {
             status::type ret = conn_status;
             if (status::CONNECTING != conn_status || NULL == context) {
                 return ret;
@@ -78,7 +80,7 @@ namespace hiredis {
             return ret;
         }
 
-        int connection::redis_cmd(cmd_exec *c, redisCallbackFn fn) {
+        HIREDIS_HAPP_API int connection::redis_cmd(cmd_exec *c, redisCallbackFn fn) {
             if (NULL == c) {
                 return error_code::REDIS_HAPP_PARAM;
             }
@@ -92,14 +94,14 @@ namespace hiredis {
                 return error_code::REDIS_HAPP_CONNECTION;
             }
 
-            // call redisAsyncFormattedCommand if connecting or connected. 
+            // call redisAsyncFormattedCommand if connecting or connected.
             // this request will be added to hiredis's request queue
             // we should send data in order to trigger callback
             case status::CONNECTING:
             case status::CONNECTED: {
-                int res = 0;
+                int         res  = 0;
                 const char *cstr = NULL;
-                size_t clen = 0;
+                size_t      clen = 0;
                 if (0 == c->cmd.raw_len) {
                     res = redisAsyncFormattedCommand(context, fn, c, c->cmd.content.redis_sds, sdslen(c->cmd.content.redis_sds));
                 } else {
@@ -150,7 +152,7 @@ namespace hiredis {
             return error_code::REDIS_HAPP_OK;
         }
 
-        int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, const char *fmt, ...) {
+        HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, const char *fmt, ...) {
             if (NULL == context) {
                 return error_code::REDIS_HAPP_CREATE;
             }
@@ -163,7 +165,7 @@ namespace hiredis {
             return res;
         }
 
-        int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, const char *fmt, va_list ap) {
+        HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, const char *fmt, va_list ap) {
             if (NULL == context) {
                 return error_code::REDIS_HAPP_CREATE;
             }
@@ -171,7 +173,7 @@ namespace hiredis {
             return redisvAsyncCommand(context, fn, priv_data, fmt, ap);
         }
 
-        int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, const sds *src) {
+        HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, const sds *src) {
             if (NULL == context) {
                 return error_code::REDIS_HAPP_CREATE;
             }
@@ -179,7 +181,7 @@ namespace hiredis {
             return redisAsyncFormattedCommand(context, fn, priv_data, *src, sdslen(*src));
         }
 
-        int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, int argc, const char **argv, const size_t *argvlen) {
+        HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, int argc, const char **argv, const size_t *argvlen) {
             if (NULL == context) {
                 return error_code::REDIS_HAPP_CREATE;
             }
@@ -187,7 +189,7 @@ namespace hiredis {
             return redisAsyncCommandArgv(context, fn, priv_data, argc, argv, argvlen);
         }
 
-        int connection::call_reply(cmd_exec *c, void *r) {
+        HIREDIS_HAPP_API int connection::call_reply(cmd_exec *c, void *r) {
             if (NULL == context) {
                 // make sure to destroy cmd
                 if (NULL != c) {
@@ -227,7 +229,7 @@ namespace hiredis {
             return res;
         }
 
-        cmd_exec *connection::pop_reply(cmd_exec *c) {
+        HIREDIS_HAPP_API cmd_exec *connection::pop_reply(cmd_exec *c) {
             if (NULL == c) {
                 if (reply_list.empty()) {
                     return NULL;
@@ -258,9 +260,9 @@ namespace hiredis {
             return c;
         }
 
-        redisAsyncContext *connection::get_context() const { return context; }
+        HIREDIS_HAPP_API redisAsyncContext *connection::get_context() const { return context; }
 
-        void connection::release(bool close_fd) {
+        HIREDIS_HAPP_API void connection::release(bool close_fd) {
             if (NULL != context && close_fd) {
                 redisAsyncDisconnect(context);
             }
@@ -275,9 +277,15 @@ namespace hiredis {
                 cmd_exec::destroy(expired_c);
             }
 
-            context = NULL;
+            context     = NULL;
             conn_status = status::DISCONNECTED;
         }
+
+        HIREDIS_HAPP_API const connection::key_t &connection::get_key() const { return key; }
+
+        HIREDIS_HAPP_API holder_t connection::get_holder() const { return holder; }
+
+        HIREDIS_HAPP_API connection::status::type connection::get_status() const { return conn_status; }
 
         void connection::make_sequence() {
             do {
@@ -289,22 +297,22 @@ namespace hiredis {
 
 #elif defined(HIREDIS_HAPP_ATOMIC_MSVC)
                 static LONGLONG volatile seq_alloc = 0;
-                sequence = static_cast<uint64_t>(InterlockedAdd64(&seq_alloc, 1));
+                sequence                           = static_cast<uint64_t>(InterlockedAdd64(&seq_alloc, 1));
 
 #elif defined(HIREDIS_HAPP_ATOMIC_GCC_ATOMIC)
                 static volatile uint64_t seq_alloc = 0;
-                sequence = __atomic_add_fetch(&seq_alloc, 1, __ATOMIC_SEQ_CST);
+                sequence                           = __atomic_add_fetch(&seq_alloc, 1, __ATOMIC_SEQ_CST);
 #elif defined(HIREDIS_HAPP_ATOMIC_GCC)
                 static volatile uint64_t seq_alloc = 0;
-                sequence = __sync_fetch_and_add(&seq_alloc, 1);
+                sequence                           = __sync_fetch_and_add(&seq_alloc, 1);
 #else
                 static volatile uint64_t seq_alloc = 0;
-                sequence = ++seq_alloc;
+                sequence                           = ++seq_alloc;
 #endif
             } while (0 == sequence);
         }
 
-        std::string connection::make_name(const std::string &ip, uint16_t port) {
+        HIREDIS_HAPP_API std::string connection::make_name(const std::string &ip, uint16_t port) {
             std::string ret;
             ret.clear();
             ret.reserve(ip.size() + 8);
@@ -313,7 +321,7 @@ namespace hiredis {
             ret += ":";
 
             char buf[8] = {0};
-            int i = 7; // XXXXXXX0
+            int  i      = 7; // XXXXXXX0
             while (port) {
                 buf[--i] = port % 10 + '0';
                 port /= 10;
@@ -324,13 +332,13 @@ namespace hiredis {
             return ret;
         }
 
-        void connection::set_key(connection::key_t &k, const std::string &ip, uint16_t port) {
+        HIREDIS_HAPP_API void connection::set_key(connection::key_t &k, const std::string &ip, uint16_t port) {
             k.name = make_name(ip, port);
-            k.ip = ip;
+            k.ip   = ip;
             k.port = port;
         }
 
-        bool connection::pick_name(const std::string &name, std::string &ip, uint16_t &port) {
+        HIREDIS_HAPP_API bool connection::pick_name(const std::string &name, std::string &ip, uint16_t &port) {
             size_t it = name.find_first_of(':');
             if (it == std::string::npos) {
                 return false;
@@ -345,12 +353,12 @@ namespace hiredis {
                 ++s;
             }
 
-            ip = name.substr(s, it - s);
+            ip    = name.substr(s, it - s);
             int p = 0;
             HIREDIS_HAPP_SSCANF(name.c_str() + it + 1, "%d", &p);
             port = static_cast<uint16_t>(p);
 
             return true;
         }
-    }
-}
+    } // namespace happ
+} // namespace hiredis

@@ -20,7 +20,7 @@ namespace hiredis {
             static char NONE_MSG[] = "none";
         }
 
-        raw::raw() {
+        HIREDIS_HAPP_API raw::raw() {
             conf.log_fn_debug = conf.log_fn_info = NULL;
             conf.log_buffer                      = NULL;
             conf.log_max_size                    = 0;
@@ -40,7 +40,7 @@ namespace hiredis {
             timer_actions.timer_conn.timeout  = 0;
         }
 
-        raw::~raw() {
+        HIREDIS_HAPP_API raw::~raw() {
             reset();
 
             // log buffer
@@ -50,26 +50,26 @@ namespace hiredis {
             }
         }
 
-        int raw::init(const std::string &ip, uint16_t port) {
+        HIREDIS_HAPP_API int raw::init(const std::string &ip, uint16_t port) {
             connection::set_key(conf.init_connection, ip, port);
 
             return error_code::REDIS_HAPP_OK;
         }
 
-        const std::string &raw::get_auth_password() { return auth.password; }
+        HIREDIS_HAPP_API const std::string &raw::get_auth_password() { return auth.password; }
 
-        void raw::set_auth_password(const std::string &passwd) { auth.password = passwd; }
+        HIREDIS_HAPP_API void raw::set_auth_password(const std::string &passwd) { auth.password = passwd; }
 
-        const connection::auth_fn_t &raw::get_auth_fn() { return auth.auth_fn; }
+        HIREDIS_HAPP_API const connection::auth_fn_t &raw::get_auth_fn() { return auth.auth_fn; }
 
-        void raw::set_auth_fn(connection::auth_fn_t fn) { auth.auth_fn = fn; }
+        HIREDIS_HAPP_API void raw::set_auth_fn(connection::auth_fn_t fn) { auth.auth_fn = fn; }
 
-        int raw::start() {
+        HIREDIS_HAPP_API int raw::start() {
             // just do nothing
             return error_code::REDIS_HAPP_OK;
         }
 
-        int raw::reset() {
+        HIREDIS_HAPP_API int raw::reset() {
             // close connection if it's available
             if (conn_ && NULL != conn_->get_context()) {
                 redisAsyncDisconnect(conn_->get_context());
@@ -99,7 +99,7 @@ namespace hiredis {
             return 0;
         }
 
-        raw::cmd_t *raw::exec(cmd_t::callback_fn_t cbk, void *priv_data, int argc, const char **argv, const size_t *argvlen) {
+        HIREDIS_HAPP_API raw::cmd_t *raw::exec(cmd_t::callback_fn_t cbk, void *priv_data, int argc, const char **argv, const size_t *argvlen) {
             cmd_t *cmd = create_cmd(cbk, priv_data);
             if (NULL == cmd) {
                 return NULL;
@@ -115,7 +115,7 @@ namespace hiredis {
             return exec(cmd);
         }
 
-        raw::cmd_t *raw::exec(cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt, ...) {
+        HIREDIS_HAPP_API raw::cmd_t *raw::exec(cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt, ...) {
             cmd_t *cmd = create_cmd(cbk, priv_data);
             if (NULL == cmd) {
                 return NULL;
@@ -134,7 +134,7 @@ namespace hiredis {
             return exec(cmd);
         }
 
-        raw::cmd_t *raw::exec(cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt, va_list ap) {
+        HIREDIS_HAPP_API raw::cmd_t *raw::exec(cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt, va_list ap) {
             cmd_t *cmd = create_cmd(cbk, priv_data);
             if (NULL == cmd) {
                 return NULL;
@@ -150,7 +150,7 @@ namespace hiredis {
             return exec(cmd);
         }
 
-        raw::cmd_t *raw::exec(cmd_t *cmd) {
+        HIREDIS_HAPP_API raw::cmd_t *raw::exec(cmd_t *cmd) {
             if (NULL == cmd) {
                 return NULL;
             }
@@ -181,7 +181,7 @@ namespace hiredis {
             return exec(conn_inst, cmd);
         }
 
-        raw::cmd_t *raw::exec(connection_t *conn, cmd_t *cmd) {
+        HIREDIS_HAPP_API raw::cmd_t *raw::exec(connection_t *conn, cmd_t *cmd) {
             if (NULL == cmd) {
                 return NULL;
             }
@@ -231,7 +231,7 @@ namespace hiredis {
             return cmd;
         }
 
-        raw::cmd_t *raw::retry(cmd_t *cmd, connection_t *conn) {
+        HIREDIS_HAPP_API raw::cmd_t *raw::retry(cmd_t *cmd, connection_t *conn) {
             if (NULL == cmd) {
                 return NULL;
             }
@@ -251,11 +251,11 @@ namespace hiredis {
             return cmd;
         }
 
-        const raw::connection_t *raw::get_connection() const { return conn_.get(); }
+        HIREDIS_HAPP_API const raw::connection_t *raw::get_connection() const { return conn_.get(); }
 
-        raw::connection_t *raw::get_connection() { return conn_.get(); }
+        HIREDIS_HAPP_API raw::connection_t *raw::get_connection() { return conn_.get(); }
 
-        raw::connection_t *raw::make_connection() {
+        HIREDIS_HAPP_API raw::connection_t *raw::make_connection() {
             holder_t h;
             if (conn_) {
                 log_debug("connection %s already exists", conf.init_connection.name.c_str());
@@ -325,7 +325,7 @@ namespace hiredis {
             return &ret;
         }
 
-        bool raw::release_connection(bool close_fd, int status) {
+        HIREDIS_HAPP_API bool raw::release_connection(bool close_fd, int status) {
             if (!conn_) {
                 log_debug("connection %s not found", conf.init_connection.name.c_str());
                 return false;
@@ -367,40 +367,40 @@ namespace hiredis {
             return true;
         }
 
-        raw::onconnect_fn_t raw::set_on_connect(onconnect_fn_t cbk) {
+        HIREDIS_HAPP_API raw::onconnect_fn_t raw::set_on_connect(onconnect_fn_t cbk) {
             using std::swap;
             swap(cbk, callbacks.on_connect);
             return cbk;
         }
 
-        raw::onconnected_fn_t raw::set_on_connected(onconnected_fn_t cbk) {
+        HIREDIS_HAPP_API raw::onconnected_fn_t raw::set_on_connected(onconnected_fn_t cbk) {
             using std::swap;
             swap(cbk, callbacks.on_connected);
             return cbk;
         }
 
-        raw::ondisconnected_fn_t raw::set_on_disconnected(ondisconnected_fn_t cbk) {
+        HIREDIS_HAPP_API raw::ondisconnected_fn_t raw::set_on_disconnected(ondisconnected_fn_t cbk) {
             using std::swap;
             swap(cbk, callbacks.on_disconnected);
             return cbk;
         }
 
-        void raw::set_cmd_buffer_size(size_t s) { conf.cmd_buffer_size = s; }
+        HIREDIS_HAPP_API void raw::set_cmd_buffer_size(size_t s) { conf.cmd_buffer_size = s; }
 
-        size_t raw::get_cmd_buffer_size() const { return conf.cmd_buffer_size; }
+        HIREDIS_HAPP_API size_t raw::get_cmd_buffer_size() const { return conf.cmd_buffer_size; }
 
-        bool raw::is_timer_active() const {
+        HIREDIS_HAPP_API bool raw::is_timer_active() const {
             return (timer_actions.last_update_sec != 0 || timer_actions.last_update_usec != 0) && (conf.timer_interval_sec > 0 || conf.timer_interval_usec > 0);
         }
 
-        void raw::set_timer_interval(time_t sec, time_t usec) {
+        HIREDIS_HAPP_API void raw::set_timer_interval(time_t sec, time_t usec) {
             conf.timer_interval_sec  = sec;
             conf.timer_interval_usec = usec;
         }
 
-        void raw::set_timeout(time_t sec) { conf.timer_timeout_sec = sec; }
+        HIREDIS_HAPP_API void raw::set_timeout(time_t sec) { conf.timer_timeout_sec = sec; }
 
-        void raw::add_timer_cmd(cmd_t *cmd) {
+        HIREDIS_HAPP_API void raw::add_timer_cmd(cmd_t *cmd) {
             if (NULL == cmd) {
                 return;
             }
@@ -416,7 +416,7 @@ namespace hiredis {
             }
         }
 
-        int raw::proc(time_t sec, time_t usec) {
+        HIREDIS_HAPP_API int raw::proc(time_t sec, time_t usec) {
             int ret = 0;
 
             timer_actions.last_update_sec  = sec;
@@ -453,14 +453,26 @@ namespace hiredis {
             return ret;
         }
 
-        raw::cmd_t *raw::create_cmd(cmd_t::callback_fn_t cbk, void *pridata) {
+        HIREDIS_HAPP_API void raw::set_log_writer(log_fn_t info_fn, log_fn_t debug_fn, size_t max_size) {
+            using std::swap;
+            conf.log_fn_info  = info_fn;
+            conf.log_fn_debug = debug_fn;
+            conf.log_max_size = max_size;
+
+            if (NULL != conf.log_buffer) {
+                free(conf.log_buffer);
+                conf.log_buffer = NULL;
+            }
+        }
+
+        HIREDIS_HAPP_API raw::cmd_t *raw::create_cmd(cmd_t::callback_fn_t cbk, void *pridata) {
             holder_t h;
             h.r        = this;
             cmd_t *ret = cmd_t::create(h, cbk, pridata, conf.cmd_buffer_size);
             return ret;
         }
 
-        void raw::destroy_cmd(cmd_t *c) {
+        HIREDIS_HAPP_API void raw::destroy_cmd(cmd_t *c) {
             if (NULL == c) {
                 log_debug("can not destroy null cmd");
                 return;
@@ -474,25 +486,13 @@ namespace hiredis {
             cmd_t::destroy(c);
         }
 
-        int raw::call_cmd(cmd_t *c, int err, redisAsyncContext *context, void *reply) {
+        HIREDIS_HAPP_API int raw::call_cmd(cmd_t *c, int err, redisAsyncContext *context, void *reply) {
             if (NULL == c) {
                 log_debug("can not call cmd without cmd object");
                 return error_code::REDIS_HAPP_UNKNOWD;
             }
 
             return c->call_reply(err, context, reply);
-        }
-
-        void raw::set_log_writer(log_fn_t info_fn, log_fn_t debug_fn, size_t max_size) {
-            using std::swap;
-            conf.log_fn_info  = info_fn;
-            conf.log_fn_debug = debug_fn;
-            conf.log_max_size = max_size;
-
-            if (NULL != conf.log_buffer) {
-                free(conf.log_buffer);
-                conf.log_buffer = NULL;
-            }
         }
 
         void raw::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
@@ -572,7 +572,7 @@ namespace hiredis {
             self->release_connection(false, status);
         }
 
-        void raw::on_reply_auth(cmd_exec *cmd, redisAsyncContext *rctx, void *r, void *privdata) {
+        void raw::on_reply_auth(cmd_exec *cmd, redisAsyncContext *rctx, void *r, void * /*privdata*/) {
             redisReply *reply = reinterpret_cast<redisReply *>(r);
             raw *       self  = cmd->holder.r;
             assert(rctx);

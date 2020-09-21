@@ -1,9 +1,5 @@
-#include <stdint.h>
 #include <stddef.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stdint.h>
 
 static const uint16_t crc16tab[256] = {
     0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7, 0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef, 0x1231, 0x0210, 0x3273,
@@ -21,14 +17,14 @@ static const uint16_t crc16tab[256] = {
     0xbdaa, 0xad8b, 0x9de8, 0x8dc9, 0x7c26, 0x6c07, 0x5c64, 0x4c45, 0x3ca2, 0x2c83, 0x1ce0, 0x0cc1, 0xef1f, 0xff3e, 0xcf5d, 0xdf7c, 0xaf9b, 0xbfba, 0x8fd9,
     0x9ff8, 0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0};
 
-uint16_t crc16(const char *buf, size_t len) {
-    size_t counter;
-    uint16_t crc = 0;
-    for (counter = 0; counter < len; counter++)
-        crc = (crc << 8) ^ crc16tab[((crc >> 8) ^ *buf++) & 0x00FF];
-    return crc;
-}
-
-#ifdef __cplusplus
-}
-#endif
+namespace hiredis {
+    namespace happ {
+        uint16_t crc16(const char *buf, size_t len) {
+            size_t   counter;
+            uint16_t crc = 0;
+            for (counter = 0; counter < len; counter++)
+                crc = (crc << 8) ^ crc16tab[((crc >> 8) ^ *buf++) & 0x00FF];
+            return crc;
+        }
+    } // namespace happ
+} // namespace hiredis

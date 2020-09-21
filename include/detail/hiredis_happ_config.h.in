@@ -7,14 +7,14 @@
 
 #pragma once
 
-#include <stdint.h>
+#include <algorithm>
 #include <cstddef>
-#include <string>
 #include <cstdlib>
 #include <cstring>
 #include <functional>
 #include <memory>
-#include <algorithm>
+#include <stdint.h>
+#include <string>
 
 
 #if defined(__cplusplus) && __cplusplus >= 201103L
@@ -49,22 +49,13 @@
 #define HIREDIS_HAPP_ATOMIC_MSVC 1
 #endif
 
-#cmakedefine01 HOREDIS_HAPP_LIBHIREDIS_USING_SRC
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-#if defined(HOREDIS_HAPP_LIBHIREDIS_USING_SRC) && HOREDIS_HAPP_LIBHIREDIS_USING_SRC
-#include "hiredis.h"
-#include "async.h"
-#include "sds.h"
-#else
-#include "hiredis/hiredis.h"
-#include "hiredis/async.h"
-#include "hiredis/sds.h"
-#endif
-
+#include <hiredis/async.h>
+#include <hiredis/hiredis.h>
+#include <hiredis/sds.h>
 
 #if defined(__cplusplus)
 }
@@ -138,7 +129,7 @@ __inline int c99_vsnprintf(char *str, size_t size, const char *format, va_list a
 }
 
 __inline int c99_snprintf(char *str, size_t size, const char *format, ...) {
-    int count;
+    int     count;
     va_list ap;
 
     va_start(ap, format);
@@ -152,6 +143,98 @@ __inline int c99_snprintf(char *str, size_t size, const char *format, ...) {
 #endif
 
 
+// ================ import/export ================
+// @see https://gcc.gnu.org/wiki/Visibility
+// @see http://releases.llvm.org/9.0.0/tools/clang/docs/AttributeReference.html
+// @see https://github.com/atframework/atframe_utils/blob/master/include/config/compile_optimize.h
+
+// ================ import/export: for compilers ================
+#if defined(__GNUC__) && !defined(__ibmxl__)
+//  GNU C++/Clang
+//
+// Dynamic shared object (DSO) and dynamic-link library (DLL) support
+//
+#if __GNUC__ >= 4
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32) || defined(__CYGWIN__)
+// All Win32 development environments, including 64-bit Windows and MinGW, define
+// _WIN32 or one of its variant spellings. Note that Cygwin is a POSIX environment,
+// so does not define _WIN32 or its variants.
+#define HIREDIS_HAPP_SYMBOL_EXPORT __attribute__((__dllexport__))
+#define HIREDIS_HAPP_SYMBOL_IMPORT __attribute__((__dllimport__))
+#else
+#define HIREDIS_HAPP_SYMBOL_EXPORT __attribute__((__visibility__("default")))
+#define HIREDIS_HAPP_SYMBOL_IMPORT __attribute__((__visibility__("default")))
+#define HIREDIS_HAPP_SYMBOL_VISIBLE __attribute__((__visibility__("default")))
+#endif
+#else
+// config/platform/win32.hpp will define HIREDIS_HAPP_SYMBOL_EXPORT, etc., unless already defined
+#define HIREDIS_HAPP_SYMBOL_EXPORT
+#define HIREDIS_HAPP_SYMBOL_IMPORT
+#define HIREDIS_HAPP_SYMBOL_VISIBLE
+#endif
+
+#elif defined(_MSC_VER)
+//  Microsoft Visual C++
+//
+//  Must remain the last #elif since some other vendors (Metrowerks, for
+//  example) also #define _MSC_VER
+#else
+#endif
+// ---------------- import/export: for compilers ----------------
+
+// ================ import/export: for platform ================
+//  Default defines for HIREDIS_HAPP_SYMBOL_EXPORT and HIREDIS_HAPP_SYMBOL_IMPORT
+//  If a compiler doesn't support __declspec(dllexport)/__declspec(dllimport),
+//  its boost/config/compiler/ file must define HIREDIS_HAPP_SYMBOL_EXPORT and
+//  HIREDIS_HAPP_SYMBOL_IMPORT
+#if !defined(HIREDIS_HAPP_SYMBOL_EXPORT) && (defined(_WIN32) || defined(__WIN32__) || defined(WIN32) || defined(__CYGWIN__))
+#define HIREDIS_HAPP_SYMBOL_EXPORT __declspec(dllexport)
+#define HIREDIS_HAPP_SYMBOL_IMPORT __declspec(dllimport)
+#endif
+// ---------------- import/export: for platform ----------------
+
+#ifndef HIREDIS_HAPP_SYMBOL_EXPORT
+#define HIREDIS_HAPP_SYMBOL_EXPORT
+#endif
+#ifndef HIREDIS_HAPP_SYMBOL_IMPORT
+#define HIREDIS_HAPP_SYMBOL_IMPORT
+#endif
+#ifndef HIREDIS_HAPP_SYMBOL_VISIBLE
+#define HIREDIS_HAPP_SYMBOL_VISIBLE
+#endif
+
+// ---------------- import/export ----------------
+
+// ================ __cdecl ================
+#if defined(__GNUC__) || defined(__GNUG__)
+#ifndef __cdecl
+// see https://gcc.gnu.org/onlinedocs/gcc-4.0.0/gcc/Function-Attributes.html
+// Intel x86 architecture specific calling conventions
+#ifdef _M_IX86
+#define __cdecl __attribute__((__cdecl__))
+#else
+#define __cdecl
+#endif
+#endif
+#endif
+// ---------------- __cdecl ----------------
+
+#if defined(HIREDIS_HAPP_API_NATIVE) && HIREDIS_HAPP_API_NATIVE
+#if defined(HIREDIS_HAPP_API_DLL) && HIREDIS_HAPP_API_DLL
+#define HIREDIS_HAPP_API HIREDIS_HAPP_SYMBOL_EXPORT
+#else
+#define HIREDIS_HAPP_API
+#endif
+#else
+#if defined(HIREDIS_HAPP_API_DLL) && HIREDIS_HAPP_API_DLL
+#define HIREDIS_HAPP_API HIREDIS_HAPP_SYMBOL_IMPORT
+#else
+#define HIREDIS_HAPP_API
+#endif
+#endif
+#define HIREDIS_HAPP_API_HEAD_ONLY HIREDIS_HAPP_SYMBOL_VISIBLE
+#define HIREDIS_HAPP_API_C(R) extern "C" HIREDIS_HAPP_API R __cdecl
+
 // error code
 namespace hiredis {
     namespace happ {
@@ -159,13 +242,13 @@ namespace hiredis {
         template <typename T>
         struct unique_ptr {
             typedef std::unique_ptr<T> type;
-            static void swap(type &l, type &r) { l.swap(r); }
+            static void                swap(type &l, type &r) { l.swap(r); }
         };
 #else
         template <typename T>
         struct unique_ptr {
             typedef std::shared_ptr<T> type;
-            static void swap(type &l, type &r) {
+            static void                swap(type &l, type &r) {
                 using std::swap;
                 swap(l, r);
             }
@@ -174,20 +257,20 @@ namespace hiredis {
 
         struct error_code {
             enum type {
-                REDIS_HAPP_OK = REDIS_OK,
-                REDIS_HAPP_UNKNOWD = -1001,          // unknown error
-                REDIS_HAPP_HIREDIS = -1002,          // error happened in hiredis
-                REDIS_HAPP_TTL = -1003,              // try more than ttl times
-                REDIS_HAPP_CONNECTION = -1004,       // connect lost or connect failed
+                REDIS_HAPP_OK               = REDIS_OK,
+                REDIS_HAPP_UNKNOWD          = -1001, // unknown error
+                REDIS_HAPP_HIREDIS          = -1002, // error happened in hiredis
+                REDIS_HAPP_TTL              = -1003, // try more than ttl times
+                REDIS_HAPP_CONNECTION       = -1004, // connect lost or connect failed
                 REDIS_HAPP_SLOT_UNAVAILABLE = -1005, // slot unavailable
-                REDIS_HAPP_CREATE = -1006,           // create failed
-                REDIS_HAPP_PARAM = -1007,            // param error
-                REDIS_HAPP_TIMEOUT = -1008,          // timeout
-                REDIS_HAPP_NOT_FOUND = -1009,        // not found
+                REDIS_HAPP_CREATE           = -1006, // create failed
+                REDIS_HAPP_PARAM            = -1007, // param error
+                REDIS_HAPP_TIMEOUT          = -1008, // timeout
+                REDIS_HAPP_NOT_FOUND        = -1009, // not found
             };
         };
-    }
-}
+    } // namespace happ
+} // namespace hiredis
 
 // do not define this macro , it will only be used in unit test
 #ifdef HIREDIS_HAPP_UNIT_TEST_HACK

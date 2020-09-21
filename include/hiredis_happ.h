@@ -1,5 +1,5 @@
 //
-// Created by 欧文韬 on 2015/7/5.
+// Created by owent on 2015/7/5.
 //
 
 #ifndef HIREDIS_HAPP_HIREDIS_HAPP_H
@@ -10,4 +10,4 @@
 #include "detail/happ_cluster.h"
 #include "detail/happ_raw.h"
 
-#endif //HIREDIS_HAPP_HIREDIS_HAPP_H
+#endif // HIREDIS_HAPP_HIREDIS_HAPP_H

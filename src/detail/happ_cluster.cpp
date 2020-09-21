@@ -36,7 +36,7 @@ namespace hiredis {
             static char NONE_MSG[] = "none";
         } // namespace detail
 
-        cluster::cluster() : slot_flag(slot_status::INVALID) {
+        HIREDIS_HAPP_API cluster::cluster() : slot_flag(slot_status::INVALID) {
             conf.log_fn_debug = conf.log_fn_info = NULL;
             conf.log_buffer                      = NULL;
             conf.log_max_size                    = 0;
@@ -57,7 +57,7 @@ namespace hiredis {
             timer_actions.last_update_usec = 0;
         }
 
-        cluster::~cluster() {
+        HIREDIS_HAPP_API cluster::~cluster() {
             reset();
 
             // log buffer
@@ -67,26 +67,26 @@ namespace hiredis {
             }
         }
 
-        int cluster::init(const std::string &ip, uint16_t port) {
+        HIREDIS_HAPP_API int cluster::init(const std::string &ip, uint16_t port) {
             connection::set_key(conf.init_connection, ip, port);
 
             return error_code::REDIS_HAPP_OK;
         }
 
-        const std::string &cluster::get_auth_password() { return auth.password; }
+        HIREDIS_HAPP_API const std::string &cluster::get_auth_password() { return auth.password; }
 
-        void cluster::set_auth_password(const std::string &passwd) { auth.password = passwd; }
+        HIREDIS_HAPP_API void cluster::set_auth_password(const std::string &passwd) { auth.password = passwd; }
 
-        const connection::auth_fn_t &cluster::get_auth_fn() { return auth.auth_fn; }
+        HIREDIS_HAPP_API const connection::auth_fn_t &cluster::get_auth_fn() { return auth.auth_fn; }
 
-        void cluster::set_auth_fn(connection::auth_fn_t fn) { auth.auth_fn = fn; }
+        HIREDIS_HAPP_API void cluster::set_auth_fn(connection::auth_fn_t fn) { auth.auth_fn = fn; }
 
-        int cluster::start() {
+        HIREDIS_HAPP_API int cluster::start() {
             reload_slots();
             return error_code::REDIS_HAPP_OK;
         }
 
-        int cluster::reset() {
+        HIREDIS_HAPP_API int cluster::reset() {
             std::vector<redisAsyncContext *> all_contexts;
             all_contexts.reserve(connections.size());
 
@@ -166,8 +166,8 @@ namespace hiredis {
             return 0;
         }
 
-        cluster::cmd_t *cluster::exec(const char *key, size_t ks, cmd_t::callback_fn_t cbk, void *priv_data, int argc, const char **argv,
-                                      const size_t *argvlen) {
+        HIREDIS_HAPP_API cluster::cmd_t *cluster::exec(const char *key, size_t ks, cmd_t::callback_fn_t cbk, void *priv_data, int argc, const char **argv,
+                                                       const size_t *argvlen) {
             cmd_t *cmd = create_cmd(cbk, priv_data);
             if (NULL == cmd) {
                 return NULL;
@@ -183,7 +183,7 @@ namespace hiredis {
             return exec(key, ks, cmd);
         }
 
-        cluster::cmd_t *cluster::exec(const char *key, size_t ks, cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt, ...) {
+        HIREDIS_HAPP_API cluster::cmd_t *cluster::exec(const char *key, size_t ks, cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt, ...) {
             cmd_t *cmd = create_cmd(cbk, priv_data);
             if (NULL == cmd) {
                 return NULL;
@@ -202,7 +202,7 @@ namespace hiredis {
             return exec(key, ks, cmd);
         }
 
-        cluster::cmd_t *cluster::exec(const char *key, size_t ks, cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt, va_list ap) {
+        HIREDIS_HAPP_API cluster::cmd_t *cluster::exec(const char *key, size_t ks, cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt, va_list ap) {
             cmd_t *cmd = create_cmd(cbk, priv_data);
             if (NULL == cmd) {
                 return NULL;
@@ -218,7 +218,7 @@ namespace hiredis {
             return exec(key, ks, cmd);
         }
 
-        cluster::cmd_t *cluster::exec(const char *key, size_t ks, cmd_t *cmd) {
+        HIREDIS_HAPP_API cluster::cmd_t *cluster::exec(const char *key, size_t ks, cmd_t *cmd) {
             if (NULL == cmd) {
                 return NULL;
             }
@@ -273,7 +273,7 @@ namespace hiredis {
             return exec(conn_inst, cmd);
         }
 
-        cluster::cmd_t *cluster::exec(connection_t *conn, cmd_t *cmd) {
+        HIREDIS_HAPP_API cluster::cmd_t *cluster::exec(connection_t *conn, cmd_t *cmd) {
             if (NULL == cmd) {
                 return NULL;
             }
@@ -327,7 +327,7 @@ namespace hiredis {
             return cmd;
         }
 
-        cluster::cmd_t *cluster::retry(cmd_t *cmd, connection_t *conn) {
+        HIREDIS_HAPP_API cluster::cmd_t *cluster::retry(cmd_t *cmd, connection_t *conn) {
             if (NULL == cmd) {
                 return NULL;
             }
@@ -347,7 +347,7 @@ namespace hiredis {
             return cmd;
         }
 
-        bool cluster::reload_slots() {
+        HIREDIS_HAPP_API bool cluster::reload_slots() {
             if (slot_status::UPDATING == slot_flag) {
                 return false;
             }
@@ -387,7 +387,7 @@ namespace hiredis {
             return true;
         }
 
-        const connection::key_t *cluster::get_slot_master(int index) {
+        HIREDIS_HAPP_API const connection::key_t *cluster::get_slot_master(int index) {
             if (index >= 0 && index < HIREDIS_HAPP_SLOT_NUMBER && !slots[index].hosts.empty()) {
                 return &slots[index].hosts.front();
             }
@@ -401,12 +401,12 @@ namespace hiredis {
             return &slots[index].hosts.front();
         }
 
-        const cluster::slot_t *cluster::get_slot_by_key(const char *key, size_t ks) const {
+        HIREDIS_HAPP_API const cluster::slot_t *cluster::get_slot_by_key(const char *key, size_t ks) const {
             int index = static_cast<int>(crc16(key, ks) % HIREDIS_HAPP_SLOT_NUMBER);
             return &slots[index];
         }
 
-        const cluster::connection_t *cluster::get_connection(const std::string &key) const {
+        HIREDIS_HAPP_API const cluster::connection_t *cluster::get_connection(const std::string &key) const {
             connection_map_t::const_iterator it = connections.find(key);
             if (it == connections.end()) {
                 return NULL;
@@ -415,7 +415,7 @@ namespace hiredis {
             return it->second.get();
         }
 
-        cluster::connection_t *cluster::get_connection(const std::string &key) {
+        HIREDIS_HAPP_API cluster::connection_t *cluster::get_connection(const std::string &key) {
             connection_map_t::iterator it = connections.find(key);
             if (it == connections.end()) {
                 return NULL;
@@ -424,13 +424,15 @@ namespace hiredis {
             return it->second.get();
         }
 
-        const cluster::connection_t *cluster::get_connection(const std::string &ip, uint16_t port) const {
+        HIREDIS_HAPP_API const cluster::connection_t *cluster::get_connection(const std::string &ip, uint16_t port) const {
             return get_connection(connection::make_name(ip, port));
         }
 
-        cluster::connection_t *cluster::get_connection(const std::string &ip, uint16_t port) { return get_connection(connection::make_name(ip, port)); }
+        HIREDIS_HAPP_API cluster::connection_t *cluster::get_connection(const std::string &ip, uint16_t port) {
+            return get_connection(connection::make_name(ip, port));
+        }
 
-        cluster::connection_t *cluster::make_connection(const connection::key_t &key) {
+        HIREDIS_HAPP_API cluster::connection_t *cluster::make_connection(const connection::key_t &key) {
             holder_t                   h;
             connection_map_t::iterator check_it = connections.find(key.name);
             if (check_it != connections.end()) {
@@ -504,7 +506,7 @@ namespace hiredis {
             return &ret;
         }
 
-        bool cluster::release_connection(const connection::key_t &key, bool close_fd, int status) {
+        HIREDIS_HAPP_API bool cluster::release_connection(const connection::key_t &key, bool close_fd, int status) {
             connection_map_t::iterator it = connections.find(key.name);
             if (connections.end() == it) {
                 log_debug("connection %s not found", key.name.c_str());
@@ -545,40 +547,40 @@ namespace hiredis {
             return true;
         }
 
-        cluster::onconnect_fn_t cluster::set_on_connect(onconnect_fn_t cbk) {
+        HIREDIS_HAPP_API cluster::onconnect_fn_t cluster::set_on_connect(onconnect_fn_t cbk) {
             using std::swap;
             swap(cbk, callbacks.on_connect);
             return cbk;
         }
 
-        cluster::onconnected_fn_t cluster::set_on_connected(onconnected_fn_t cbk) {
+        HIREDIS_HAPP_API cluster::onconnected_fn_t cluster::set_on_connected(onconnected_fn_t cbk) {
             using std::swap;
             swap(cbk, callbacks.on_connected);
             return cbk;
         }
 
-        cluster::ondisconnected_fn_t cluster::set_on_disconnected(ondisconnected_fn_t cbk) {
+        HIREDIS_HAPP_API cluster::ondisconnected_fn_t cluster::set_on_disconnected(ondisconnected_fn_t cbk) {
             using std::swap;
             swap(cbk, callbacks.on_disconnected);
             return cbk;
         }
 
-        void cluster::set_cmd_buffer_size(size_t s) { conf.cmd_buffer_size = s; }
+        HIREDIS_HAPP_API void cluster::set_cmd_buffer_size(size_t s) { conf.cmd_buffer_size = s; }
 
-        size_t cluster::get_cmd_buffer_size() const { return conf.cmd_buffer_size; }
+        HIREDIS_HAPP_API size_t cluster::get_cmd_buffer_size() const { return conf.cmd_buffer_size; }
 
-        bool cluster::is_timer_active() const {
+        HIREDIS_HAPP_API bool cluster::is_timer_active() const {
             return (timer_actions.last_update_sec != 0 || timer_actions.last_update_usec != 0) && (conf.timer_interval_sec > 0 || conf.timer_interval_usec > 0);
         }
 
-        void cluster::set_timer_interval(time_t sec, time_t usec) {
+        HIREDIS_HAPP_API void cluster::set_timer_interval(time_t sec, time_t usec) {
             conf.timer_interval_sec  = sec;
             conf.timer_interval_usec = usec;
         }
 
-        void cluster::set_timeout(time_t sec) { conf.timer_timeout_sec = sec; }
+        HIREDIS_HAPP_API void cluster::set_timeout(time_t sec) { conf.timer_timeout_sec = sec; }
 
-        void cluster::add_timer_cmd(cmd_t *cmd) {
+        HIREDIS_HAPP_API void cluster::add_timer_cmd(cmd_t *cmd) {
             if (NULL == cmd) {
                 return;
             }
@@ -594,7 +596,7 @@ namespace hiredis {
             }
         }
 
-        int cluster::proc(time_t sec, time_t usec) {
+        HIREDIS_HAPP_API int cluster::proc(time_t sec, time_t usec) {
             int ret = 0;
 
             timer_actions.last_update_sec  = sec;
@@ -632,14 +634,26 @@ namespace hiredis {
             return ret;
         }
 
-        cluster::cmd_t *cluster::create_cmd(cmd_t::callback_fn_t cbk, void *pridata) {
+        HIREDIS_HAPP_API void cluster::set_log_writer(log_fn_t info_fn, log_fn_t debug_fn, size_t max_size) {
+            using std::swap;
+            conf.log_fn_info  = info_fn;
+            conf.log_fn_debug = debug_fn;
+            conf.log_max_size = max_size;
+
+            if (NULL != conf.log_buffer) {
+                free(conf.log_buffer);
+                conf.log_buffer = NULL;
+            }
+        }
+
+        HIREDIS_HAPP_API cluster::cmd_t *cluster::create_cmd(cmd_t::callback_fn_t cbk, void *pridata) {
             holder_t h;
             h.clu      = this;
             cmd_t *ret = cmd_t::create(h, cbk, pridata, conf.cmd_buffer_size);
             return ret;
         }
 
-        void cluster::destroy_cmd(cmd_t *c) {
+        HIREDIS_HAPP_API void cluster::destroy_cmd(cmd_t *c) {
             if (NULL == c) {
                 log_debug("can not destroy null cmd");
                 return;
@@ -653,25 +667,13 @@ namespace hiredis {
             cmd_t::destroy(c);
         }
 
-        int cluster::call_cmd(cmd_t *c, int err, redisAsyncContext *context, void *reply) {
+        HIREDIS_HAPP_API int cluster::call_cmd(cmd_t *c, int err, redisAsyncContext *context, void *reply) {
             if (NULL == c) {
                 log_debug("can not call cmd without cmd object");
                 return error_code::REDIS_HAPP_UNKNOWD;
             }
 
             return c->call_reply(err, context, reply);
-        }
-
-        void cluster::set_log_writer(log_fn_t info_fn, log_fn_t debug_fn, size_t max_size) {
-            using std::swap;
-            conf.log_fn_info  = info_fn;
-            conf.log_fn_debug = debug_fn;
-            conf.log_max_size = max_size;
-
-            if (NULL != conf.log_buffer) {
-                free(conf.log_buffer);
-                conf.log_buffer = NULL;
-            }
         }
 
         void cluster::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
@@ -789,7 +791,7 @@ namespace hiredis {
             conn->call_reply(cmd, r);
         }
 
-        void cluster::on_reply_update_slot(cmd_exec *cmd, redisAsyncContext *, void *r, void *privdata) {
+        void cluster::on_reply_update_slot(cmd_exec *cmd, redisAsyncContext *, void *r, void * /*privdata*/) {
             redisReply *reply = reinterpret_cast<redisReply *>(r);
             cluster *   self  = cmd->holder.clu;
 
@@ -947,7 +949,7 @@ namespace hiredis {
             self->release_connection(conn->get_key(), false, status);
         }
 
-        void cluster::on_reply_auth(cmd_exec *cmd, redisAsyncContext *rctx, void *r, void *privdata) {
+        void cluster::on_reply_auth(cmd_exec *cmd, redisAsyncContext *rctx, void *r, void * /*privdata*/) {
             redisReply *reply = reinterpret_cast<redisReply *>(r);
             cluster *   self  = cmd->holder.clu;
             assert(rctx);
