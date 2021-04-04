@@ -29,5 +29,8 @@
 
 /build
 /.idea
-/3rd_party/prebuilt
+/.vscode
+/3rd_party/install
+/3rd_party/packages
 /include/detail/hiredis_happ_config.h
+/build_jobs_*

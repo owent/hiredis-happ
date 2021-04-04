@@ -1,42 +1,25 @@
-if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.10")
-    include_guard(GLOBAL)
+include_guard(GLOBAL)
+
+if(NOT ATFRAME_UTILS_ROOT)
+  include(FetchContent)
+
+  if(PROJECT_GIT_REMOTE_ORIGIN_USE_SSH AND NOT PROJECT_GIT_CLONE_REMOTE_ORIGIN_DISABLE_SSH)
+    set(ATFRAME_UTILS_GIT_REPOSITORY "git@github.com:atframework/atframe_utils.git")
+  else()
+    set(ATFRAME_UTILS_GIT_REPOSITORY "https://github.com/atframework/atframe_utils.git")
+  endif()
+
+  FetchContent_Populate(
+    "download_atframe_utils"
+    SOURCE_DIR "${PROJECT_3RD_PARTY_PACKAGE_DIR}/atframe_utils-default/repo"
+    BINARY_DIR "${CMAKE_BINARY_DIR}/deps/atframe_utils/build_jobs_${PROJECT_PREBUILT_PLATFORM_NAME}"
+    SUBBUILD_DIR "${CMAKE_BINARY_DIR}/deps/download_atframe_utils"
+    GIT_REPOSITORY "${ATFRAME_UTILS_GIT_REPOSITORY}"
+    GIT_TAG "origin/master"
+    GIT_REMOTE_NAME "origin"
+    GIT_SHALLOW TRUE)
+
+  set(ATFRAME_UTILS_ROOT "${download_atframe_utils_SOURCE_DIR}")
 endif()
 
-# =========== 3rdparty atframe_utils ==================
-if(NOT 3RD_PARTY_ATFRAME_UTILS_BASE_DIR)
-    set (3RD_PARTY_ATFRAME_UTILS_BASE_DIR ${CMAKE_CURRENT_LIST_DIR})
-endif()
-
-if (ATFRAME_UTILS_ROOT)
-    set (3RD_PARTY_ATFRAME_UTILS_PKG_DIR ${ATFRAME_UTILS_ROOT})
-else()
-    set (3RD_PARTY_ATFRAME_UTILS_PKG_DIR "${3RD_PARTY_ATFRAME_UTILS_BASE_DIR}/repo")
-    find_package(Git)
-    if(NOT EXISTS ${3RD_PARTY_ATFRAME_UTILS_PKG_DIR})
-        execute_process(COMMAND ${GIT_EXECUTABLE} config "remote.origin.url"
-            OUTPUT_VARIABLE PROJECT_GIT_REMOTE_ORIGIN_URL
-            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        string(REGEX MATCH "^http(s?):" PROJECT_GIT_REMOTE_ORIGIN_USE_SSH "${PROJECT_GIT_REMOTE_ORIGIN_URL}")
-        if (PROJECT_GIT_REMOTE_ORIGIN_USE_SSH AND NOT PROJECT_GIT_CLONE_REMOTE_ORIGIN_DISABLE_SSH)
-            execute_process(COMMAND ${GIT_EXECUTABLE} clone --depth=100 -b master "git@github.com:atframework/atframe_utils.git" ${3RD_PARTY_ATFRAME_UTILS_PKG_DIR}
-                WORKING_DIRECTORY ${3RD_PARTY_ATFRAME_UTILS_BASE_DIR}
-            )
-        else ()
-            execute_process(COMMAND ${GIT_EXECUTABLE} clone --depth=100 -b master "https://github.com/atframework/atframe_utils.git" ${3RD_PARTY_ATFRAME_UTILS_PKG_DIR}
-                WORKING_DIRECTORY ${3RD_PARTY_ATFRAME_UTILS_BASE_DIR}
-            )
-        endif()
-    elseif(PROJECT_RESET_DENPEND_REPOSITORIES)
-        execute_process(
-            COMMAND ${GIT_EXECUTABLE} fetch -f --depth=100 origin
-            COMMAND ${GIT_EXECUTABLE} reset --hard origin/master
-            WORKING_DIRECTORY ${3RD_PARTY_ATFRAME_UTILS_PKG_DIR}
-        )
-    endif()
-endif()
-
-set (3RD_PARTY_ATFRAME_UTILS_INC_DIR "${3RD_PARTY_ATFRAME_UTILS_PKG_DIR}/include")
-set (3RD_PARTY_ATFRAME_UTILS_SRC_DIR "${3RD_PARTY_ATFRAME_UTILS_PKG_DIR}/src")
-set (3RD_PARTY_ATFRAME_UTILS_LINK_NAME atframe_utils)
+set(3RD_PARTY_ATFRAME_UTILS_LINK_NAME atframe_utils)

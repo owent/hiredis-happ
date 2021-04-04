@@ -1,0 +1,66 @@
+name: "main"
+
+on: # @see https://help.github.com/en/articles/events-that-trigger-workflows#webhook-events
+  push:
+    branches: # Array of patterns that match refs/heads
+      - master # Push events on master branch
+      - dev
+      - main
+    tags:
+      - "*"
+
+jobs:
+  build: # job id, can be any string
+    name: Build
+    # This job runs on Linux
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-20.04
+            triplet: x64-linux
+            cc: gcc
+          - os: ubuntu-20.04
+            triplet: x64-linux
+            cc: gcc
+            ssl: mbedtls
+          - os: ubuntu-20.04
+            triplet: x64-linux
+            cc: gcc-10
+          - os: ubuntu-20.04
+            triplet: x64-linux
+            cc: clang
+          - os: ubuntu-20.04
+            triplet: x64-linux
+            cc: clang-11
+          # - os: macos-latest
+          #   triplet: x64-osx
+          #   cc: clang
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build & Test
+        shell: bash
+        env:
+          USE_CC: ${{ matrix.cc }}
+          VCPKG_TARGET_TRIPLET: ${{ matrix.triplet }}
+          USE_SSL: ${{ matrix.ssl }}
+        run: |
+          if [[ "x$USE_SSL" == "xmbedtls" ]]; then
+            vcpkg install --triplet=$VCPKG_TARGET_TRIPLET mbedtls;
+            CRYPTO_OPTIONS="-DCRYPTO_USE_MBEDTLS=ON";
+          else
+            vcpkg install --triplet=$VCPKG_TARGET_TRIPLET openssl;
+            CRYPTO_OPTIONS="-DCRYPTO_USE_OPENSSL=ON";
+          fi
+          vcpkg install --triplet=$VCPKG_TARGET_TRIPLET fmt hiredis ;
+          bash cmake_dev.sh -lus -b Debug -r build_jobs_ci -c $USE_CC -- $CRYPTO_OPTIONS -DCMAKE_TOOLCHAIN_FILE=$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=$VCPKG_TARGET_TRIPLET ;
+          cd build_jobs_ci ;
+          cmake --build . -j ;
+          ctest . -V -R hiredis-happ-test ;
+      - name: Cache packages
+        uses: actions/cache@v2
+        with:
+          path: |
+            /usr/local/share/vcpkg/installed
+          key: ${{ runner.os }}-${{ hashFiles('/usr/local/share/vcpkg/installed/**') }}
