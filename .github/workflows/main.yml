@@ -54,8 +54,11 @@ jobs:
             CRYPTO_OPTIONS="-DCRYPTO_USE_OPENSSL=ON";
           fi
           vcpkg install --triplet=$VCPKG_TARGET_TRIPLET fmt hiredis ;
-          bash cmake_dev.sh -lus -b Debug -r build_jobs_ci -c $USE_CC -- $CRYPTO_OPTIONS -DCMAKE_TOOLCHAIN_FILE=$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=$VCPKG_TARGET_TRIPLET ;
-          cd build_jobs_ci ;
+          mkdir -p build_jobs_ci;
+          cd build_jobs_ci;
+          USE_CXX="$(echo "$USE_CC" | sed 's/\(.*\)clang/\1clang++/')";
+          USE_CXX="$(echo "$USE_CXX" | sed 's/\(.*\)gcc/\1g++/')";
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$USE_CC -DCMAKE_CXX_COMPILER=$USE_CXX $CRYPTO_OPTIONS -DCMAKE_TOOLCHAIN_FILE=$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=$VCPKG_TARGET_TRIPLET 
           cmake --build . -j ;
           ctest . -V -R hiredis-happ-test ;
       - name: Cache packages
