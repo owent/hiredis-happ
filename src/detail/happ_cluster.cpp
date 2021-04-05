@@ -26,7 +26,7 @@ static int random() {
   static bool inited = false;
   if (!inited) {
     inited = true;
-    srand(time(NULL));
+    srand(static_cast<unsigned int>(time(NULL)));
   }
 
   return rand();

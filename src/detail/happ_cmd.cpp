@@ -17,6 +17,17 @@
 
 namespace hiredis {
 namespace happ {
+
+HIREDIS_HAPP_API cmd_exec::cmd_exec()
+    : ttl_(HIREDIS_HAPP_TTL), callback_(nullptr), error_code_(0), private_data_(nullptr) {
+  holder_.r = nullptr;
+  raw_cmd_content_.raw_len = 0;
+  raw_cmd_content_.content.raw = nullptr;
+  engine_.slot = -1;
+}
+
+HIREDIS_HAPP_API cmd_exec::~cmd_exec() {}
+
 HIREDIS_HAPP_API cmd_exec *cmd_exec::create(holder_t holder_, callback_fn_t cbk, void *pridata,
                                             size_t buffer_len) {
   size_t sum_len = sizeof(cmd_exec) + buffer_len;

@@ -34,6 +34,10 @@ class HIREDIS_HAPP_API cmd_exec {
  public:
   typedef void (*callback_fn_t)(cmd_exec *, struct redisAsyncContext *, void *, void *);
 
+  cmd_exec();
+
+  ~cmd_exec();
+
   int vformat(int argc, const char **argv, const size_t *argvlen);
 
   int format(const char *fmt, ...);
@@ -58,7 +62,7 @@ class HIREDIS_HAPP_API cmd_exec {
 
   const char *pick_cmd(const char **str, size_t *len);
 
-  static HIREDIS_HAPP_API void dump(std::ostream &out, redisReply *reply, int ident = 0);
+  static void dump(std::ostream &out, redisReply *reply, int ident = 0);
 
   holder_t get_holder() const;
 
@@ -78,15 +82,14 @@ class HIREDIS_HAPP_API cmd_exec {
    * data for later usage)
    * @return address of raw_cmd_content_ object if success
    */
-  static HIREDIS_HAPP_API cmd_exec *create(holder_t holder_, callback_fn_t cbk, void *pridata,
-                                           size_t buffer_len);
+  static cmd_exec *create(holder_t holder_, callback_fn_t cbk, void *pridata, size_t buffer_len);
 
   /**
    * @brief destroy raw_cmd_content_ object(This function is public only for unit test, please don't
    * use it directly)
    * @param c destroy raw_cmd_content_ object
    */
-  static HIREDIS_HAPP_API void destroy(cmd_exec *c);
+  static void destroy(cmd_exec *c);
 
  private:
   friend class cluster;
