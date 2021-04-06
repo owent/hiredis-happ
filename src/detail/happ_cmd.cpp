@@ -7,26 +7,26 @@
 
 #include "detail/happ_cmd.h"
 
-#if (defined(__cplusplus) && __cplusplus >= 201103L) || (defined(_MSC_VER) && _MSC_VER >= 1600)
+#if (defined(__cplusplus) && __cplusplus >= 201103L) || \
+    (defined(_MSVC_LANG) && _MSVC_LANG >= 201103L)
 #  include <type_traits>
 
-// static_assert(std::is_pod<hiredis::happ::cmd_exec>::value, "hiredis::happ::cmd_exec should be a
-// pod type");
-
+#  if (defined(__cplusplus) && __cplusplus >= 201402L) || \
+      (defined(_MSVC_LANG) && _MSVC_LANG >= 201402L)
+static_assert(std::is_trivially_copyable<hiredis::happ::cmd_exec>::value,
+              "hiredis::happ::cmd_exec should be trivially copyable");
+#  elif (defined(__cplusplus) && __cplusplus >= 201103L) || \
+      (defined(_MSVC_LANG) && _MSVC_LANG >= 201103L)
+static_assert(std::is_trivial<hiredis::happ::cmd_exec>::value,
+              "hiredis::happ::cmd_exec should be trivially");
+#  else
+static_assert(std::is_pod<hiredis::happ::cmd_exec>::value,
+              "hiredis::happ::cmd_exec should be a POD type");
+#  endif
 #endif
 
 namespace hiredis {
 namespace happ {
-
-HIREDIS_HAPP_API cmd_exec::cmd_exec()
-    : ttl_(HIREDIS_HAPP_TTL), callback_(nullptr), error_code_(0), private_data_(nullptr) {
-  holder_.r = nullptr;
-  raw_cmd_content_.raw_len = 0;
-  raw_cmd_content_.content.raw = nullptr;
-  engine_.slot = -1;
-}
-
-HIREDIS_HAPP_API cmd_exec::~cmd_exec() {}
 
 HIREDIS_HAPP_API cmd_exec *cmd_exec::create(holder_t holder_, callback_fn_t cbk, void *pridata,
                                             size_t buffer_len) {
@@ -135,6 +135,8 @@ HIREDIS_HAPP_API int cmd_exec::call_reply(int rcode, redisAsyncContext *context,
 
   return error_code::REDIS_HAPP_OK;
 }
+
+HIREDIS_HAPP_API int cmd_exec::result() const { return error_code_; }
 
 HIREDIS_HAPP_API void *cmd_exec::buffer() { return reinterpret_cast<void *>(this + 1); }
 

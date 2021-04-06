@@ -1,13 +1,13 @@
 echowithcolor(COLOR GREEN "-- Configure Unit Test ${CMAKE_CURRENT_LIST_DIR}")
 
 # 导入工程项目
-if(TARGET ${3RD_PARTY_ATFRAME_UTILS_LINK_NAME})
-  message(STATUS "[hiredis-happ] ${3RD_PARTY_ATFRAME_UTILS_LINK_NAME} already exist, use it directly.")
+if(TARGET atframe_utils)
+  message(STATUS "[hiredis-happ] atframe_utils already exist, use it directly.")
 else()
-  if(NOT EXISTS "${CMAKE_BINARY_DIR}/deps/${3RD_PARTY_ATFRAME_UTILS_LINK_NAME}")
-    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/deps/${3RD_PARTY_ATFRAME_UTILS_LINK_NAME}")
+  if(NOT EXISTS "${CMAKE_BINARY_DIR}/deps/atframe_utils")
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/deps/atframe_utils")
   endif()
-  add_subdirectory(${ATFRAME_UTILS_ROOT} "${CMAKE_BINARY_DIR}/deps/${3RD_PARTY_ATFRAME_UTILS_LINK_NAME}")
+  add_subdirectory(${ATFRAME_UTILS_ROOT} "${CMAKE_BINARY_DIR}/deps/atframe_utils")
 endif()
 
 include("${PROJECT_TEST_BAS_DIR}/test.build_bin.cmake")
@@ -27,16 +27,21 @@ file(
 source_group_by_dir(PROJECT_TEST_SRC_LIST)
 
 # ============ test - coroutine test frame ============
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/test")
+if(NOT (WIN32 AND BUILD_SHARED_LIBS))
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/test")
+endif()
 
 add_compiler_define(_CRT_SECURE_NO_WARNINGS=1)
 add_compiler_define(HIREDIS_HAPP_UNIT_TEST_HACK=1)
 
 add_executable(hiredis-happ-test ${PROJECT_TEST_SRC_LIST})
-target_link_libraries(hiredis-happ-test hiredis-happ ${3RD_PARTY_ATFRAME_UTILS_LINK_NAME} ${COMPILER_OPTION_EXTERN_CXX_LIBS})
 
-if(MSVC)
-  add_target_properties(hiredis-happ-test LINK_FLAGS /NODEFAULTLIB:library)
-endif()
+set_target_properties(
+  hiredis-happ-test
+  PROPERTIES INSTALL_RPATH_USE_LINK_PATH YES
+             BUILD_WITH_INSTALL_RPATH NO
+             BUILD_RPATH_USE_ORIGIN YES)
 
-add_test(hiredis-happ-test hiredis-happ-test)
+target_link_libraries(hiredis-happ-test hiredis-happ atframe_utils ${COMPILER_OPTION_EXTERN_CXX_LIBS})
+
+add_test(NAME hiredis-happ-run-test COMMAND hiredis-happ-test)

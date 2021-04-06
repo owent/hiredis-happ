@@ -27,8 +27,11 @@ macro(PROJECT_3RD_PARTY_REDIS_HIREDIS_IMPORT)
   endif()
 endmacro()
 
-# if (VCPKG_TOOLCHAIN) find_package(hiredis QUIET) find_package(hiredis_ssl QUIET NO_MODULE) PROJECT_3RD_PARTY_REDIS_HIREDIS_IMPORT() endif
-# ()
+if(VCPKG_TOOLCHAIN)
+  find_package(hiredis QUIET)
+  find_package(hiredis_ssl QUIET NO_MODULE)
+  project_3rd_party_redis_hiredis_import()
+endif()
 
 if(NOT TARGET hiredis::hiredis_ssl_static
    AND NOT TARGET hiredis::hiredis_static

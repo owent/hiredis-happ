@@ -30,47 +30,43 @@ struct HIREDIS_HAPP_API_HEAD_ONLY cmd_content {
   } content;
 };
 
-class HIREDIS_HAPP_API cmd_exec {
+class cmd_exec {
  public:
   typedef void (*callback_fn_t)(cmd_exec *, struct redisAsyncContext *, void *, void *);
 
-  cmd_exec();
+  HIREDIS_HAPP_API int vformat(int argc, const char **argv, const size_t *argvlen);
 
-  ~cmd_exec();
+  HIREDIS_HAPP_API int format(const char *fmt, ...);
 
-  int vformat(int argc, const char **argv, const size_t *argvlen);
+  HIREDIS_HAPP_API int vformat(const char *fmt, va_list ap);
 
-  int format(const char *fmt, ...);
+  HIREDIS_HAPP_API int vformat(const sds *src);
 
-  int vformat(const char *fmt, va_list ap);
+  HIREDIS_HAPP_API int call_reply(int rcode, redisAsyncContext *context, void *reply);
 
-  int vformat(const sds *src);
+  HIREDIS_HAPP_API int result() const;
 
-  int call_reply(int rcode, redisAsyncContext *context, void *reply);
+  HIREDIS_HAPP_API void *buffer();
 
-  inline int result() const { return error_code_; }
+  HIREDIS_HAPP_API const void *buffer() const;
 
-  void *buffer();
+  HIREDIS_HAPP_API void *private_data() const;
 
-  const void *buffer() const;
+  HIREDIS_HAPP_API void private_data(void *pd);
 
-  void *private_data() const;
+  HIREDIS_HAPP_API const char *pick_argument(const char *start, const char **str, size_t *len);
 
-  void private_data(void *pd);
+  HIREDIS_HAPP_API const char *pick_cmd(const char **str, size_t *len);
 
-  const char *pick_argument(const char *start, const char **str, size_t *len);
+  static HIREDIS_HAPP_API void dump(std::ostream &out, redisReply *reply, int ident = 0);
 
-  const char *pick_cmd(const char **str, size_t *len);
+  HIREDIS_HAPP_API holder_t get_holder() const;
 
-  static void dump(std::ostream &out, redisReply *reply, int ident = 0);
+  HIREDIS_HAPP_API callback_fn_t get_callback_fn() const;
 
-  holder_t get_holder() const;
+  HIREDIS_HAPP_API cmd_content get_cmd_raw_content() const;
 
-  callback_fn_t get_callback_fn() const;
-
-  cmd_content get_cmd_raw_content() const;
-
-  int get_error_code() const;
+  HIREDIS_HAPP_API int get_error_code() const;
 
   /**
    * @brief create raw_cmd_content_ object(This function is public only for unit test, please don't
@@ -82,14 +78,15 @@ class HIREDIS_HAPP_API cmd_exec {
    * data for later usage)
    * @return address of raw_cmd_content_ object if success
    */
-  static cmd_exec *create(holder_t holder_, callback_fn_t cbk, void *pridata, size_t buffer_len);
+  static HIREDIS_HAPP_API cmd_exec *create(holder_t holder_, callback_fn_t cbk, void *pridata,
+                                           size_t buffer_len);
 
   /**
    * @brief destroy raw_cmd_content_ object(This function is public only for unit test, please don't
    * use it directly)
    * @param c destroy raw_cmd_content_ object
    */
-  static void destroy(cmd_exec *c);
+  static HIREDIS_HAPP_API void destroy(cmd_exec *c);
 
  private:
   friend class cluster;

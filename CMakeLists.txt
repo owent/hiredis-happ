@@ -117,6 +117,12 @@ else()
   target_compile_options(hiredis-happ PRIVATE ${COMPILER_STRICT_EXTRA_CFLAGS} ${COMPILER_STRICT_CFLAGS})
 endif()
 
+set_target_properties(
+  hiredis-happ
+  PROPERTIES INSTALL_RPATH_USE_LINK_PATH YES
+             BUILD_WITH_INSTALL_RPATH NO
+             BUILD_RPATH_USE_ORIGIN YES)
+
 target_include_directories(hiredis-happ PUBLIC "$<BUILD_INTERFACE:${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}>" "$<INSTALL_INTERFACE:include>")
 
 if(WIN32)
@@ -139,7 +145,7 @@ if(PROJECT_HIREDIS_HAPP_PRIVATE_COMPILE_OPTIONS)
 endif()
 
 if(MSVC)
-  add_target_properties(hiredis-happ LINK_FLAGS /NODEFAULTLIB:library)
+  add_target_properties(hiredis-happ COMPILE_OPTIONS /ZI)
 endif()
 
 install(
@@ -167,12 +173,12 @@ install(
   NAMESPACE "hiredis::"
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake")
 
-if(PROJECT_ENABLE_SAMPLE)
+if(PROJECT_HIREDIS_HAPP_ENABLE_SAMPLE)
   include("${CMAKE_CURRENT_LIST_DIR}/sample/sample.happ-macro.cmake")
   add_subdirectory("${PROJECT_SOURCE_DIR}/sample")
 endif()
 
-if(PROJECT_ENABLE_UNITTEST)
+if(PROJECT_HIREDIS_HAPP_ENABLE_UNITTEST)
   include("${CMAKE_CURRENT_LIST_DIR}/test/test.happ-macro.cmake")
   add_subdirectory("${PROJECT_SOURCE_DIR}/test")
 endif()

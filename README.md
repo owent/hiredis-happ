@@ -37,12 +37,10 @@ cmake --build . -- install
 ### Custom CMake Options
 
 + **CMAKE_BUILD_TYPE**: This cmake option will be default set to **RelWithDebInfo**.(Please add -DCMAKE_BUILD_TYPE=RelWithDebInfo when used in product environment)
-+ **LIBHIREDIS_ROOT**: Where to find hiredis headers and libraries
-+ **HIREDIS_VERSION**: Hiredis version to download when can not find a available hiredis
 + **BUILD_SHARED_LIBS**: Default set to OFF
 + **ENABLE_BOOST_UNIT_TEST**: If using [boost.unittest](http://www.boost.org/libs/test/doc/html/index.html) for test framework(default: OFF)
-+ **PROJECT_ENABLE_SAMPLE**: If building samples(default: OFF)
-+ **PROJECT_ENABLE_UNITTEST**:  If building unittest(default: OFF)
++ **PROJECT_HIREDIS_HAPP_ENABLE_SAMPLE**: If building samples(default: OFF)
++ **PROJECT_HIREDIS_HAPP_ENABLE_UNITTEST**:  If building unittest(default: OFF)
 
 ### Sample
 

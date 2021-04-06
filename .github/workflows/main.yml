@@ -58,9 +58,13 @@ jobs:
           cd build_jobs_ci;
           USE_CXX="$(echo "$USE_CC" | sed 's/\(.*\)clang/\1clang++/')";
           USE_CXX="$(echo "$USE_CXX" | sed 's/\(.*\)gcc/\1g++/')";
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$USE_CC -DCMAKE_CXX_COMPILER=$USE_CXX $CRYPTO_OPTIONS -DCMAKE_TOOLCHAIN_FILE=$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=$VCPKG_TARGET_TRIPLET 
+          cmake .. -DCMAKE_C_COMPILER=$USE_CC -DCMAKE_CXX_COMPILER=$USE_CXX                     \
+            -DCMAKE_BUILD_TYPE=Debug $CRYPTO_OPTIONS -DPROJECT_HIREDIS_HAPP_ENABLE_UNITTEST=ON  \
+            -DPROJECT_HIREDIS_HAPP_ENABLE_SAMPLE=ON                                             \
+            -DCMAKE_TOOLCHAIN_FILE=$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake    \
+            -DVCPKG_TARGET_TRIPLET=$VCPKG_TARGET_TRIPLET
           cmake --build . -j ;
-          ctest . -V -R hiredis-happ-test ;
+          ctest . -V -R hiredis-happ-run-test ;
       - name: Cache packages
         uses: actions/cache@v2
         with:

@@ -148,17 +148,17 @@ build_script:
 
         if ( "$Env:CMAKE_GEN" -ieq "MinGW32" ) {
 
-          echo "$Env:MSYS2_PREFIX/msys2_shell -mingw32 -lc cd '$Env:APPVEYOR_BUILD_FOLDER/build'; mkdir build cmake .. -G 'MSYS Makefiles' -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON $CMAKE_CONFIGURE_EXT_ARGS; cmake --build ."
+          echo "$Env:MSYS2_PREFIX/msys2_shell -mingw32 -lc cd '$Env:APPVEYOR_BUILD_FOLDER/build'; mkdir build cmake .. -G 'MSYS Makefiles' -DPROJECT_HIREDIS_HAPP_ENABLE_SAMPLE=ON -DPROJECT_HIREDIS_HAPP_ENABLE_UNITTEST=ON $CMAKE_CONFIGURE_EXT_ARGS; cmake --build ."
 
-          & "$Env:MSYS2_PREFIX/msys2_shell" -mingw32 -lc "cd '$Env:APPVEYOR_BUILD_FOLDER/build'; cmake .. -G 'MSYS Makefiles' -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON $CMAKE_CONFIGURE_EXT_ARGS > '$Env:MSYS2_LOG_FILE' 2>&1; cmake --build . >> '$Env:MSYS2_LOG_FILE' 2>&1" | Out-Host
+          & "$Env:MSYS2_PREFIX/msys2_shell" -mingw32 -lc "cd '$Env:APPVEYOR_BUILD_FOLDER/build'; cmake .. -G 'MSYS Makefiles' -DPROJECT_HIREDIS_HAPP_ENABLE_SAMPLE=ON -DPROJECT_HIREDIS_HAPP_ENABLE_UNITTEST=ON $CMAKE_CONFIGURE_EXT_ARGS > '$Env:MSYS2_LOG_FILE' 2>&1; cmake --build . >> '$Env:MSYS2_LOG_FILE' 2>&1" | Out-Host
 
           Get-Content "$Env:MSYS2_LOG_FILE"
 
         } else {
 
-          echo "$Env:MSYS2_PREFIX/msys2_shell -mingw64 -lc cd '$Env:APPVEYOR_BUILD_FOLDER/build'; cmake .. -G 'MSYS Makefiles' -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON $CMAKE_CONFIGURE_EXT_ARGS; cmake --build ."
+          echo "$Env:MSYS2_PREFIX/msys2_shell -mingw64 -lc cd '$Env:APPVEYOR_BUILD_FOLDER/build'; cmake .. -G 'MSYS Makefiles' -DPROJECT_HIREDIS_HAPP_ENABLE_SAMPLE=ON -DPROJECT_HIREDIS_HAPP_ENABLE_UNITTEST=ON $CMAKE_CONFIGURE_EXT_ARGS; cmake --build ."
 
-          & "$Env:MSYS2_PREFIX/msys2_shell" -mingw64 -lc "cd '$Env:APPVEYOR_BUILD_FOLDER/build'; cmake ..  -G 'MSYS Makefiles' -DPROJECT_ENABLE_UNITTEST=ON -DPROJECT_ENABLE_SAMPLE=ON $CMAKE_CONFIGURE_EXT_ARGS > '$Env:MSYS2_LOG_FILE' 2>&1; cmake --build . >> '$Env:MSYS2_LOG_FILE' 2>&1" | Out-Host
+          & "$Env:MSYS2_PREFIX/msys2_shell" -mingw64 -lc "cd '$Env:APPVEYOR_BUILD_FOLDER/build'; cmake ..  -G 'MSYS Makefiles' -DPROJECT_HIREDIS_HAPP_ENABLE_SAMPLE=ON -DPROJECT_HIREDIS_HAPP_ENABLE_UNITTEST=ON $CMAKE_CONFIGURE_EXT_ARGS > '$Env:MSYS2_LOG_FILE' 2>&1; cmake --build . >> '$Env:MSYS2_LOG_FILE' 2>&1" | Out-Host
 
           Get-Content "$Env:MSYS2_LOG_FILE"
 
@@ -178,7 +178,7 @@ build_script:
             $CMAKE_CONFIGURE_ARGS += "-DBUILD_SHARED_LIBS=ON"
         }
 
-        $CMAKE_CONFIGURE_ARGS += "-DPROJECT_ENABLE_UNITTEST=ON", "-DPROJECT_ENABLE_SAMPLE=ON", "-DCMAKE_BUILD_TYPE=$Env:CONFIGURATION"
+        $CMAKE_CONFIGURE_ARGS += "-DPROJECT_HIREDIS_HAPP_ENABLE_SAMPLE=ON", "-DPROJECT_HIREDIS_HAPP_ENABLE_UNITTEST=ON", "-DCMAKE_BUILD_TYPE=$Env:CONFIGURATION"
 
         echo "cmake $($CMAKE_CONFIGURE_ARGS -join ' ')"
 
@@ -200,17 +200,17 @@ test_script:
 
         if ( "$Env:CMAKE_GEN" -ieq "MinGW32" ) {
 
-          echo "$Env:MSYS2_PREFIX/msys2_shell -mingw32 -lc cd '$Env:APPVEYOR_BUILD_FOLDER/build'; ctest . -V -R hiredis-happ-test ;"
+          echo "$Env:MSYS2_PREFIX/msys2_shell -mingw32 -lc cd '$Env:APPVEYOR_BUILD_FOLDER/build'; ctest . -V -R hiredis-happ-run-test ;"
 
-          & "$Env:MSYS2_PREFIX/msys2_shell" -mingw32 -lc "cd '$Env:APPVEYOR_BUILD_FOLDER/build'; ctest . -V -R hiredis-happ-test > '$Env:MSYS2_LOG_FILE' 2>&1" | Out-Host
+          & "$Env:MSYS2_PREFIX/msys2_shell" -mingw32 -lc "cd '$Env:APPVEYOR_BUILD_FOLDER/build'; ctest . -V -R hiredis-happ-run-test > '$Env:MSYS2_LOG_FILE' 2>&1" | Out-Host
 
           Get-Content "$Env:MSYS2_LOG_FILE"
 
         } else {
 
-          echo "$Env:MSYS2_PREFIX/msys2_shell -mingw64 -lc cd '$Env:APPVEYOR_BUILD_FOLDER/build'; ctest . -V ;"
+          echo "$Env:MSYS2_PREFIX/msys2_shell -mingw64 -lc cd '$Env:APPVEYOR_BUILD_FOLDER/build'; ctest . -V -R hiredis-happ-run-test ;"
 
-          & "$Env:MSYS2_PREFIX/msys2_shell" -mingw64 -lc "cd '$Env:APPVEYOR_BUILD_FOLDER/build'; ctest . -V -R hiredis-happ-test > '$Env:MSYS2_LOG_FILE' 2>&1" | Out-Host
+          & "$Env:MSYS2_PREFIX/msys2_shell" -mingw64 -lc "cd '$Env:APPVEYOR_BUILD_FOLDER/build'; ctest . -V -R hiredis-happ-run-test > '$Env:MSYS2_LOG_FILE' 2>&1" | Out-Host
 
           Get-Content "$Env:MSYS2_LOG_FILE"
 
@@ -224,7 +224,7 @@ test_script:
 
         }
 
-        & ctest . -V -C $Env:CONFIGURATION -R hiredis-happ-test
+        & ctest . -V -C $Env:CONFIGURATION -R hiredis-happ-run-test
 
       }
 
