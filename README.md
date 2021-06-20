@@ -4,8 +4,8 @@ Redis HA connector
 
 [![ci-badge]][ci-link]
 
-[ci-badge]: https://github.com/atframework/atframe_utils/actions/workflows/main.yml/badge.svg "Github action build status"
-[ci-link]:  https://github.com/atframework/atframe_utils/actions/workflows/main.yml "Github action build status"
+[ci-badge]: https://github.com/owent/hiredis-happ/actions/workflows/main.yml/badge.svg "Github action build status"
+[ci-link]:  https://github.com/owent/hiredis-happ/actions/workflows/main.yml "Github action build status"
 
 ## CI Job Matrix
 
