@@ -1,11 +1,11 @@
-#include <iostream>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <iostream>
 #include <list>
 
-#include "hiredis_happ.h"
 #include "frame/test_macros.h"
+#include "hiredis_happ.h"
 
 template <typename T>
 struct AutoPtr {

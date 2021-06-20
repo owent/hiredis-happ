@@ -66,12 +66,12 @@ elif [[ "$1" == "ssl.openssl" ]]; then
     -DCMAKE_TOOLCHAIN_FILE=$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake "-DATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_LOW_MEMORY_MODE=ON";
   cd build_jobs_ci ;
   cmake --build . -j ;
-  ctest . -V ;
+  ctest . -V -R hiredis-happ-run-test;
 elif [[ "$1" == "gcc.legacy.test" ]]; then
   bash cmake_dev.sh -lus -b Debug -r build_jobs_ci -c $USE_CC ;
   cd build_jobs_ci ;
   cmake --build . -j ;
-  ctest . -V ;
+  ctest . -V -R hiredis-happ-run-test;
 elif [[ "$1" == "msys2.mingw.test" ]]; then
   pacman -S --needed --noconfirm mingw-w64-x86_64-cmake git m4 curl wget tar autoconf automake  \
     mingw-w64-x86_64-git-lfs mingw-w64-x86_64-toolchain mingw-w64-x86_64-libtool                \
@@ -85,5 +85,5 @@ elif [[ "$1" == "msys2.mingw.test" ]]; then
   for EXT_PATH in $(find ../third_party/install/ -name "*.dll" | xargs dirname | sort -u); do
     export PATH="$PWD/$EXT_PATH:$PATH"
   done
-  ctest . -V ;
+  ctest . -V -R hiredis-happ-run-test;
 fi

@@ -1,6 +1,6 @@
 
-#include <algorithm>
 #include <assert.h>
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 
@@ -8,8 +8,7 @@
 
 namespace hiredis {
 namespace happ {
-HIREDIS_HAPP_API connection::connection()
-    : sequence_(0), context_(NULL), conn_status_(status::DISCONNECTED) {
+HIREDIS_HAPP_API connection::connection() : sequence_(0), context_(NULL), conn_status_(status::DISCONNECTED) {
   make_sequence();
   holder_.clu = NULL;
 }
@@ -106,8 +105,7 @@ HIREDIS_HAPP_API int connection::redis_cmd(cmd_exec *c, redisCallbackFn fn) {
         res = redisAsyncFormattedCommand(context_, fn, c, c->raw_cmd_content_.content.redis_sds,
                                          sdslen(c->raw_cmd_content_.content.redis_sds));
       } else {
-        res = redisAsyncFormattedCommand(context_, fn, c, c->raw_cmd_content_.content.raw,
-                                         c->raw_cmd_content_.raw_len);
+        res = redisAsyncFormattedCommand(context_, fn, c, c->raw_cmd_content_.content.raw, c->raw_cmd_content_.raw_len);
       }
 
       if (REDIS_OK == res) {
@@ -157,8 +155,7 @@ HIREDIS_HAPP_API int connection::redis_cmd(cmd_exec *c, redisCallbackFn fn) {
   return error_code::REDIS_HAPP_OK;
 }
 
-HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data,
-                                               const char *fmt, ...) {
+HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, const char *fmt, ...) {
   if (NULL == context_) {
     return error_code::REDIS_HAPP_CREATE;
   }
@@ -171,8 +168,7 @@ HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_d
   return res;
 }
 
-HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data,
-                                               const char *fmt, va_list ap) {
+HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, const char *fmt, va_list ap) {
   if (NULL == context_) {
     return error_code::REDIS_HAPP_CREATE;
   }
@@ -180,8 +176,7 @@ HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_d
   return redisvAsyncCommand(context_, fn, priv_data, fmt, ap);
 }
 
-HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data,
-                                               const sds *src) {
+HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, const sds *src) {
   if (NULL == context_) {
     return error_code::REDIS_HAPP_CREATE;
   }
@@ -189,8 +184,8 @@ HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_d
   return redisAsyncFormattedCommand(context_, fn, priv_data, *src, sdslen(*src));
 }
 
-HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, int argc,
-                                               const char **argv, const size_t *argvlen) {
+HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, int argc, const char **argv,
+                                               const size_t *argvlen) {
   if (NULL == context_) {
     return error_code::REDIS_HAPP_CREATE;
   }
@@ -341,15 +336,13 @@ HIREDIS_HAPP_API std::string connection::make_name(const std::string &ip, uint16
   return ret;
 }
 
-HIREDIS_HAPP_API void connection::set_key(connection::key_t &k, const std::string &ip,
-                                          uint16_t port) {
+HIREDIS_HAPP_API void connection::set_key(connection::key_t &k, const std::string &ip, uint16_t port) {
   k.name = make_name(ip, port);
   k.ip = ip;
   k.port = port;
 }
 
-HIREDIS_HAPP_API bool connection::pick_name(const std::string &name, std::string &ip,
-                                            uint16_t &port) {
+HIREDIS_HAPP_API bool connection::pick_name(const std::string &name, std::string &ip, uint16_t &port) {
   size_t it = name.find_first_of(':');
   if (it == std::string::npos) {
     return false;

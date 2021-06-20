@@ -1,7 +1,7 @@
+#include <detail/happ_cmd.h>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
-#include <detail/happ_cmd.h>
 #include <iostream>
 #include <set>
 

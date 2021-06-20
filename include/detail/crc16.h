@@ -1,4 +1,4 @@
-//
+// Copyright 2021 owent
 // Created by OWenT on 2015/08/19.
 //
 
@@ -11,9 +11,9 @@
 #include <stdint.h>
 
 namespace hiredis {
-    namespace happ {
-        uint16_t crc16(const char *buf, size_t len);
-    }
-} // namespace hiredis
+namespace happ {
+uint16_t crc16(const char *buf, size_t len);
+}
+}  // namespace hiredis
 
 #endif

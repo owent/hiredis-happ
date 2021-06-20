@@ -22,7 +22,7 @@ echowithcolor(COLOR GREEN "-- Build Type: ${CMAKE_BUILD_TYPE}")
 
 # ######################################################################################################################
 # 导入项目配置 导入所有 macro 定义
-unset(PROJECT_HIREDIS_HAPP_PUBLIC_LINK_NAMES)
+set(PROJECT_HIREDIS_HAPP_PUBLIC_LINK_NAMES ${ATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_HIREDIS_LINK_NAME})
 unset(PROJECT_HIREDIS_HAPP_INTERFACE_LINK_NAMES)
 unset(PROJECT_HIREDIS_HAPP_PRIVATE_COMPILE_OPTIONS)
 

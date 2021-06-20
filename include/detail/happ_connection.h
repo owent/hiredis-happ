@@ -76,8 +76,7 @@ class connection {
    * @param ap format data
    * @return 0 or error code
    */
-  HIREDIS_HAPP_API int redis_raw_cmd(redisCallbackFn *fn, void *priv_data, const char *fmt,
-                                     va_list ap);
+  HIREDIS_HAPP_API int redis_raw_cmd(redisCallbackFn *fn, void *priv_data, const char *fmt, va_list ap);
 
   /**
    * @brief send raw message redis server
@@ -97,8 +96,8 @@ class connection {
    * @param argvlen size of every argument
    * @return 0 or error code
    */
-  HIREDIS_HAPP_API int redis_raw_cmd(redisCallbackFn *fn, void *priv_data, int argc,
-                                     const char **argv, const size_t *argvlen);
+  HIREDIS_HAPP_API int redis_raw_cmd(redisCallbackFn *fn, void *priv_data, int argc, const char **argv,
+                                     const size_t *argvlen);
 
   /**
    * @brief call reply callback of c with reply

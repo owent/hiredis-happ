@@ -24,7 +24,7 @@ endif()
 add_compiler_define(_CRT_SECURE_NO_WARNINGS=1)
 add_compiler_define(HIREDIS_HAPP_UNIT_TEST_HACK=1)
 
-add_executable(hiredis-happ-test ${PROJECT_TEST_SRC_LIST})
+atframe_add_test_executable(hiredis-happ-test ${PROJECT_TEST_SRC_LIST})
 
 set_target_properties(
   hiredis-happ-test

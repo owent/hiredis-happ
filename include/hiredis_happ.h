@@ -10,4 +10,4 @@
 #include "detail/happ_cluster.h"
 #include "detail/happ_raw.h"
 
-#endif // HIREDIS_HAPP_HIREDIS_HAPP_H
+#endif  // HIREDIS_HAPP_HIREDIS_HAPP_H

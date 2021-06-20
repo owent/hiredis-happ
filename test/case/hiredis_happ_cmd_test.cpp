@@ -1,15 +1,14 @@
+#include <detail/happ_cmd.h>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
-#include <detail/happ_cmd.h>
 #include <iostream>
 #include <set>
 
 #include "frame/test_macros.h"
 #include "hiredis_happ.h"
 
-static void happ_cmd_basic_1(hiredis::happ::cmd_exec *cmd, struct redisAsyncContext *c, void *r,
-                             void *pridata) {
+static void happ_cmd_basic_1(hiredis::happ::cmd_exec *cmd, struct redisAsyncContext *c, void *r, void *pridata) {
   CASE_EXPECT_EQ(cmd, pridata);
   CASE_EXPECT_EQ(c, r);
 
@@ -25,8 +24,7 @@ CASE_TEST(happ_cmd, basic) {
   redisAsyncContext vir_ontext;
   h.clu = &clu;
 
-  hiredis::happ::cmd_exec *cmd =
-      hiredis::happ::cmd_exec::create(h, happ_cmd_basic_1, &clu, sizeof(int));
+  hiredis::happ::cmd_exec *cmd = hiredis::happ::cmd_exec::create(h, happ_cmd_basic_1, &clu, sizeof(int));
 
   CASE_EXPECT_EQ(cmd->get_holder().clu, &clu);
   CASE_EXPECT_EQ(cmd->private_data(), &clu);

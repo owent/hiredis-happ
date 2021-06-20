@@ -74,7 +74,7 @@ if ( $RUN_MODE -eq "msvc.2019.test" ) {
   if ( $LastExitCode -ne 0 ) {
     exit $LastExitCode
   }
-  & ctest . -V -C $Env:CONFIGURATION
+  & ctest . -V -C $Env:CONFIGURATION -R hiredis-happ-run-test
   if ( $LastExitCode -ne 0 ) {
     exit $LastExitCode
   }
@@ -100,7 +100,7 @@ elseif ( $RUN_MODE -eq "msvc.2017.test" ) {
   if ( $LastExitCode -ne 0 ) {
     exit $LastExitCode
   }
-  & ctest . -V -C $Env:CONFIGURATION
+  & ctest . -V -C $Env:CONFIGURATION -R hiredis-happ-run-test
   if ( $LastExitCode -ne 0 ) {
     exit $LastExitCode
   }

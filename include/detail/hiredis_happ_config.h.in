@@ -7,6 +7,15 @@
 
 #pragma once
 
+#if defined(_WIN32)
+#  ifndef WIN32_LEAN_AND_MEAN
+#    define WIN32_LEAN_AND_MEAN
+#  endif
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
+#endif
+
 #include <stdint.h>
 #include <algorithm>
 #include <cstddef>
@@ -45,7 +54,7 @@
 #    define HIREDIS_HAPP_ATOMIC_GCC 1
 #  endif
 #elif defined(_MSC_VER)
-#  include <WinBase.h>
+#  include <Windows.h>
 #  define HIREDIS_HAPP_ATOMIC_MSVC 1
 #endif
 
@@ -67,7 +76,6 @@ extern "C" {
 #  pragma warning(disable : 4251)
 #  pragma warning(disable : 4200)
 #  pragma warning(disable : 4005)
-
 #endif
 
 #if defined(__GNUC__) && !defined(__clang__) && !defined(__apple_build_version__)

@@ -30,7 +30,8 @@
 /build
 /.idea
 /.vscode
-/3rd_party/install
-/3rd_party/packages
+/third_party/install
+/third_party/packages
 /include/detail/hiredis_happ_config.h
 /build_jobs_*
+/build

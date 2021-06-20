@@ -1,35 +1,29 @@
 
-#include <algorithm>
 #include <assert.h>
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <iomanip>
 
 #include "detail/happ_cmd.h"
 
-#if (defined(__cplusplus) && __cplusplus >= 201103L) || \
-    (defined(_MSVC_LANG) && _MSVC_LANG >= 201103L)
+#if (defined(__cplusplus) && __cplusplus >= 201103L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201103L)
 #  include <type_traits>
 
-#  if (defined(__cplusplus) && __cplusplus >= 201402L) || \
-      (defined(_MSVC_LANG) && _MSVC_LANG >= 201402L)
+#  if (defined(__cplusplus) && __cplusplus >= 201402L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201402L)
 static_assert(std::is_trivially_copyable<hiredis::happ::cmd_exec>::value,
               "hiredis::happ::cmd_exec should be trivially copyable");
-#  elif (defined(__cplusplus) && __cplusplus >= 201103L) || \
-      (defined(_MSVC_LANG) && _MSVC_LANG >= 201103L)
-static_assert(std::is_trivial<hiredis::happ::cmd_exec>::value,
-              "hiredis::happ::cmd_exec should be trivially");
+#  elif (defined(__cplusplus) && __cplusplus >= 201103L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201103L)
+static_assert(std::is_trivial<hiredis::happ::cmd_exec>::value, "hiredis::happ::cmd_exec should be trivially");
 #  else
-static_assert(std::is_pod<hiredis::happ::cmd_exec>::value,
-              "hiredis::happ::cmd_exec should be a POD type");
+static_assert(std::is_pod<hiredis::happ::cmd_exec>::value, "hiredis::happ::cmd_exec should be a POD type");
 #  endif
 #endif
 
 namespace hiredis {
 namespace happ {
 
-HIREDIS_HAPP_API cmd_exec *cmd_exec::create(holder_t holder_, callback_fn_t cbk, void *pridata,
-                                            size_t buffer_len) {
+HIREDIS_HAPP_API cmd_exec *cmd_exec::create(holder_t holder_, callback_fn_t cbk, void *pridata, size_t buffer_len) {
   size_t sum_len = sizeof(cmd_exec) + buffer_len;
   // padding to sizeof(void*)
   sum_len = (sum_len + sizeof(void *) - 1) & (~(sizeof(void *) - 1));
@@ -140,16 +134,13 @@ HIREDIS_HAPP_API int cmd_exec::result() const { return error_code_; }
 
 HIREDIS_HAPP_API void *cmd_exec::buffer() { return reinterpret_cast<void *>(this + 1); }
 
-HIREDIS_HAPP_API const void *cmd_exec::buffer() const {
-  return reinterpret_cast<const void *>(this + 1);
-}
+HIREDIS_HAPP_API const void *cmd_exec::buffer() const { return reinterpret_cast<const void *>(this + 1); }
 
 HIREDIS_HAPP_API void *cmd_exec::private_data() const { return private_data_; }
 
 HIREDIS_HAPP_API void cmd_exec::private_data(void *pd) { private_data_ = pd; }
 
-HIREDIS_HAPP_API const char *cmd_exec::pick_argument(const char *start, const char **str,
-                                                     size_t *len) {
+HIREDIS_HAPP_API const char *cmd_exec::pick_argument(const char *start, const char **str, size_t *len) {
   if (NULL == start) {
     if (0 == raw_cmd_content_.raw_len) {
       // because sds is typedefed to be a char*, so we can only use it directly here.
@@ -184,9 +175,7 @@ HIREDIS_HAPP_API const char *cmd_exec::pick_argument(const char *start, const ch
   return start + 2 + (*len) + 2;
 }
 
-HIREDIS_HAPP_API const char *cmd_exec::pick_cmd(const char **str, size_t *len) {
-  return pick_argument(NULL, str, len);
-}
+HIREDIS_HAPP_API const char *cmd_exec::pick_cmd(const char **str, size_t *len) { return pick_argument(NULL, str, len); }
 
 HIREDIS_HAPP_API void cmd_exec::dump(std::ostream &out, redisReply *reply, int ident) {
   if (NULL == reply) {

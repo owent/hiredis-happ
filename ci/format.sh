@@ -5,6 +5,7 @@ find . -type f                                      \
   -o -regex ".*third_party/install/.*" -prune       \
   -o -regex ".*build_jobs_.*" -prune                \
   -o -regex ".*atframework/cmake-toolset/.*" -prune \
+  -o -regex ".*atframework/atframe_utils/.*" -prune \
   -o -name "*.cmake" -print                         \
   -o -name "*.cmake.in" -print                      \
   -o -name 'CMakeLists.txt' -print                  \
@@ -15,6 +16,7 @@ find . -type f                                      \
   -o -regex ".*third_party/install/.*" -prune       \
   -o -regex ".*build_jobs_.*" -prune                \
   -o -regex ".*atframework/cmake-toolset/.*" -prune \
+  -o -regex ".*atframework/atframe_utils/.*" -prune \
   -o -name "*.h" -print                             \
   -o -name "*.hpp" -print                           \
   -o -name "*.cxx" -print                           \

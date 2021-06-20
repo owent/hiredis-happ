@@ -30,11 +30,8 @@ class cluster {
   typedef HIREDIS_HAPP_MAP(std::string, std::unique_ptr<connection_t>) connection_map_t;
 
   typedef std::function<void(cluster *, connection_t *)> onconnect_fn_t;
-  typedef std::function<void(cluster *, connection_t *, const struct redisAsyncContext *,
-                             int status)>
-      onconnected_fn_t;
-  typedef std::function<void(cluster *, connection_t *, const struct redisAsyncContext *, int)>
-      ondisconnected_fn_t;
+  typedef std::function<void(cluster *, connection_t *, const struct redisAsyncContext *, int status)> onconnected_fn_t;
+  typedef std::function<void(cluster *, connection_t *, const struct redisAsyncContext *, int)> ondisconnected_fn_t;
   typedef std::function<void(const char *)> log_fn_t;
 
   struct config_t {
@@ -108,8 +105,8 @@ class cluster {
    * @see connection::redis_cmd
    * @return command wrapper of this message, NULL if failed
    */
-  HIREDIS_HAPP_API cmd_t *exec(const char *key, size_t ks, cmd_t::callback_fn_t cbk,
-                               void *priv_data, int argc, const char **argv, const size_t *argvlen);
+  HIREDIS_HAPP_API cmd_t *exec(const char *key, size_t ks, cmd_t::callback_fn_t cbk, void *priv_data, int argc,
+                               const char **argv, const size_t *argvlen);
 
   /**
    * @breif send a request to redis server
@@ -128,8 +125,8 @@ class cluster {
    * @see connection::redis_cmd
    * @return command wrapper of this message, NULL if failed
    */
-  HIREDIS_HAPP_API cmd_t *exec(const char *key, size_t ks, cmd_t::callback_fn_t cbk,
-                               void *priv_data, const char *fmt, ...);
+  HIREDIS_HAPP_API cmd_t *exec(const char *key, size_t ks, cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt,
+                               ...);
 
   /**
    * @breif send a request to redis server
@@ -148,8 +145,8 @@ class cluster {
    * @see connection::redis_cmd
    * @return command wrapper of this message, NULL if failed
    */
-  HIREDIS_HAPP_API cmd_t *exec(const char *key, size_t ks, cmd_t::callback_fn_t cbk,
-                               void *priv_data, const char *fmt, va_list ap);
+  HIREDIS_HAPP_API cmd_t *exec(const char *key, size_t ks, cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt,
+                               va_list ap);
 
   /**
    * @breif send a request to redis server
@@ -238,8 +235,7 @@ class cluster {
 
   HIREDIS_HAPP_API int proc(time_t sec, time_t usec);
 
-  HIREDIS_HAPP_API void set_log_writer(log_fn_t info_fn, log_fn_t debug_fn,
-                                       size_t max_size = 65536);
+  HIREDIS_HAPP_API void set_log_writer(log_fn_t info_fn, log_fn_t debug_fn, size_t max_size = 65536);
 
   HIREDIS_HAPP_API const timer_t &get_timer_actions() const;
 

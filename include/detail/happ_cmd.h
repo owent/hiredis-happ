@@ -78,8 +78,7 @@ class cmd_exec {
    * data for later usage)
    * @return address of raw_cmd_content_ object if success
    */
-  static HIREDIS_HAPP_API cmd_exec *create(holder_t holder_, callback_fn_t cbk, void *pridata,
-                                           size_t buffer_len);
+  static HIREDIS_HAPP_API cmd_exec *create(holder_t holder_, callback_fn_t cbk, void *pridata, size_t buffer_len);
 
   /**
    * @brief destroy raw_cmd_content_ object(This function is public only for unit test, please don't
