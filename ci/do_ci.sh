@@ -79,8 +79,8 @@ elif [[ "$1" == "msys2.mingw.test" ]]; then
   git config --global http.sslBackend openssl ;
   mkdir -p build_jobs_ci ;
   cd build_jobs_ci ;
-  cmake .. -G 'MinGW Makefiles' "-DBUILD_SHARED_LIBS=$BUILD_SHARED_LIBS" -DPROJECT_HIREDIS_HAPP_ENABLE_UNITTEST=ON -DPROJECT_HIREDIS_HAPP_ENABLE_SAMPLE=ON \
-    "-DATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_LOW_MEMORY_MODE=ON";
+  cmake .. -G 'MinGW Makefiles' "-DBUILD_SHARED_LIBS=$BUILD_SHARED_LIBS" "-DPROJECT_HIREDIS_HAPP_ENABLE_UNITTEST=YES" \
+    "-DPROJECT_HIREDIS_HAPP_ENABLE_SAMPLE=YES" "-DATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_LOW_MEMORY_MODE=ON";
   cmake --build . -j ;
   for EXT_PATH in $(find ../third_party/install/ -name "*.dll" | xargs dirname | sort -u); do
     export PATH="$PWD/$EXT_PATH:$PATH"
