@@ -1,14 +1,23 @@
+#if defined(_WIN32)
+#  ifndef WIN32_LEAN_AND_MEAN
+#    define WIN32_LEAN_AND_MEAN
+#  endif
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
+#endif
+
 #ifdef _MSC_VER
 #  include <winsock2.h>
 #else
 #  include <sys/time.h>
 #endif
 
-#include <algorithm>
 #include <assert.h>
+#include <detail/happ_cmd.h>
+#include <algorithm>
 #include <cstdio>
 #include <ctime>
-#include <detail/happ_cmd.h>
 #include <random>
 #include <sstream>
 
@@ -99,8 +108,8 @@ HIREDIS_HAPP_API int raw::reset() {
   return 0;
 }
 
-HIREDIS_HAPP_API raw::cmd_t *raw::exec(cmd_t::callback_fn_t cbk, void *priv_data, int argc,
-                                       const char **argv, const size_t *argvlen) {
+HIREDIS_HAPP_API raw::cmd_t *raw::exec(cmd_t::callback_fn_t cbk, void *priv_data, int argc, const char **argv,
+                                       const size_t *argvlen) {
   cmd_t *cmd = create_cmd(cbk, priv_data);
   if (NULL == cmd) {
     return NULL;
@@ -116,8 +125,7 @@ HIREDIS_HAPP_API raw::cmd_t *raw::exec(cmd_t::callback_fn_t cbk, void *priv_data
   return exec(cmd);
 }
 
-HIREDIS_HAPP_API raw::cmd_t *raw::exec(cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt,
-                                       ...) {
+HIREDIS_HAPP_API raw::cmd_t *raw::exec(cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt, ...) {
   cmd_t *cmd = create_cmd(cbk, priv_data);
   if (NULL == cmd) {
     return NULL;
@@ -136,8 +144,7 @@ HIREDIS_HAPP_API raw::cmd_t *raw::exec(cmd_t::callback_fn_t cbk, void *priv_data
   return exec(cmd);
 }
 
-HIREDIS_HAPP_API raw::cmd_t *raw::exec(cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt,
-                                       va_list ap) {
+HIREDIS_HAPP_API raw::cmd_t *raw::exec(cmd_t::callback_fn_t cbk, void *priv_data, const char *fmt, va_list ap) {
   cmd_t *cmd = create_cmd(cbk, priv_data);
   if (NULL == cmd) {
     return NULL;
@@ -266,8 +273,8 @@ HIREDIS_HAPP_API raw::connection_t *raw::make_connection() {
     return NULL;
   }
 
-  redisAsyncContext *c = redisAsyncConnect(conf_.init_connection.ip.c_str(),
-                                           static_cast<int>(conf_.init_connection.port));
+  redisAsyncContext *c =
+      redisAsyncConnect(conf_.init_connection.ip.c_str(), static_cast<int>(conf_.init_connection.port));
   if (NULL == c || c->err) {
     log_info("redis connect to %s failed, msg: %s", conf_.init_connection.name.c_str(),
              NULL == c ? detail::NONE_MSG : c->errstr);
@@ -346,9 +353,8 @@ HIREDIS_HAPP_API bool raw::release_connection(bool close_fd, int status) {
     // connecting, call on_connected event
     case connection_t::status::CONNECTING:
       if (callbacks_.on_connected) {
-        callbacks_.on_connected(
-            this, conn_.get(), conn_->get_context(),
-            error_code::REDIS_HAPP_OK == status ? error_code::REDIS_HAPP_CONNECTION : status);
+        callbacks_.on_connected(this, conn_.get(), conn_->get_context(),
+                                error_code::REDIS_HAPP_OK == status ? error_code::REDIS_HAPP_CONNECTION : status);
       }
       break;
 
@@ -544,8 +550,7 @@ void raw::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
   }
 
   // success and call callback_
-  self->log_debug("redis cmd %p got reply success.(ttl_=%3d)", cmd,
-                  NULL == cmd ? -1 : static_cast<int>(cmd->ttl_));
+  self->log_debug("redis cmd %p got reply success.(ttl_=%3d)", cmd, NULL == cmd ? -1 : static_cast<int>(cmd->ttl_));
   conn->call_reply(cmd, r);
 }
 
@@ -565,8 +570,7 @@ void raw::on_connected_wrapper(const struct redisAsyncContext *c, int status) {
 
   // failed, release resource
   if (REDIS_OK != status) {
-    self->log_debug("connect to %s failed, status: %d, msg: %s", conn->get_key().name.c_str(),
-                    status, c->errstr);
+    self->log_debug("connect to %s failed, status: %d, msg: %s", conn->get_key().name.c_str(), status, c->errstr);
     self->release_connection(false, status);
 
   } else {
@@ -596,27 +600,23 @@ void raw::on_reply_auth(cmd_exec *cmd, redisAsyncContext *rctx, void *r, void * 
       error_text = reply->str;
     }
     if (REDIS_CONN_TCP == rctx->c.connection_type) {
-      self->log_info("tcp:%s:%d AUTH failed. %s",
-                     rctx->c.tcp.host
-                         ? rctx->c.tcp.host
-                         : (rctx->c.tcp.source_addr ? rctx->c.tcp.source_addr : "UNKNOWN"),
-                     rctx->c.tcp.port, error_text);
+      self->log_info(
+          "tcp:%s:%d AUTH failed. %s",
+          rctx->c.tcp.host ? rctx->c.tcp.host : (rctx->c.tcp.source_addr ? rctx->c.tcp.source_addr : "UNKNOWN"),
+          rctx->c.tcp.port, error_text);
     } else if (REDIS_CONN_UNIX == rctx->c.connection_type) {
-      self->log_info("unix:%s AUTH failed. %s",
-                     rctx->c.unix_sock.path ? rctx->c.unix_sock.path : "NULL", error_text);
+      self->log_info("unix:%s AUTH failed. %s", rctx->c.unix_sock.path ? rctx->c.unix_sock.path : "NULL", error_text);
     } else {
       self->log_info("AUTH failed. %s", error_text);
     }
   } else {
     if (REDIS_CONN_TCP == rctx->c.connection_type) {
-      self->log_info("tcp:%s:%d AUTH success.",
-                     rctx->c.tcp.host
-                         ? rctx->c.tcp.host
-                         : (rctx->c.tcp.source_addr ? rctx->c.tcp.source_addr : "UNKNOWN"),
-                     rctx->c.tcp.port);
+      self->log_info(
+          "tcp:%s:%d AUTH success.",
+          rctx->c.tcp.host ? rctx->c.tcp.host : (rctx->c.tcp.source_addr ? rctx->c.tcp.source_addr : "UNKNOWN"),
+          rctx->c.tcp.port);
     } else if (REDIS_CONN_UNIX == rctx->c.connection_type) {
-      self->log_info("unix:%s AUTH success.",
-                     rctx->c.unix_sock.path ? rctx->c.unix_sock.path : "NULL");
+      self->log_info("unix:%s AUTH success.", rctx->c.unix_sock.path ? rctx->c.unix_sock.path : "NULL");
     } else {
       self->log_info("AUTH success.");
     }

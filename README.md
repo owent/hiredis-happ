@@ -7,10 +7,10 @@ Environment  | [Linux+OSX(clang+gcc)][linux-link] | [Windows+MinGW(vc+gcc)][wind
 Build Status | ![linux-badge]                     | ![windows-badge]
 Compilers | linux-clang-10/11 <br /> linux-gcc-9 <br /> linux-gcc-10 <br /> ~~macOS-clang-12.0~~ <br /> | MSVC 14(Visual Studio 2015) <br /> MSVC 15(Visual Studio 2017) <br /> MSVC 16(Visual Studio 2019) <br /> Mingw32-gcc <br /> Mingw64-gcc
 
-[linux-badge]: https://github.com/owt5008137/hiredis-happ/actions/workflows/main.yml/badge.svg "Github action build status"
-[linux-link]:  https://github.com/owt5008137/hiredis-happ/actions/workflows/main.yml "Github action build status"
+[linux-badge]: https://github.com/owent/hiredis-happ/actions/workflows/main.yml/badge.svg "Github action build status"
+[linux-link]:  https://github.com/owent/hiredis-happ/actions/workflows/main.yml "Github action build status"
 [windows-badge]: https://ci.appveyor.com/api/projects/status/tp0bkc9ltorakfvs?svg=true "AppVeyor build status"
-[windows-link]:  https://ci.appveyor.com/project/owt5008137/hiredis-happ "AppVeyor build status"
+[windows-link]:  https://ci.appveyor.com/project/owent/hiredis-happ "AppVeyor build status"
 
 ## Tips
 
@@ -23,7 +23,7 @@ Compilers | linux-clang-10/11 <br /> linux-gcc-9 <br /> linux-gcc-10 <br /> ~~ma
 
 
 ```bash
-git clone https://github.com/owt5008137/hiredis-happ.git;
+git clone https://github.com/owent/hiredis-happ.git;
 mkdir -p hiredis-happ/build_jobs_dir && cd hiredis-happ/build_jobs_dir;
 # cmake -DDCMAKE_INSTALL_PREFIX=/usr
 # cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo

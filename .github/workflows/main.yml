@@ -3,38 +3,42 @@ name: "main"
 on: # @see https://help.github.com/en/articles/events-that-trigger-workflows#webhook-events
   push:
     branches: # Array of patterns that match refs/heads
-      - master # Push events on master branch
-      - dev
       - main
-    tags:
-      - "*"
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build: # job id, can be any string
-    name: Build
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: CI Job
+        shell: bash
+        run: |
+          bash ci/do_ci.sh format ;
+  unix_build: # job id, can be any string
+    name: Unix Build
     # This job runs on Linux
     strategy:
       matrix:
         include:
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             triplet: x64-linux
             cc: gcc
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             triplet: x64-linux
-            cc: gcc
-            ssl: mbedtls
-          - os: ubuntu-20.04
+            cc: gcc-latest
+          - os: ubuntu-18.04
             triplet: x64-linux
-            cc: gcc-10
-          - os: ubuntu-20.04
+            cc: gcc-4.8
+          - os: ubuntu-latest
             triplet: x64-linux
-            cc: clang
-          - os: ubuntu-20.04
-            triplet: x64-linux
-            cc: clang-11
-          # - os: macos-latest
-          #   triplet: x64-osx
-          #   cc: clang
+            cc: clang-latest
+          - os: macos-latest
+            triplet: x64-osx
+            cc: clang-latest
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -46,28 +50,81 @@ jobs:
           VCPKG_TARGET_TRIPLET: ${{ matrix.triplet }}
           USE_SSL: ${{ matrix.ssl }}
         run: |
-          if [[ "x$USE_SSL" == "xmbedtls" ]]; then
-            vcpkg install --triplet=$VCPKG_TARGET_TRIPLET mbedtls;
-            CRYPTO_OPTIONS="-DCRYPTO_USE_MBEDTLS=ON";
+          if [[ "xgcc-4.8" == "x$USE_CC" ]]; then
+            sudo apt-get update ;
+            sudo apt-get install --no-install-recommends --no-install-suggests -y g++-4.8 ;
+            bash ci/do_ci.sh gcc.legacy.test ;
           else
-            vcpkg install --triplet=$VCPKG_TARGET_TRIPLET openssl;
-            CRYPTO_OPTIONS="-DCRYPTO_USE_OPENSSL=ON";
+            bash ci/do_ci.sh ssl.openssl ;
           fi
-          vcpkg install --triplet=$VCPKG_TARGET_TRIPLET fmt hiredis ;
-          mkdir -p build_jobs_ci;
-          cd build_jobs_ci;
-          USE_CXX="$(echo "$USE_CC" | sed 's/\(.*\)clang/\1clang++/')";
-          USE_CXX="$(echo "$USE_CXX" | sed 's/\(.*\)gcc/\1g++/')";
-          cmake .. -DCMAKE_C_COMPILER=$USE_CC -DCMAKE_CXX_COMPILER=$USE_CXX                     \
-            -DCMAKE_BUILD_TYPE=Debug $CRYPTO_OPTIONS -DPROJECT_HIREDIS_HAPP_ENABLE_UNITTEST=ON  \
-            -DPROJECT_HIREDIS_HAPP_ENABLE_SAMPLE=ON                                             \
-            -DCMAKE_TOOLCHAIN_FILE=$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake    \
-            -DVCPKG_TARGET_TRIPLET=$VCPKG_TARGET_TRIPLET
-          cmake --build . -j ;
-          ctest . -V -R hiredis-happ-run-test ;
       - name: Cache packages
         uses: actions/cache@v2
         with:
           path: |
             /usr/local/share/vcpkg/installed
           key: ${{ runner.os }}-${{ hashFiles('/usr/local/share/vcpkg/installed/**') }}
+  vs2019_build: # job id, can be any string
+    name: Visual Studio 2019 Build
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            generator: "Visual Studio 16 2019"
+            build_shared_libs: "ON"
+            platform: x64
+          - os: windows-latest
+            generator: "Visual Studio 16 2019"
+            build_shared_libs: "OFF"
+            platform: x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build & Test
+        shell: pwsh
+        env:
+          CMAKE_GENERATOR: ${{ matrix.generator }}
+          CMAKE_PLATFORM: ${{ matrix.platform }}
+          BUILD_SHARED_LIBS: ${{ matrix.build_shared_libs }}
+          CONFIGURATION: RelWithDebInfo
+        run: |
+          pwsh ci/do_ci.ps1 msvc.2019.test ;
+  vs2017_build: # job id, can be any string
+    name: Visual Studio 2017 Build
+    strategy:
+      matrix:
+        include:
+          - os: windows-2016
+            generator: "Visual Studio 15 2017 Win64"
+            build_shared_libs: "OFF"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build & Test
+        shell: pwsh
+        env:
+          CMAKE_GENERATOR: ${{ matrix.generator }}
+          BUILD_SHARED_LIBS: ${{ matrix.build_shared_libs }}
+          CONFIGURATION: RelWithDebInfo
+        run: |
+          pwsh ci/do_ci.ps1 msvc.2017.test ;
+  mingw_build: # job id, can be any string
+    name: MinGW Build
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            build_shared_libs: "ON"
+          - os: windows-latest
+            build_shared_libs: "OFF"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build & Test
+        shell: bash
+        env:
+          BUILD_SHARED_LIBS: ${{ matrix.build_shared_libs }}
+        run: |
+          C:/msys64/msys2_shell.cmd -mingw64 -defterm -no-start -here -lc "ci/do_ci.sh msys2.mingw.test"

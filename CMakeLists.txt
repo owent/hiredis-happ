@@ -6,66 +6,25 @@ cmake_policy(SET CMP0074 NEW)
 
 enable_testing()
 
-project(hiredis-happ)
-
-if(NOT PROJECT_PREBUILT_PLATFORM_NAME)
-  if(ANDROID_ABI)
-    string(TOLOWER "${CMAKE_SYSTEM_NAME}-${ANDROID_ABI}-${CMAKE_CXX_COMPILER_ID}" PROJECT_PREBUILT_PLATFORM_NAME)
-  elseif(CMAKE_OSX_ARCHITECTURES)
-    string(TOLOWER "${CMAKE_SYSTEM_NAME}-${CMAKE_OSX_ARCHITECTURES}-${CMAKE_CXX_COMPILER_ID}" PROJECT_PREBUILT_PLATFORM_NAME)
-  else()
-    string(TOLOWER "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_CXX_COMPILER_ID}" PROJECT_PREBUILT_PLATFORM_NAME)
-  endif()
-endif()
-if(NOT PROJECT_PREBUILT_HOST_PLATFORM_NAME)
-  string(TOLOWER "${CMAKE_HOST_SYSTEM_NAME}-${CMAKE_HOST_SYSTEM_PROCESSOR}-${CMAKE_CXX_COMPILER_ID}" PROJECT_PREBUILT_HOST_PLATFORM_NAME)
-endif()
-
-# =========== 3rd_party ===========
-if(NOT PROJECT_3RD_PARTY_PACKAGE_DIR)
-  set(PROJECT_3RD_PARTY_PACKAGE_DIR "${CMAKE_CURRENT_LIST_DIR}/3rd_party/packages")
-endif()
-if(NOT PROJECT_3RD_PARTY_INSTALL_DIR)
-  set(PROJECT_3RD_PARTY_INSTALL_DIR "${CMAKE_CURRENT_LIST_DIR}/3rd_party/install/${PROJECT_PREBUILT_PLATFORM_NAME}")
-endif()
-
-if(NOT EXISTS ${PROJECT_3RD_PARTY_PACKAGE_DIR})
-  file(MAKE_DIRECTORY ${PROJECT_3RD_PARTY_PACKAGE_DIR})
-endif()
-
-if(NOT EXISTS ${PROJECT_3RD_PARTY_INSTALL_DIR})
-  file(MAKE_DIRECTORY ${PROJECT_3RD_PARTY_INSTALL_DIR})
-endif()
+project(
+  hiredis-happ
+  VERSION "0.9.0"
+  HOMEPAGE_URL "https://github.com/owent/hiredis-happ"
+  LANGUAGES C CXX)
 
 include("${CMAKE_CURRENT_LIST_DIR}/project/cmake/ProjectBuildOption.cmake")
-
-# Prepare to download utils
-include("${CMAKE_CURRENT_LIST_DIR}/3rd_party/atframe_utils/libatframe_utils.prepare.cmake")
-
-# ##########################################################################################################################################
-# CMake 模块 (递归包含模块, 带颜色输出模块, 平台检测模块)
-set(PROJECT_CMAKE_MODULE_DIR "${ATFRAME_UTILS_ROOT}/project/cmake")
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_CMAKE_MODULE_DIR}/modules")
-
-include("${PROJECT_CMAKE_MODULE_DIR}/modules/IncludeDirectoryRecurse.cmake")
-include("${PROJECT_CMAKE_MODULE_DIR}/modules/EchoWithColor.cmake")
-include("${PROJECT_CMAKE_MODULE_DIR}/modules/FindConfigurePackage.cmake")
-
-include("${PROJECT_CMAKE_MODULE_DIR}/FindPlatform.cmake")
-include("${PROJECT_CMAKE_MODULE_DIR}/ProjectTools.cmake")
-
-# ##########################################################################################################################################
-# 导入编译器和编译选项配置
-include("${PROJECT_CMAKE_MODULE_DIR}/CompilerOption.cmake")
-include("${PROJECT_CMAKE_MODULE_DIR}/TargetOption.cmake")
+include(MaybePopulateSubmodule)
+include("${CMAKE_CURRENT_LIST_DIR}/third_party/Repository.cmake")
+if(PROJECT_HIREDIS_HAPP_ENABLE_UNITTEST OR BUILD_TESTING)
+  include("${CMAKE_CURRENT_LIST_DIR}/atframework/Repository.cmake")
+endif()
 echowithcolor(COLOR GREEN "-- Build Type: ${CMAKE_BUILD_TYPE}")
 
-# ##########################################################################################################################################
+# ######################################################################################################################
 # 导入项目配置 导入所有 macro 定义
 unset(PROJECT_HIREDIS_HAPP_PUBLIC_LINK_NAMES)
 unset(PROJECT_HIREDIS_HAPP_INTERFACE_LINK_NAMES)
 unset(PROJECT_HIREDIS_HAPP_PRIVATE_COMPILE_OPTIONS)
-include("${CMAKE_CURRENT_LIST_DIR}/3rd_party/3rd_party.happ-macro.cmake")
 
 # ================ multi thread ================
 find_package(Threads)
@@ -85,7 +44,7 @@ endif()
 # 设置输出目录
 set(PROJECT_HIREDIS_HAPP_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
 set(PROJECT_HIREDIS_HAPP_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src")
-set(HIREDIS_HAPP_VERSION "0.7.0")
+set(HIREDIS_HAPP_VERSION "${PROJECT_VERSION}")
 
 configure_file("${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}/detail/hiredis_happ_config.h.in"
                "${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}/detail/hiredis_happ_config.h" @ONLY)
@@ -123,7 +82,8 @@ set_target_properties(
              BUILD_WITH_INSTALL_RPATH NO
              BUILD_RPATH_USE_ORIGIN YES)
 
-target_include_directories(hiredis-happ PUBLIC "$<BUILD_INTERFACE:${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}>" "$<INSTALL_INTERFACE:include>")
+target_include_directories(hiredis-happ PUBLIC "$<BUILD_INTERFACE:${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}>"
+                                               "$<INSTALL_INTERFACE:include>")
 
 if(WIN32)
   list(APPEND PROJECT_HIREDIS_HAPP_INTERFACE_LINK_NAMES psapi iphlpapi userenv ws2_32)
@@ -178,7 +138,7 @@ if(PROJECT_HIREDIS_HAPP_ENABLE_SAMPLE)
   add_subdirectory("${PROJECT_SOURCE_DIR}/sample")
 endif()
 
-if(PROJECT_HIREDIS_HAPP_ENABLE_UNITTEST)
+if(PROJECT_HIREDIS_HAPP_ENABLE_UNITTEST OR BUILD_TESTING)
   include("${CMAKE_CURRENT_LIST_DIR}/test/test.happ-macro.cmake")
   add_subdirectory("${PROJECT_SOURCE_DIR}/test")
 endif()

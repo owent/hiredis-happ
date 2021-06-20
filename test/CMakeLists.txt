@@ -1,15 +1,5 @@
 echowithcolor(COLOR GREEN "-- Configure Unit Test ${CMAKE_CURRENT_LIST_DIR}")
 
-# 导入工程项目
-if(TARGET atframe_utils)
-  message(STATUS "[hiredis-happ] atframe_utils already exist, use it directly.")
-else()
-  if(NOT EXISTS "${CMAKE_BINARY_DIR}/deps/atframe_utils")
-    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/deps/atframe_utils")
-  endif()
-  add_subdirectory(${ATFRAME_UTILS_ROOT} "${CMAKE_BINARY_DIR}/deps/atframe_utils")
-endif()
-
 include("${PROJECT_TEST_BAS_DIR}/test.build_bin.cmake")
 
 file(
@@ -42,6 +32,7 @@ set_target_properties(
              BUILD_WITH_INSTALL_RPATH NO
              BUILD_RPATH_USE_ORIGIN YES)
 
-target_link_libraries(hiredis-happ-test hiredis-happ atframe_utils ${COMPILER_OPTION_EXTERN_CXX_LIBS})
+target_link_libraries(hiredis-happ-test hiredis-happ ${ATFRAMEWORK_ATFRAME_UTILS_LINK_NAME}
+                      ${COMPILER_OPTION_EXTERN_CXX_LIBS})
 
 add_test(NAME hiredis-happ-run-test COMMAND hiredis-happ-test)
