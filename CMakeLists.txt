@@ -32,12 +32,7 @@ if(CMAKE_USE_PTHREADS_INIT)
   if(NOT ANDROID)
     if(TARGET Threads::Threads)
       list(APPEND PROJECT_HIREDIS_HAPP_PUBLIC_LINK_NAMES Threads::Threads)
-    else()
-      list(APPEND PROJECT_HIREDIS_HAPP_PUBLIC_LINK_NAMES pthread)
     endif()
-  endif()
-  if(THREADS_PREFER_PTHREAD_FLAG)
-    list(APPEND PROJECT_HIREDIS_HAPP_PRIVATE_COMPILE_OPTIONS ${THREADS_PREFER_PTHREAD_FLAG})
   endif()
 endif()
 
@@ -84,6 +79,10 @@ set_target_properties(
 
 target_include_directories(hiredis-happ PUBLIC "$<BUILD_INTERFACE:${PROJECT_HIREDIS_HAPP_INCLUDE_DIR}>"
                                                "$<INSTALL_INTERFACE:include>")
+
+if(PROJECT_THIRD_PARTY_INSTALL_DIR)
+  target_include_directories(hiredis-happ PRIVATE "$<BUILD_INTERFACE:${PROJECT_THIRD_PARTY_INSTALL_DIR}/include>")
+endif()
 
 if(WIN32)
   list(APPEND PROJECT_HIREDIS_HAPP_INTERFACE_LINK_NAMES psapi iphlpapi userenv ws2_32)
