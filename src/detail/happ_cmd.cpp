@@ -74,7 +74,7 @@ HIREDIS_HAPP_API void cmd_exec::destroy(cmd_exec *c) {
   free(c);
 }
 
-HIREDIS_HAPP_API int cmd_exec::vformat(int argc, const char **argv, const size_t *argvlen) {
+HIREDIS_HAPP_API int64_t cmd_exec::vformat(int argc, const char **argv, const size_t *argvlen) {
   free_cmd_content(&raw_cmd_content_);
 
   raw_cmd_content_.raw_len = 0;

@@ -115,7 +115,7 @@ HIREDIS_HAPP_API raw::cmd_t *raw::exec(cmd_t::callback_fn_t cbk, void *priv_data
     return NULL;
   }
 
-  int len = cmd->vformat(argc, argv, argvlen);
+  int64_t len = cmd->vformat(argc, argv, argvlen);
   if (len <= 0) {
     log_info("format cmd with argc=%d failed", argc);
     destroy_cmd(cmd);

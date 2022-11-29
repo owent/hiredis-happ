@@ -34,7 +34,7 @@ class cmd_exec {
  public:
   typedef void (*callback_fn_t)(cmd_exec *, struct redisAsyncContext *, void *, void *);
 
-  HIREDIS_HAPP_API int vformat(int argc, const char **argv, const size_t *argvlen);
+  HIREDIS_HAPP_API int64_t vformat(int argc, const char **argv, const size_t *argvlen);
 
   HIREDIS_HAPP_API int format(const char *fmt, ...);
 

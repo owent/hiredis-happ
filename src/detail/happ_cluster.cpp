@@ -182,7 +182,7 @@ HIREDIS_HAPP_API cluster::cmd_t *cluster::exec(const char *key, size_t ks, cmd_t
     return NULL;
   }
 
-  int len = cmd->vformat(argc, argv, argvlen);
+  int64_t len = cmd->vformat(argc, argv, argvlen);
   if (len <= 0) {
     log_info("format cmd with argc=%d failed", argc);
     destroy_cmd(cmd);
