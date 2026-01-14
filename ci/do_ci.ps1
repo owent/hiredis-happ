@@ -51,6 +51,7 @@ if ($IsWindows) {
 }
 
 Set-Location "$SCRIPT_DIR/.."
+$PROJECT_DIR = Split-Path -Parent $SCRIPT_DIR
 $RUN_MODE = $args[0]
 
 if ( $RUN_MODE -eq "msvc.modern.test" ) {
@@ -64,11 +65,13 @@ if ( $RUN_MODE -eq "msvc.modern.test" ) {
     exit $LastExitCode
   }
 
-  $ALL_DLL_FILES = Get-ChildItem -Path "../third_party/install/*.dll" -Recurse
+  $CURRENT_CWD = Get-Location
+  $ALL_DLL_FILES = @(Get-ChildItem -Path "$CURRENT_CWD/*.dll" -Recurse) + @(Get-ChildItem -Path "$PROJECT_DIR/third_party/install/*.dll" -Recurse)
   $ALL_DLL_DIRS = $(foreach ($dll_file in $ALL_DLL_FILES) {
       $dll_file.Directory.FullName
     }) | Sort-Object | Get-Unique
-  $Env:PATH = ($ALL_DLL_DIRS + $Env:PATH) -Join [IO.Path]::PathSeparator
+  $Env:PATH = ($ALL_DLL_DIRS -Join [IO.Path]::PathSeparator) + [IO.Path]::PathSeparator + $Env:PATH
+  Write-Output "PATH=$Env:PATH"
 
   & cmake --build . --config $Env:CONFIGURATION
   if ( $LastExitCode -ne 0 ) {
@@ -90,11 +93,13 @@ elseif ( $RUN_MODE -eq "msvc.2017.test" ) {
     exit $LastExitCode
   }
 
-  $ALL_DLL_FILES = Get-ChildItem -Path "../third_party/install/*.dll" -Recurse
+  $CURRENT_CWD = Get-Location
+  $ALL_DLL_FILES = @(Get-ChildItem -Path "$CURRENT_CWD/*.dll" -Recurse) + @(Get-ChildItem -Path "$PROJECT_DIR/third_party/install/*.dll" -Recurse)
   $ALL_DLL_DIRS = $(foreach ($dll_file in $ALL_DLL_FILES) {
       $dll_file.Directory.FullName
     }) | Sort-Object | Get-Unique
-  $Env:PATH = ($ALL_DLL_DIRS + $Env:PATH) -Join [IO.Path]::PathSeparator
+  $Env:PATH = ($ALL_DLL_DIRS -Join [IO.Path]::PathSeparator) + [IO.Path]::PathSeparator + $Env:PATH
+  Write-Output "PATH=$Env:PATH"
 
   & cmake --build . --config $Env:CONFIGURATION
   if ( $LastExitCode -ne 0 ) {
