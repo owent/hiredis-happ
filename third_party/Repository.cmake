@@ -1,2 +1,6 @@
-include("${ATFRAMEWORK_CMAKE_TOOLSET_DIR}/ports/ssl/port.cmake")
-include("${ATFRAMEWORK_CMAKE_TOOLSET_DIR}/ports/redis/hiredis.cmake")
+if(NOT Libuv_FOUND AND NOT Libevent_FOUND)
+  project_third_party_include_port("libuv/libuv.cmake")
+endif()
+
+project_third_party_include_port("ssl/port.cmake")
+project_third_party_include_port("redis/hiredis.cmake")

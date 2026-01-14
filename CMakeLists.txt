@@ -1,8 +1,14 @@
-cmake_minimum_required(VERSION 3.16.0)
-cmake_policy(SET CMP0054 NEW)
-cmake_policy(SET CMP0022 NEW)
-cmake_policy(SET CMP0067 NEW)
-cmake_policy(SET CMP0074 NEW)
+cmake_minimum_required(VERSION 3.24.0)
+
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.27.0")
+  cmake_policy(SET CMP0144 NEW)
+endif()
+
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
+  cmake_policy(SET CMP0169 NEW)
+endif()
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 enable_testing()
 
@@ -71,6 +77,7 @@ else()
   target_compile_options(hiredis-happ PRIVATE ${COMPILER_STRICT_EXTRA_CFLAGS} ${COMPILER_STRICT_CFLAGS})
 endif()
 
+target_compile_features(hiredis-happ PUBLIC cxx_std_17)
 set_target_properties(
   hiredis-happ
   PROPERTIES INSTALL_RPATH_USE_LINK_PATH YES

@@ -40,12 +40,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Generate cache key
+        shell: bash
+        run: git submodule > '.github/.cache-key'
+      - name: Cache packages
+        uses: actions/cache@v5
+        with:
+          path: |
+            /usr/local/share/vcpkg/installed
+            third_party/install
+          key: ${{ matrix.os }}-${{ matrix.cc }}-${{ matrix.triplet }}-${{ hashFiles('.github/.cache-key') }}
       - name: Build & Test
         shell: bash
         env:
           USE_CC: ${{ matrix.cc }}
-          VCPKG_TARGET_TRIPLET: ${{ matrix.triplet }}
-          USE_SSL: ${{ matrix.ssl }}
         run: |
           if [[ "xgcc-4.8" == "x$USE_CC" ]]; then
             sudo apt-get update ;
@@ -54,12 +62,6 @@ jobs:
           else
             bash ci/do_ci.sh ssl.openssl ;
           fi
-      - name: Cache packages
-        uses: actions/cache@v5
-        with:
-          path: |
-            /usr/local/share/vcpkg/installed
-          key: ${{ runner.os }}-${{ hashFiles('/usr/local/share/vcpkg/installed/**') }}
   vs2022_build: # job id, can be any string
     name: Visual Studio 2022 Build
     strategy:
@@ -77,6 +79,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Generate cache key
+        shell: bash
+        run: git submodule > '.github/.cache-key'
+      - name: Cache packages
+        uses: actions/cache@v5
+        with:
+          path: |
+            third_party/install
+          key: ${{ matrix.os }}-msvc-${{ matrix.build_shared_libs }}-${{ hashFiles('.github/.cache-key') }}
       - name: Build & Test
         shell: pwsh
         env:
@@ -86,3 +97,51 @@ jobs:
           CONFIGURATION: RelWithDebInfo
         run: |
           pwsh ci/do_ci.ps1 msvc.modern.test ;
+  codeql:
+    name: CodeQL
+    # This job runs on Linux
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cc: gcc
+            triplet: x64-linux
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Generate cache key
+        shell: bash
+        run: git submodule > '.github/.cache-key'
+      - name: Cache packages
+        uses: actions/cache@v5
+        with:
+          path: |
+            third_party/install
+          key: ${{ runner.os }}-codeql-${ hashFiles('.github/.cache-key') }) }}
+      - name: Build
+        shell: bash
+        env:
+          USE_CC: ${{ matrix.cc }}
+          VCPKG_TARGET_TRIPLET: ${{ matrix.triplet }}
+        run: |
+          bash ci/do_ci.sh codeql.configure
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          config-file: ./.github/codeql/codeql-config.yml
+      - name: Build
+        shell: bash
+        env:
+          USE_CC: ${{ matrix.cc }}
+          VCPKG_TARGET_TRIPLET: ${{ matrix.triplet }}
+        run: |
+          bash ci/do_ci.sh codeql.build
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:cpp"
