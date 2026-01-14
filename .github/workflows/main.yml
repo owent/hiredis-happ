@@ -6,6 +6,8 @@ on: # @see https://help.github.com/en/articles/events-that-trigger-workflows#web
       - main
   pull_request:
     branches: [main]
+env:
+  CMAKE_FIND_ROOT_PATH_MODE_PACKAGE: ONLY
 
 jobs:
   format:
