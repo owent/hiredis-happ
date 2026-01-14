@@ -52,6 +52,7 @@ HIREDIS_HAPP_API cluster::cluster() : slot_flag_(slot_status::INVALID) {
   conf_.timer_interval_sec = HIREDIS_HAPP_TIMER_INTERVAL_SEC;
   conf_.timer_interval_usec = HIREDIS_HAPP_TIMER_INTERVAL_USEC;
   conf_.timer_timeout_sec = HIREDIS_HAPP_TIMER_TIMEOUT_SEC;
+  conf_.keepalive_interval_sec = 0;
   conf_.cmd_buffer_size = 0;
 
   for (int i = 0; i < HIREDIS_HAPP_SLOT_NUMBER; ++i) {
@@ -459,9 +460,8 @@ HIREDIS_HAPP_API cluster::connection_t *cluster::make_connection(const connectio
   }
 
   h.clu = this;
-  redisAsyncSetConnectCallback(c, on_connected_wrapper);
+  redisAsyncSetConnectCallbackNC(c, on_connected_wrapper);
   redisAsyncSetDisconnectCallback(c, on_disconnected_wrapper);
-  redisEnableKeepAlive(&c->c);
   if (conf_.timer_timeout_sec > 0) {
     struct timeval tv;
     tv.tv_sec = static_cast<decltype(tv.tv_sec)>(conf_.timer_timeout_sec);
@@ -932,7 +932,7 @@ void cluster::on_reply_asking(redisAsyncContext *c, void *r, void *privdata) {
   self->destroy_cmd(cmd);
 }
 
-void cluster::on_connected_wrapper(const struct redisAsyncContext *c, int status) {
+void cluster::on_connected_wrapper(struct redisAsyncContext *c, int status) {
   connection_t *conn = reinterpret_cast<connection_t *>(c->data);
   cluster *self = conn->get_holder().clu;
 
@@ -958,6 +958,12 @@ void cluster::on_connected_wrapper(const struct redisAsyncContext *c, int status
 
     self->log_debug("connect to %s success", conn->get_key().name.c_str());
 
+
+    if (self->conf_.keepalive_interval_sec > 0) {
+      redisEnableKeepAliveWithInterval(&c->c, static_cast<int>(self->conf_.keepalive_interval_sec));
+    } else {
+      redisEnableKeepAlive(&c->c);
+    }
     // reload slots_
     if (slot_status::INVALID == self->slot_flag_) {
       self->reload_slots();
