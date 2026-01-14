@@ -9,18 +9,13 @@ Redis HA connector
 
 ## CI Job Matrix
 
-| Target System | Toolchain          | Note                  |
-| ------------- | ------------------ | --------------------- |
-| Linux         | GCC                |
-| Linux         | GCC-11             |
-| Linux         | Clang              | With libc++           |
-| Linux         | GCC 4.8            |
-| MinGW64       | GCC                | Static linking        |
-| MinGW64       | GCC                | Dynamic linking       |
-| Windows       | Visual Studio 2019 | Static linking        |
-| Windows       | Visual Studio 2019 | Dynamic linking       |
-| Windows       | Visual Studio 2017 | Legacy,Static linking |
-| macOS         | AppleClang         | With libc++           |
+| Target System | Toolchain          | Note            |
+| ------------- | ------------------ | --------------- |
+| Linux         | GCC                |                 |
+| Linux         | Clang              | With libc++     |
+| Windows       | Visual Studio 2022 | Static linking  |
+| Windows       | Visual Studio 2022 | Dynamic linking |
+| macOS         | AppleClang         | With libc++     |
 
 ## Tips
 
