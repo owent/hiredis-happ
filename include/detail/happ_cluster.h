@@ -44,6 +44,7 @@ class cluster {
     time_t timer_interval_sec;
     time_t timer_interval_usec;
     time_t timer_timeout_sec;
+    time_t keepalive_interval_sec;
 
     size_t cmd_buffer_size;
   };
@@ -247,7 +248,7 @@ class cluster {
   static void on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata);
   static void on_reply_update_slot(cmd_exec *cmd, redisAsyncContext *c, void *r, void *privdata);
   static void on_reply_asking(redisAsyncContext *c, void *r, void *privdata);
-  static void on_connected_wrapper(const struct redisAsyncContext *, int status);
+  static void on_connected_wrapper(struct redisAsyncContext *, int status);
   static void on_disconnected_wrapper(const struct redisAsyncContext *, int status);
 
   static void on_reply_auth(cmd_exec *cmd, redisAsyncContext *c, void *r, void *privdata);

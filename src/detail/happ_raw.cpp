@@ -36,6 +36,8 @@ HIREDIS_HAPP_API raw::raw() {
   conf_.timer_interval_sec = HIREDIS_HAPP_TIMER_INTERVAL_SEC;
   conf_.timer_interval_usec = HIREDIS_HAPP_TIMER_INTERVAL_USEC;
   conf_.timer_timeout_sec = HIREDIS_HAPP_TIMER_TIMEOUT_SEC;
+  conf_.keepalive_interval_sec = 0;
+
   conf_.cmd_buffer_size = 0;
 
   callbacks_.on_connect = NULL;
@@ -282,9 +284,8 @@ HIREDIS_HAPP_API raw::connection_t *raw::make_connection() {
   }
 
   h.r = this;
-  redisAsyncSetConnectCallback(c, on_connected_wrapper);
+  redisAsyncSetConnectCallbackNC(c, on_connected_wrapper);
   redisAsyncSetDisconnectCallback(c, on_disconnected_wrapper);
-  redisEnableKeepAlive(&c->c);
   if (conf_.timer_timeout_sec > 0) {
     struct timeval tv;
     tv.tv_sec = static_cast<decltype(tv.tv_sec)>(conf_.timer_timeout_sec);
@@ -554,7 +555,7 @@ void raw::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
   conn->call_reply(cmd, r);
 }
 
-void raw::on_connected_wrapper(const struct redisAsyncContext *c, int status) {
+void raw::on_connected_wrapper(struct redisAsyncContext *c, int status) {
   connection_t *conn = reinterpret_cast<connection_t *>(c->data);
   raw *self = conn->get_holder().r;
 
@@ -577,6 +578,12 @@ void raw::on_connected_wrapper(const struct redisAsyncContext *c, int status) {
     conn->set_connected();
 
     self->log_debug("connect to %s success", conn->get_key().name.c_str());
+
+    if (self->conf_.keepalive_interval_sec > 0) {
+      redisEnableKeepAliveWithInterval(&c->c, static_cast<int>(self->conf_.keepalive_interval_sec));
+    } else {
+      redisEnableKeepAlive(&c->c);
+    }
   }
 }
 
