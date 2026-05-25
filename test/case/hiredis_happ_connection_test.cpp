@@ -14,19 +14,19 @@ struct AutoPtr {
 
   AutoPtr(T* v_) : v(v_) {}
   ~AutoPtr() {
-    if (NULL != v) {
+    if (nullptr != v) {
       delete v;
     }
   }
 
   AutoPtr(AutoPtr& other) {
     v = other.v;
-    other.v = NULL;
+    other.v = nullptr;
   }
 
   AutoPtr& operator=(AutoPtr& other) {
     v = other.v;
-    other.v = NULL;
+    other.v = nullptr;
     return (*this);
   }
 
@@ -58,9 +58,9 @@ CASE_TEST(happ_connection, basic) {
   CASE_EXPECT_TRUE("127.0.0.2:1234" == conn1->get_key().name);
 
   CASE_EXPECT_EQ(hiredis::happ::connection::status::DISCONNECTED, conn1->get_status());
-  hiredis::happ::cmd_exec* cmd = hiredis::happ::cmd_exec::create(h, NULL, &vir_context, 0);
+  hiredis::happ::cmd_exec* cmd = hiredis::happ::cmd_exec::create(h, nullptr, &vir_context, 0);
 
-  int res = conn1->redis_cmd(cmd, NULL);
+  int res = conn1->redis_cmd(cmd, nullptr);
   CASE_EXPECT_EQ(hiredis::happ::error_code::REDIS_HAPP_CREATE, res);
 
   conn1->set_connecting(&vir_context);
@@ -78,8 +78,8 @@ CASE_TEST(happ_connection, basic) {
   conn1->release(false);
   conn2->release(false);
 
-  CASE_EXPECT_EQ(conn1->get_context(), NULL);
-  CASE_EXPECT_EQ(conn2->get_context(), NULL);
+  CASE_EXPECT_EQ(conn1->get_context(), nullptr);
+  CASE_EXPECT_EQ(conn2->get_context(), nullptr);
 
   hiredis::happ::cmd_exec::destroy(cmd);
 }

@@ -101,13 +101,13 @@ class connection {
 
   /**
    * @brief call reply callback of c with reply
-   * @note if c!=NULL, it will always call callback and be freed
+   * @note if c!=nullptr, it will always call callback and be freed
    */
   HIREDIS_HAPP_API int call_reply(cmd_exec *c, void *reply);
 
   /**
-   * @brief pop specify cmd from pending list, do nothing if c!=NULL and is not in pending list
-   * @note if c!=NULL, all cmds before c will trigger timeout
+   * @brief pop specify cmd from pending list, do nothing if c!=nullptr and is not in pending list
+   * @note if c!=nullptr, all cmds before c will trigger timeout
    * @return first cmd or c
    */
   HIREDIS_HAPP_API cmd_exec *pop_reply(cmd_exec *c);

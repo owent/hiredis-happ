@@ -8,9 +8,9 @@
 
 namespace hiredis {
 namespace happ {
-HIREDIS_HAPP_API connection::connection() : sequence_(0), context_(NULL), conn_status_(status::DISCONNECTED) {
+HIREDIS_HAPP_API connection::connection() : sequence_(0), context_(nullptr), conn_status_(status::DISCONNECTED) {
   make_sequence();
-  holder_.clu = NULL;
+  holder_.clu = nullptr;
 }
 
 HIREDIS_HAPP_API connection::~connection() { release(true); }
@@ -67,7 +67,7 @@ HIREDIS_HAPP_API connection::status::type connection::set_disconnected(bool clos
 
 HIREDIS_HAPP_API connection::status::type connection::set_connected() {
   status::type ret = conn_status_;
-  if (status::CONNECTING != conn_status_ || NULL == context_) {
+  if (status::CONNECTING != conn_status_ || nullptr == context_) {
     return ret;
   }
 
@@ -80,11 +80,11 @@ HIREDIS_HAPP_API connection::status::type connection::set_connected() {
 }
 
 HIREDIS_HAPP_API int connection::redis_cmd(cmd_exec *c, redisCallbackFn fn) {
-  if (NULL == c) {
+  if (nullptr == c) {
     return error_code::REDIS_HAPP_PARAM;
   }
 
-  if (NULL == context_) {
+  if (nullptr == context_) {
     return error_code::REDIS_HAPP_CREATE;
   }
 
@@ -99,7 +99,7 @@ HIREDIS_HAPP_API int connection::redis_cmd(cmd_exec *c, redisCallbackFn fn) {
     case status::CONNECTING:
     case status::CONNECTED: {
       int res = 0;
-      const char *cstr = NULL;
+      const char *cstr = nullptr;
       size_t clen = 0;
       if (0 == c->raw_cmd_content_.raw_len) {
         res = redisAsyncFormattedCommand(context_, fn, c, c->raw_cmd_content_.content.redis_sds,
@@ -110,7 +110,7 @@ HIREDIS_HAPP_API int connection::redis_cmd(cmd_exec *c, redisCallbackFn fn) {
 
       if (REDIS_OK == res) {
         c->pick_cmd(&cstr, &clen);
-        if (NULL == cstr) {
+        if (nullptr == cstr) {
           reply_list_.push_back(c);
         } else {
           bool is_pattern = tolower(cstr[0]) == 'p';
@@ -149,14 +149,14 @@ HIREDIS_HAPP_API int connection::redis_cmd(cmd_exec *c, redisCallbackFn fn) {
   }
 
   // unknown error, recycle cmd
-  c->call_reply(error_code::REDIS_HAPP_UNKNOWD, context_, NULL);
+  c->call_reply(error_code::REDIS_HAPP_UNKNOWD, context_, nullptr);
   cmd_exec::destroy(c);
 
   return error_code::REDIS_HAPP_OK;
 }
 
 HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, const char *fmt, ...) {
-  if (NULL == context_) {
+  if (nullptr == context_) {
     return error_code::REDIS_HAPP_CREATE;
   }
 
@@ -169,7 +169,7 @@ HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_d
 }
 
 HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, const char *fmt, va_list ap) {
-  if (NULL == context_) {
+  if (nullptr == context_) {
     return error_code::REDIS_HAPP_CREATE;
   }
 
@@ -177,7 +177,7 @@ HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_d
 }
 
 HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, const sds *src) {
-  if (NULL == context_) {
+  if (nullptr == context_) {
     return error_code::REDIS_HAPP_CREATE;
   }
 
@@ -186,7 +186,7 @@ HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_d
 
 HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_data, int argc, const char **argv,
                                                const size_t *argvlen) {
-  if (NULL == context_) {
+  if (nullptr == context_) {
     return error_code::REDIS_HAPP_CREATE;
   }
 
@@ -194,9 +194,9 @@ HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_d
 }
 
 HIREDIS_HAPP_API int connection::call_reply(cmd_exec *c, void *r) {
-  if (NULL == context_) {
+  if (nullptr == context_) {
     // make sure to destroy cmd
-    if (NULL != c) {
+    if (nullptr != c) {
       c->error_code_ = error_code::REDIS_HAPP_NOT_FOUND;
       c->call_reply(c->error_code_, context_, r);
       cmd_exec::destroy(c);
@@ -207,9 +207,9 @@ HIREDIS_HAPP_API int connection::call_reply(cmd_exec *c, void *r) {
 
   cmd_exec *sc = pop_reply(c);
 
-  if (NULL == sc) {
+  if (nullptr == sc) {
     // make sure to destroy cmd
-    if (NULL != c) {
+    if (nullptr != c) {
       c->error_code_ = error_code::REDIS_HAPP_NOT_FOUND;
       c->call_reply(c->error_code_, context_, r);
       cmd_exec::destroy(c);
@@ -234,9 +234,9 @@ HIREDIS_HAPP_API int connection::call_reply(cmd_exec *c, void *r) {
 }
 
 HIREDIS_HAPP_API cmd_exec *connection::pop_reply(cmd_exec *c) {
-  if (NULL == c) {
+  if (nullptr == c) {
     if (reply_list_.empty()) {
-      return NULL;
+      return nullptr;
     }
 
     c = reply_list_.front();
@@ -246,7 +246,7 @@ HIREDIS_HAPP_API cmd_exec *connection::pop_reply(cmd_exec *c) {
 
   std::list<cmd_exec *>::iterator it = std::find(reply_list_.begin(), reply_list_.end(), c);
   if (it == reply_list_.end()) {
-    return NULL;
+    return nullptr;
   }
 
   // first, deal with all expired cmd
@@ -254,7 +254,7 @@ HIREDIS_HAPP_API cmd_exec *connection::pop_reply(cmd_exec *c) {
     cmd_exec *expired_c = reply_list_.front();
     reply_list_.pop_front();
 
-    expired_c->call_reply(error_code::REDIS_HAPP_TIMEOUT, context_, NULL);
+    expired_c->call_reply(error_code::REDIS_HAPP_TIMEOUT, context_, nullptr);
     cmd_exec::destroy(expired_c);
   }
 
@@ -267,7 +267,7 @@ HIREDIS_HAPP_API cmd_exec *connection::pop_reply(cmd_exec *c) {
 HIREDIS_HAPP_API redisAsyncContext *connection::get_context() const { return context_; }
 
 HIREDIS_HAPP_API void connection::release(bool close_fd) {
-  if (NULL != context_ && close_fd) {
+  if (nullptr != context_ && close_fd) {
     redisAsyncDisconnect(context_);
   }
 
@@ -277,11 +277,11 @@ HIREDIS_HAPP_API void connection::release(bool close_fd) {
     reply_list_.pop_front();
 
     // context_ may already be closed here
-    expired_c->call_reply(error_code::REDIS_HAPP_CONNECTION, NULL, NULL);
+    expired_c->call_reply(error_code::REDIS_HAPP_CONNECTION, context_, nullptr);
     cmd_exec::destroy(expired_c);
   }
 
-  context_ = NULL;
+  context_ = nullptr;
   conn_status_ = status::DISCONNECTED;
 }
 

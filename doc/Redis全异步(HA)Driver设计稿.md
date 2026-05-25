@@ -86,7 +86,7 @@ redis作者建议对cluster的支持仿照[redis-rb-cluster](https://github.com/
 1. 丢包问题：虽然说TCP连接能保证数据包的顺序和并且自带网络包重发，但是在**连接断开的时候仍然会出现丢包**的情况。
 2. 超时问题：hiredis的异步API里没有超时的判定，但是因为TCP包底层的重传机制，超时只有一种可能，那就是连接断开。然后要么是上面提到的情况，没有发送成功，要么是回包丢失。
 
-无论上诉哪种情况，都会导致连接异常。根据对hiredis源代码的分析，（除了subscribe和unsubscribe命令外）这时候hiredis一定会回调所有没有完成的callback，然后响应disconnect事件，并且这时候redisReply *reply=NULL。
+无论上诉哪种情况，都会导致连接异常。根据对hiredis源代码的分析，（除了subscribe和unsubscribe命令外）这时候hiredis一定会回调所有没有完成的callback，然后响应disconnect事件，并且这时候redisReply *reply=nullptr。
 > subscribe和unsubscribe命令外，订阅命令的回调是个字典
 > 
 > subscribe命令的回调会在每次收到消息的时候都调用

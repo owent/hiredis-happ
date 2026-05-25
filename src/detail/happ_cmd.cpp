@@ -30,8 +30,8 @@ HIREDIS_HAPP_API cmd_exec *cmd_exec::create(holder_t holder_, callback_fn_t cbk,
 
   cmd_exec *ret = reinterpret_cast<cmd_exec *>(malloc(sum_len));
 
-  if (NULL == ret) {
-    return NULL;
+  if (nullptr == ret) {
+    return nullptr;
   }
 
   memset(ret, 0, sizeof(cmd_exec));
@@ -46,26 +46,26 @@ HIREDIS_HAPP_API cmd_exec *cmd_exec::create(holder_t holder_, callback_fn_t cbk,
 }
 
 static void free_cmd_content(cmd_content *c) {
-  if (NULL == c) {
+  if (nullptr == c) {
     return;
   }
 
   if (0 == c->raw_len) {
-    if (NULL != c->content.redis_sds) {
+    if (nullptr != c->content.redis_sds) {
       redisFreeSdsCommand(c->content.redis_sds);
-      c->content.redis_sds = NULL;
+      c->content.redis_sds = nullptr;
     }
   } else {
-    if (NULL != c->content.raw) {
+    if (nullptr != c->content.raw) {
       redisFreeCommand(c->content.raw);
-      c->content.raw = NULL;
+      c->content.raw = nullptr;
     }
     c->raw_len = 0;
   }
 }
 
 HIREDIS_HAPP_API void cmd_exec::destroy(cmd_exec *c) {
-  if (NULL == c) {
+  if (nullptr == c) {
     return;
   }
 
@@ -107,7 +107,7 @@ HIREDIS_HAPP_API int cmd_exec::vformat(const char *fmt, va_list ap) {
 HIREDIS_HAPP_API int cmd_exec::vformat(const sds *src) {
   free_cmd_content(&raw_cmd_content_);
 
-  if (NULL == src) {
+  if (nullptr == src) {
     return 0;
   }
 
@@ -118,13 +118,13 @@ HIREDIS_HAPP_API int cmd_exec::vformat(const sds *src) {
 }
 
 HIREDIS_HAPP_API int cmd_exec::call_reply(int rcode, redisAsyncContext *context, void *reply) {
-  if (NULL == callback_) {
+  if (nullptr == callback_) {
     return error_code::REDIS_HAPP_OK;
   }
 
   error_code_ = rcode;
   callback_fn_t tc = callback_;
-  callback_ = NULL;
+  callback_ = nullptr;
   tc(this, context, reply, private_data_);
 
   return error_code::REDIS_HAPP_OK;
@@ -141,7 +141,7 @@ HIREDIS_HAPP_API void *cmd_exec::private_data() const { return private_data_; }
 HIREDIS_HAPP_API void cmd_exec::private_data(void *pd) { private_data_ = pd; }
 
 HIREDIS_HAPP_API const char *cmd_exec::pick_argument(const char *start, const char **str, size_t *len) {
-  if (NULL == start) {
+  if (nullptr == start) {
     if (0 == raw_cmd_content_.raw_len) {
       // because sds is typedefed to be a char*, so we can only use it directly here.
       start = raw_cmd_content_.content.redis_sds;
@@ -150,23 +150,23 @@ HIREDIS_HAPP_API const char *cmd_exec::pick_argument(const char *start, const ch
     }
   }
 
-  if (NULL == start) {
-    return NULL;
+  if (nullptr == start) {
+    return nullptr;
   }
 
   // @see http://redis.io/topics/protocol
   // Clients send commands to a Redis server as a RESP Array of Bulk Strings
   if (start[0] != '$') {
     start = strchr(start, '$');
-    if (NULL == start) return NULL;
+    if (nullptr == start) return nullptr;
   }
 
-  if (NULL == len || NULL == str) {
+  if (nullptr == len || nullptr == str) {
     return start;
   }
 
   // redis bulk strings can not be greater than 512MB
-  *len = static_cast<size_t>(strtol(start + 1, NULL, 10));
+  *len = static_cast<size_t>(strtol(start + 1, nullptr, 10));
   start = strchr(start, '\r');
   assert(start);
 
@@ -175,10 +175,12 @@ HIREDIS_HAPP_API const char *cmd_exec::pick_argument(const char *start, const ch
   return start + 2 + (*len) + 2;
 }
 
-HIREDIS_HAPP_API const char *cmd_exec::pick_cmd(const char **str, size_t *len) { return pick_argument(NULL, str, len); }
+HIREDIS_HAPP_API const char *cmd_exec::pick_cmd(const char **str, size_t *len) {
+  return pick_argument(nullptr, str, len);
+}
 
 HIREDIS_HAPP_API void cmd_exec::dump(std::ostream &out, redisReply *reply, int ident) {
-  if (NULL == reply) {
+  if (nullptr == reply) {
     return;
   }
 

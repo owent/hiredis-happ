@@ -50,10 +50,10 @@ extern "C" {
 
 typedef HANDLE sample_thread_t;
 #  define THREAD_FUNC unsigned __stdcall
-#  define THREAD_CREATE(threadvar, fn, arg)                                 \
-    do {                                                                    \
-      uintptr_t threadhandle = _beginthreadex(NULL, 0, fn, (arg), 0, NULL); \
-      (threadvar) = (sample_thread_t)threadhandle;                          \
+#  define THREAD_CREATE(threadvar, fn, arg)                                       \
+    do {                                                                          \
+      uintptr_t threadhandle = _beginthreadex(nullptr, 0, fn, (arg), 0, nullptr); \
+      (threadvar) = (sample_thread_t)threadhandle;                                \
     } while (0)
 #  define THREAD_JOIN(th) WaitForSingleObject(th, INFINITE)
 #  define THREAD_RETURN return (0)
@@ -66,11 +66,11 @@ typedef HANDLE sample_thread_t;
 
 typedef pthread_t sample_thread_t;
 #  define THREAD_FUNC void *
-#  define THREAD_CREATE(threadvar, fn, arg) pthread_create(&(threadvar), NULL, fn, arg)
-#  define THREAD_JOIN(th) pthread_join(th, NULL)
-#  define THREAD_RETURN \
-    pthread_exit(NULL); \
-    return NULL
+#  define THREAD_CREATE(threadvar, fn, arg) pthread_create(&(threadvar), nullptr, fn, arg)
+#  define THREAD_JOIN(th) pthread_join(th, nullptr)
+#  define THREAD_RETURN    \
+    pthread_exit(nullptr); \
+    return nullptr
 
 #  define THREAD_SLEEP_MS(TM)                     \
     ((TM > 1000) ? sleep(TM / 1000) : usleep(0)); \
@@ -99,7 +99,7 @@ static void on_connect_cbk(hiredis::happ::cluster *, hiredis::happ::connection *
   redisLibeventAttach(conn->get_context(), main_loop);
 #endif
 
-  if (NULL != conn) {
+  if (nullptr != conn) {
     printf("start connect to %s\n", conn->get_key().name.c_str());
   } else {
     printf("error: connection not found when connect\n");
@@ -108,7 +108,7 @@ static void on_connect_cbk(hiredis::happ::cluster *, hiredis::happ::connection *
 
 static void on_connected_cbk(hiredis::happ::cluster *, hiredis::happ::connection *conn,
                              const struct redisAsyncContext *c, int status) {
-  if (NULL == conn) {
+  if (nullptr == conn) {
     printf("error: connection not found when connected\n");
     return;
   }
@@ -124,7 +124,7 @@ static void on_connected_cbk(hiredis::happ::cluster *, hiredis::happ::connection
 
 static void on_disconnected_cbk(hiredis::happ::cluster *, hiredis::happ::connection *conn,
                                 const struct redisAsyncContext *c, int status) {
-  if (NULL == conn) {
+  if (nullptr == conn) {
     printf("error: connection not found when connected\n");
     return;
   }
@@ -208,7 +208,7 @@ static void on_timer_proc(
     evutil_socket_t fd, short event, void *arg
 #endif
 ) {
-  static time_t sec = time(NULL);
+  static time_t sec = time(nullptr);
   static time_t usec = 0;
 
   usec += 100000;
@@ -262,25 +262,25 @@ static void on_timer_proc(
 
     if (is_raw) {  // run special command
 
-      const hiredis::happ::cluster::slot_t *slot_info = NULL;
+      const hiredis::happ::cluster::slot_t *slot_info = nullptr;
       if (cmds.size() > 1) {
         slot_info = g_clu.get_slot_by_key(cmds[1].c_str(), cmds[1].size());
         assert(slot_info);
       }
 
       const hiredis::happ::connection::key_t *conn_key =
-          g_clu.get_slot_master(NULL == slot_info ? -1 : slot_info->index);
-      if (NULL == conn_key) {
+          g_clu.get_slot_master(nullptr == slot_info ? -1 : slot_info->index);
+      if (nullptr == conn_key) {
         printf("connection not found.\n");
         continue;
       }
 
       hiredis::happ::connection *conn = g_clu.get_connection(conn_key->name);
-      if (NULL == conn) {
+      if (nullptr == conn) {
         conn = g_clu.make_connection(*conn_key);
       }
 
-      if (NULL == conn) {
+      if (nullptr == conn) {
         printf("connect to %s failed.\n", conn_key->name.c_str());
         continue;
       }
@@ -292,7 +292,7 @@ static void on_timer_proc(
         g_clu.exec(cmd.c_str(), cmd.size(), cbk, reinterpret_cast<void *>(cbk), static_cast<int>(cmds.size()), &pc[0],
                    &ps[0]);
       } else {
-        g_clu.exec(NULL, 0, cbk, reinterpret_cast<void *>(cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
+        g_clu.exec(nullptr, 0, cbk, reinterpret_cast<void *>(cbk), static_cast<int>(cmds.size()), &pc[0], &ps[0]);
       }
     }
   }
@@ -331,7 +331,7 @@ int main(int argc, char *argv[]) {
 
   const char *ip = argv[1];
   long lport = 0;
-  lport = strtol(argv[2], NULL, 10);
+  lport = strtol(argv[2], nullptr, 10);
   uint16_t port = static_cast<uint16_t>(lport);
 
   g_clu.init(ip, port);
@@ -362,7 +362,7 @@ int main(int argc, char *argv[]) {
   // setup timer using libevent
   struct timeval tv;
   struct event ev;
-  event_assign(&ev, main_loop, -1, EV_PERSIST, on_timer_proc, NULL);
+  event_assign(&ev, main_loop, -1, EV_PERSIST, on_timer_proc, nullptr);
   tv.tv_sec = 0;
   tv.tv_usec = 100000;
   evtimer_add(&ev, &tv);
@@ -374,7 +374,7 @@ int main(int argc, char *argv[]) {
   g_clu.start();
 
   sample_thread_t uv_thd;
-  THREAD_CREATE(uv_thd, proc_uv_thd, NULL);
+  THREAD_CREATE(uv_thd, proc_uv_thd, nullptr);
 
   std::string cmd;
   while (std::getline(std::cin, cmd)) {
