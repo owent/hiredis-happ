@@ -1,3 +1,5 @@
+// Copyright 2026 owent
+
 #if defined(_WIN32)
 #  ifndef WIN32_LEAN_AND_MEAN
 #    define WIN32_LEAN_AND_MEAN
@@ -13,13 +15,12 @@
 #  include <sys/time.h>
 #endif
 
-#include <assert.h>
 #include <detail/happ_cmd.h>
 #include <algorithm>
+#include <cassert>
 #include <cstdio>
 #include <ctime>
 #include <random>
-#include <sstream>
 
 #include "detail/crc16.h"
 #include "detail/happ_cluster.h"
@@ -356,6 +357,14 @@ HIREDIS_HAPP_API cluster::cmd_t *cluster::retry(cmd_t *cmd, connection_t *conn) 
 
   // If it's still failed, maybe it will take some more time to recover the connection,
   // so wait for a while and retry again.
+  if (!is_timer_available()) {
+    log_info("[WARNING]: %s", "timer not available");
+    redisAsyncContext *context = conn != nullptr ? conn->get_context() : nullptr;
+    call_cmd(cmd, error_code::REDIS_HAPP_TIMER_NOT_AVAILABLE, context, nullptr);
+    destroy_cmd(cmd);
+    return nullptr;
+  }
+
   add_timer_cmd(cmd);
   return cmd;
 }
@@ -583,9 +592,12 @@ HIREDIS_HAPP_API void cluster::set_cmd_buffer_size(size_t s) { conf_.cmd_buffer_
 
 HIREDIS_HAPP_API size_t cluster::get_cmd_buffer_size() const { return conf_.cmd_buffer_size; }
 
+HIREDIS_HAPP_API bool cluster::is_timer_available() const {
+  return conf_.timer_interval_sec > 0 || conf_.timer_interval_usec > 0;
+}
+
 HIREDIS_HAPP_API bool cluster::is_timer_active() const {
-  return (timer_actions_.last_update_sec != 0 || timer_actions_.last_update_usec != 0) &&
-         (conf_.timer_interval_sec > 0 || conf_.timer_interval_usec > 0);
+  return (timer_actions_.last_update_sec != 0 || timer_actions_.last_update_usec != 0) && is_timer_available();
 }
 
 HIREDIS_HAPP_API void cluster::set_timer_interval(time_t sec, time_t usec) {
@@ -597,6 +609,13 @@ HIREDIS_HAPP_API void cluster::set_timeout(time_t sec) { conf_.timer_timeout_sec
 
 HIREDIS_HAPP_API void cluster::add_timer_cmd(cmd_t *cmd) {
   if (nullptr == cmd) {
+    return;
+  }
+
+  if (!is_timer_available()) {
+    log_info("[WARNING]: %s", "timer not available");
+    call_cmd(cmd, error_code::REDIS_HAPP_TIMER_NOT_AVAILABLE, nullptr, nullptr);
+    destroy_cmd(cmd);
     return;
   }
 
@@ -819,7 +838,7 @@ void cluster::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
   conn->call_reply(cmd, r);
 }
 
-void cluster::on_reply_update_slot(cmd_exec *cmd, redisAsyncContext *, void *r, void * /*privdata*/) {
+void cluster::on_reply_update_slot(cmd_exec *cmd, redisAsyncContext *rctx, void *r, void * /*privdata*/) {
   redisReply *reply = reinterpret_cast<redisReply *>(r);
   cluster *self = cmd->holder_.clu;
 
@@ -834,7 +853,13 @@ void cluster::on_reply_update_slot(cmd_exec *cmd, redisAsyncContext *, void *r, 
       // this message will also retry for TTL times
       // update slots_ always random a connection
       cmd->engine_.slot = -1;
-      self->add_timer_cmd(cmd);
+      if (!self->is_timer_available()) {
+        self->log_info("[ERROR]: %s", "timer not available, cannot update slots.");
+        self->call_cmd(cmd, error_code::REDIS_HAPP_TIMER_NOT_AVAILABLE, rctx, r);
+        self->destroy_cmd(cmd);
+      } else {
+        self->add_timer_cmd(cmd);
+      }
     } else {
       self->log_info("update slots_ failed and will retry later.");
     }
@@ -986,7 +1011,6 @@ void cluster::on_disconnected_wrapper(const struct redisAsyncContext *c, int sta
 void cluster::on_reply_auth(cmd_exec *cmd, redisAsyncContext *rctx, void *r, void * /*privdata*/) {
   redisReply *reply = reinterpret_cast<redisReply *>(r);
   cluster *self = cmd->holder_.clu;
-  assert(rctx);
 
   if (nullptr == rctx) {
     self->log_info("[ERROR]: %s", "rctx is nullptr in on_reply_auth");

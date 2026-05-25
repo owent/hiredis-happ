@@ -1,3 +1,5 @@
+// Copyright 2026 owent
+
 #if defined(_WIN32)
 #  ifndef WIN32_LEAN_AND_MEAN
 #    define WIN32_LEAN_AND_MEAN
@@ -260,6 +262,14 @@ HIREDIS_HAPP_API raw::cmd_t *raw::retry(cmd_t *cmd, connection_t *conn) {
 
   // If it's still failed, maybe it will take some more time to recover the connection,
   // so wait for a while and retry again.
+  if (!is_timer_available()) {
+    log_info("[WARNING]: %s", "timer not available");
+    redisAsyncContext *context = conn != nullptr ? conn->get_context() : nullptr;
+    call_cmd(cmd, error_code::REDIS_HAPP_TIMER_NOT_AVAILABLE, context, nullptr);
+    destroy_cmd(cmd);
+    return nullptr;
+  }
+
   add_timer_cmd(cmd);
   return cmd;
 }
@@ -403,9 +413,12 @@ HIREDIS_HAPP_API void raw::set_cmd_buffer_size(size_t s) { conf_.cmd_buffer_size
 
 HIREDIS_HAPP_API size_t raw::get_cmd_buffer_size() const { return conf_.cmd_buffer_size; }
 
+HIREDIS_HAPP_API bool raw::is_timer_available() const {
+  return conf_.timer_interval_sec > 0 || conf_.timer_interval_usec > 0;
+}
+
 HIREDIS_HAPP_API bool raw::is_timer_active() const {
-  return (timer_actions_.last_update_sec != 0 || timer_actions_.last_update_usec != 0) &&
-         (conf_.timer_interval_sec > 0 || conf_.timer_interval_usec > 0);
+  return (timer_actions_.last_update_sec != 0 || timer_actions_.last_update_usec != 0) && is_timer_available();
 }
 
 HIREDIS_HAPP_API void raw::set_timer_interval(time_t sec, time_t usec) {
@@ -417,6 +430,13 @@ HIREDIS_HAPP_API void raw::set_timeout(time_t sec) { conf_.timer_timeout_sec = s
 
 HIREDIS_HAPP_API void raw::add_timer_cmd(cmd_t *cmd) {
   if (nullptr == cmd) {
+    return;
+  }
+
+  if (!is_timer_available()) {
+    log_info("[WARNING]: %s", "timer not available");
+    call_cmd(cmd, error_code::REDIS_HAPP_TIMER_NOT_AVAILABLE, nullptr, nullptr);
+    destroy_cmd(cmd);
     return;
   }
 
@@ -598,7 +618,11 @@ void raw::on_disconnected_wrapper(const struct redisAsyncContext *c, int status)
 void raw::on_reply_auth(cmd_exec *cmd, redisAsyncContext *rctx, void *r, void * /*privdata*/) {
   redisReply *reply = reinterpret_cast<redisReply *>(r);
   raw *self = cmd->holder_.r;
-  assert(rctx);
+
+  if (nullptr == rctx) {
+    self->log_info("[ERROR]: %s", "rctx is nullptr in on_reply_auth");
+    return;
+  }
 
   // error and log
   if (nullptr == reply || 0 != HIREDIS_HAPP_STRNCASE_CMP("OK", reply->str, 2)) {

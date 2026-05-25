@@ -1,4 +1,4 @@
-//
+// Copyright 2026 owent
 // Created by owent on 2016/04/20.
 //
 
@@ -191,6 +191,8 @@ class raw {
   HIREDIS_HAPP_API void set_cmd_buffer_size(size_t s);
 
   HIREDIS_HAPP_API size_t get_cmd_buffer_size() const;
+
+  HIREDIS_HAPP_API bool is_timer_available() const;
 
   HIREDIS_HAPP_API bool is_timer_active() const;
 

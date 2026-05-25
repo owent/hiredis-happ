@@ -1,8 +1,10 @@
+// Copyright 2026 owent
 
-#include <assert.h>
 #include <algorithm>
+#include <cassert>
 #include <cstdlib>
 #include <cstring>
+
 
 #include "detail/happ_connection.h"
 

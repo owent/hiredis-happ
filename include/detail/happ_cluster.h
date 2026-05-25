@@ -226,6 +226,8 @@ class cluster {
 
   HIREDIS_HAPP_API size_t get_cmd_buffer_size() const;
 
+  HIREDIS_HAPP_API bool is_timer_available() const;
+
   HIREDIS_HAPP_API bool is_timer_active() const;
 
   HIREDIS_HAPP_API void set_timer_interval(time_t sec, time_t usec);

@@ -1,9 +1,12 @@
 
-#include <assert.h>
+// Copyright 2026 owent
+
 #include <algorithm>
+#include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <iomanip>
+
 
 #include "detail/happ_cmd.h"
 
