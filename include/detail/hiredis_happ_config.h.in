@@ -326,15 +326,16 @@ namespace happ {
 struct error_code {
   enum type {
     REDIS_HAPP_OK = REDIS_OK,
-    REDIS_HAPP_UNKNOWD = -1001,           // unknown error
-    REDIS_HAPP_HIREDIS = -1002,           // error happened in hiredis
-    REDIS_HAPP_TTL = -1003,               // try more than ttl times
-    REDIS_HAPP_CONNECTION = -1004,        // connect lost or connect failed
-    REDIS_HAPP_SLOT_UNAVAILABLE = -1005,  // slot unavailable
-    REDIS_HAPP_CREATE = -1006,            // create failed
-    REDIS_HAPP_PARAM = -1007,             // param error
-    REDIS_HAPP_TIMEOUT = -1008,           // timeout
-    REDIS_HAPP_NOT_FOUND = -1009,         // not found
+    REDIS_HAPP_UNKNOWD = -1001,              // unknown error
+    REDIS_HAPP_HIREDIS = -1002,              // error happened in hiredis
+    REDIS_HAPP_TTL = -1003,                  // try more than ttl times
+    REDIS_HAPP_CONNECTION = -1004,           // connect lost or connect failed
+    REDIS_HAPP_SLOT_UNAVAILABLE = -1005,     // slot unavailable
+    REDIS_HAPP_CREATE = -1006,               // create failed
+    REDIS_HAPP_PARAM = -1007,                // param error
+    REDIS_HAPP_TIMEOUT = -1008,              // timeout
+    REDIS_HAPP_NOT_FOUND = -1009,            // not found
+    REDIS_HAPP_TIMER_NOT_AVAILABLE = -1010,  // timer not available
   };
 };
 }  // namespace happ
