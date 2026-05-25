@@ -988,6 +988,11 @@ void cluster::on_reply_auth(cmd_exec *cmd, redisAsyncContext *rctx, void *r, voi
   cluster *self = cmd->holder_.clu;
   assert(rctx);
 
+  if (nullptr == rctx) {
+    self->log_info("[ERROR]: %s", "rctx is nullptr in on_reply_auth");
+    return;
+  }
+
   // error and log
   if (nullptr == reply || 0 != HIREDIS_HAPP_STRNCASE_CMP("OK", reply->str, 2)) {
     const char *error_text = "";
