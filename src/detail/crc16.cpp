@@ -26,7 +26,7 @@ static const uint16_t crc16tab[256] = {
 
 namespace hiredis {
 namespace happ {
-uint16_t crc16(const char *buf, size_t len) {
+HIREDIS_HAPP_API uint16_t crc16(const char *buf, size_t len) {
   size_t counter;
   uint16_t crc = 0;
   for (counter = 0; counter < len; counter++) crc = (crc << 8) ^ crc16tab[((crc >> 8) ^ *buf++) & 0x00FF];
