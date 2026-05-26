@@ -17,13 +17,16 @@
 #  include <sys/time.h>
 #endif
 
-#include <detail/happ_cmd.h>
+#include <algorithm>
 #include <cassert>
 #include <cstdio>
 #include <ctime>
 #include <limits>
+#include <random>
 
 #include "detail/crc16.h"
+#include "detail/happ_cmd.h"
+
 
 namespace hiredis {
 namespace happ {
