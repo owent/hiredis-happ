@@ -17,6 +17,10 @@
 
 namespace hiredis {
 namespace happ {
+#if defined(HIREDIS_HAPP_UNIT_TEST_HACK)
+struct cluster_unit_test_access;
+#endif
+
 class cluster {
  public:
   typedef cmd_exec cmd_t;
@@ -69,6 +73,10 @@ class cluster {
   };
 
  private:
+#if defined(HIREDIS_HAPP_UNIT_TEST_HACK)
+  friend struct cluster_unit_test_access;
+#endif
+
   cluster(const cluster &);
   cluster &operator=(const cluster &);
 

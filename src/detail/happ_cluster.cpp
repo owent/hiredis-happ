@@ -20,6 +20,7 @@
 #include <cassert>
 #include <cstdio>
 #include <ctime>
+#include <limits>
 #include <random>
 
 #include "detail/crc16.h"
@@ -67,6 +68,52 @@ static int hash_slot(const char *key, size_t key_len) {
   }
 
   return static_cast<int>(crc16(key + start + 1, end - start - 1) % HIREDIS_HAPP_SLOT_NUMBER);
+}
+
+static bool pick_cluster_endpoint_from_reply(redisAsyncContext *rctx, redisReply *endpoint_reply,
+                                             redisReply *port_reply, std::string &ip, uint16_t &port) {
+  if (nullptr == endpoint_reply || nullptr == port_reply || REDIS_REPLY_INTEGER != port_reply->type) {
+    return false;
+  }
+
+  ip.clear();
+  switch (endpoint_reply->type) {
+    case REDIS_REPLY_STRING:
+      if (nullptr != endpoint_reply->str && endpoint_reply->str[0] == '?') {
+        return false;
+      }
+
+      if (nullptr != endpoint_reply->str && endpoint_reply->str[0] != 0) {
+        ip = endpoint_reply->str;
+      }
+      break;
+
+    case REDIS_REPLY_NIL:
+      break;
+
+    default:
+      return false;
+  }
+
+  if (ip.empty() && nullptr != rctx && REDIS_CONN_TCP == rctx->c.connection_type) {
+    if (nullptr != rctx->c.tcp.host && rctx->c.tcp.host[0] != 0 && rctx->c.tcp.host[0] != '?') {
+      ip = rctx->c.tcp.host;
+    } else if (nullptr != rctx->c.tcp.source_addr && rctx->c.tcp.source_addr[0] != 0 &&
+               rctx->c.tcp.source_addr[0] != '?') {
+      ip = rctx->c.tcp.source_addr;
+    }
+  }
+
+  if (ip.empty()) {
+    return false;
+  }
+
+  if (port_reply->integer < 0 || port_reply->integer > std::numeric_limits<uint16_t>::max()) {
+    return false;
+  }
+
+  port = static_cast<uint16_t>(port_reply->integer);
+  return true;
 }
 
 static char NONE_MSG[] = "none";
@@ -956,11 +1003,15 @@ void cluster::on_reply_update_slot(cmd_exec *cmd, redisAsyncContext *rctx, void 
         redisReply *addr = slot_node->element[j];
         // redis cluster may response a empty list when some error happened
         if (nullptr != addr && REDIS_REPLY_ARRAY == addr->type && addr->elements >= 2 && nullptr != addr->element &&
-            nullptr != addr->element[0] && nullptr != addr->element[1] && REDIS_REPLY_STRING == addr->element[0]->type &&
-            nullptr != addr->element[0]->str && addr->element[0]->str[0] &&
-            REDIS_REPLY_INTEGER == addr->element[1]->type) {
+            nullptr != addr->element[0] && nullptr != addr->element[1]) {
+          std::string ip;
+          uint16_t port = 0;
+          if (!detail::pick_cluster_endpoint_from_reply(rctx, addr->element[0], addr->element[1], ip, port)) {
+            continue;
+          }
+
           hosts.push_back(connection::key_t());
-          connection::set_key(hosts.back(), addr->element[0]->str, static_cast<uint16_t>(addr->element[1]->integer));
+          connection::set_key(hosts.back(), ip, port);
         }
       }
 

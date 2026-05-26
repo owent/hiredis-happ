@@ -2,6 +2,13 @@
 
 本路线图基于 2026-05-26 代码审查结果制定，用于把风险收敛为可执行任务。优先级按对正确性、稳定性和发布质量的影响排序。
 
+## 2026-05-26 进展更新
+
+- 已新增 `test/redis/redis-fixture.sh` 与 `test/redis/redis-fixture.ps1`，可脚本化下载官方 `redis-stable.tar.gz`、构建 Redis、启动单节点实例、以及创建临时 6 节点测试集群。
+- 已补充 `happ_cmd`、`happ_connection`、`happ_cluster`、`happ_raw` 的纯单元/回归测试，覆盖命令格式化与 dump、pending reply 队列、raw timer/callback 配置、以及 `CLUSTER SLOTS` 的 `NIL` / `""` / `"?"` endpoint 边界。
+- 已新增 `happ_integration_raw` / `happ_integration_cluster` 集成测试，并将 CTest 拆分为 unit、raw integration、cluster integration 三类入口，同时并回 Linux/macOS/Windows 的主测试流程，避免 Redis 覆盖游离在独立 job 之外。
+- 仍需继续收敛的高价值风险：ASAN/UBSAN 下的 disconnect/reset 生命周期测试，以及真实集群中的 `MOVED` / `ASK` / `TRYAGAIN` 故障注入覆盖。
+
 ## P0：异步生命周期安全
 
 ### P0 目标
@@ -92,12 +99,12 @@
 
 ### P2 AI 配置目标
 
-保持根级 `AGENTS.md`、标准 `.agents/skills/`、工具兼容 shim 和来源索引一致，避免重复上下文和未验证工具声明。
+保持根级 `AGENTS.md` 和标准 `.agents/skills/` 作为唯一规范入口；仅在官方验证有收益时保留极薄兼容层；来源索引保持一致，避免重复上下文和未验证工具声明。
 
 ### P2 AI 配置 Playbook
 
 1. 每次新增或修改 AI 工具兼容声明时，先更新或复核 `doc/ai/source-index.md`。
-2. 保持 `AGENTS.md` 为唯一主入口；`CLAUDE.md` 和 `.github/copilot-instructions.md` 只作为薄兼容层。
+2. 保持 `AGENTS.md` 为唯一主入口；`CLAUDE.md` 仅作为导入 `AGENTS.md` 与精简技能索引的 shim；只有在 `doc/ai/source-index.md` 记录了明确收益时才新增工具专用兼容层，不维护重复的 `.github/copilot-instructions.md` 或 `.github/copilot/skills/` 副本。
 3. 将多步骤工作流放入 `.agents/skills/<name>/SKILL.md`，不要塞进常驻提示词。
 4. 校验所有 `SKILL.md` frontmatter：`name` 必须等于父目录名，`description` 必须可触发且不冗长。
 5. 对无法访问或 404 的来源只记录为未验证，不写入强支持结论。

@@ -20,11 +20,11 @@ Asynchronous hiredis-based Redis high-availability connector for raw single-node
 
 |Target system|Toolchain|Note|
 |---|---|---|
-|Linux|GCC||
-|Linux|Clang|With libc++|
-|Windows|Visual Studio 2022|Static linking|
-|Windows|Visual Studio 2022|Dynamic linking|
-|macOS|AppleClang|With libc++|
+|Linux|GCC|Unit + Redis integration|
+|Linux|Clang|With libc++ + Redis integration|
+|Windows|Visual Studio 2022|Static linking + WSL Redis integration|
+|Windows|Visual Studio 2022|Dynamic linking + WSL Redis integration|
+|macOS|AppleClang|With libc++ + Redis integration|
 
 ## Build
 
@@ -93,9 +93,59 @@ Runnable reference implementations:
 
 On Windows, run the auto-detection snippet from the Windows runtime note first so `hiredis.dll` is discoverable.
 
+### Unit tests
+
 ```powershell
 ctest --test-dir build_jobs_review -V -R hiredis-happ-run-test -C RelWithDebInfo --timeout 120
 ```
+
+`hiredis-happ-run-test` covers the pure unit/regression groups: `happ_cmd`, `happ_connection`, `happ_cluster`, and `happ_raw`.
+
+### Redis fixture scripts and integration tests
+
+The Redis-backed integration targets are split from the unit target:
+
+- `hiredis-happ-redis-integration-raw`
+- `hiredis-happ-redis-integration-cluster`
+
+The repository-owned end-to-end test flows now run all three CTest entries in one pass and clean temporary Redis processes automatically at the end:
+
+- Linux/macOS: `bash ci/do_ci.sh ssl.openssl`
+- Legacy GCC flow: `bash ci/do_ci.sh gcc.legacy.test`
+- Windows MSVC: `pwsh ci/do_ci.ps1 msvc.modern.test`
+
+Use the direct fixture commands below when you want to run only the Redis-backed tests or inspect the temporary Redis instances manually.
+
+The fixture scripts under `test/redis/` download the official `redis-stable.tar.gz`, build `redis-server` / `redis-cli`, start a standalone Redis on `127.0.0.1:6390`, and create a temporary 6-node cluster with seed node `127.0.0.1:7300`.
+
+On Linux, macOS, or WSL:
+
+```bash
+bash ./test/redis/redis-fixture.sh start-all
+while IFS='=' read -r key value; do export "$key=$value"; done < <(bash ./test/redis/redis-fixture.sh print-env)
+ctest --test-dir build_jobs_review -V -R hiredis-happ-redis-integration-raw --timeout 120
+ctest --test-dir build_jobs_review -V -R hiredis-happ-redis-integration-cluster --timeout 180
+bash ./test/redis/redis-fixture.sh cleanup
+```
+
+On Windows, use the PowerShell wrapper. It requires WSL plus an installed Linux distribution because official Redis OSS server binaries are not provided for native Windows:
+
+```powershell
+.\test\redis\redis-fixture.ps1 start-all
+$envLines = .\test\redis\redis-fixture.ps1 print-env
+foreach ($line in $envLines) {
+  if ($line -match '^([^=]+)=(.*)$') {
+    Set-Item -Path ("Env:" + $Matches[1]) -Value $Matches[2]
+  }
+}
+ctest --test-dir build_jobs_review -V -R hiredis-happ-redis-integration-raw -C RelWithDebInfo --timeout 120
+ctest --test-dir build_jobs_review -V -R hiredis-happ-redis-integration-cluster -C RelWithDebInfo --timeout 180
+.\test\redis\redis-fixture.ps1 cleanup
+```
+
+If you have multiple WSL distros installed, set `HIREDIS_HAPP_TEST_WSL_DISTRO` before running the wrapper to pin a specific distro. The wrapper terminates that distro after `stop-*` / `cleanup` so temporary Redis processes do not linger after the test flow finishes.
+
+The fixture scripts honor `HIREDIS_HAPP_TEST_SINGLE_HOST`, `HIREDIS_HAPP_TEST_SINGLE_PORT`, `HIREDIS_HAPP_TEST_CLUSTER_HOST`, `HIREDIS_HAPP_TEST_CLUSTER_PORT`, and related `HIREDIS_HAPP_TEST_*` environment overrides printed by `print-env`.
 
 For single-config generators, omit `-C RelWithDebInfo`.
 
@@ -122,6 +172,18 @@ If `ctest` reports `0xC0000135` or shows no useful test output, re-check `PATH` 
 That usually means `hiredis.dll` is not on `PATH` yet.
 
 Reuse the auto-detection snippet from the Windows runtime note above, then rerun the sample or test executable in the same shell.
+
+### Redis integration fixtures do not start on Windows
+
+The PowerShell wrapper under `test/redis/redis-fixture.ps1` requires:
+
+- WSL enabled.
+- At least one installed Linux distribution (for example Ubuntu).
+- A working `wsl` command from the current shell.
+
+The GitHub Actions Windows job bootstraps an Ubuntu distro before invoking the main MSVC test flow so Redis integration coverage stays inside the normal Windows build/test matrix.
+
+If the wrapper tells you no distribution is installed, run `wsl --list --online` and then `wsl --install <Distro>` first.
 
 ### The sample prints `connected failed` or `connect to redis failed`
 

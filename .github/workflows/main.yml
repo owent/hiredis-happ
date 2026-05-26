@@ -90,6 +90,21 @@ jobs:
           path: |
             third_party/install
           key: ${{ matrix.os }}-msvc-${{ matrix.build_shared_libs }}-${{ hashFiles('.github/.cache-key') }}
+      - name: Prepare WSL distro for Redis tests
+        shell: pwsh
+        env:
+          HIREDIS_HAPP_TEST_WSL_DISTRO: Ubuntu
+        run: |
+          wsl --set-default-version 1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installed = @(wsl --list --quiet 2>$null | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { $_.Trim() })
+          if ($installed -notcontains $env:HIREDIS_HAPP_TEST_WSL_DISTRO) {
+            wsl --install --distribution $env:HIREDIS_HAPP_TEST_WSL_DISTRO --no-launch --web-download
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          wsl --distribution $env:HIREDIS_HAPP_TEST_WSL_DISTRO --user root -- bash -lc "apt-get update && apt-get install -y build-essential ca-certificates curl wget tar"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          wsl --terminate $env:HIREDIS_HAPP_TEST_WSL_DISTRO 2>$null
       - name: Build & Test
         shell: pwsh
         env:
@@ -97,6 +112,7 @@ jobs:
           CMAKE_PLATFORM: ${{ matrix.platform }}
           BUILD_SHARED_LIBS: ${{ matrix.build_shared_libs }}
           CONFIGURATION: RelWithDebInfo
+          HIREDIS_HAPP_TEST_WSL_DISTRO: Ubuntu
         run: |
           pwsh ci/do_ci.ps1 msvc.modern.test ;
   codeql:

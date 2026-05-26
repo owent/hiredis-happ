@@ -54,6 +54,84 @@ Set-Location "$SCRIPT_DIR/.."
 $PROJECT_DIR = Split-Path -Parent $SCRIPT_DIR
 $RUN_MODE = $args[0]
 
+function Assert-LastNativeExitCode {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$StepName
+  )
+
+  if ($LASTEXITCODE -ne 0) {
+    throw "$StepName failed with exit code $LASTEXITCODE"
+  }
+}
+
+function Get-RedisFixtureScriptPath {
+  Join-Path $PROJECT_DIR 'test\redis\redis-fixture.ps1'
+}
+
+function Invoke-RedisFixtureCommand {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$CommandName
+  )
+
+  $fixtureScript = Get-RedisFixtureScriptPath
+  & $fixtureScript $CommandName
+  Assert-LastNativeExitCode -StepName "Redis fixture command '$CommandName'"
+}
+
+function Import-RedisFixtureEnvironment {
+  $fixtureScript = Get-RedisFixtureScriptPath
+  $envLines = & $fixtureScript 'print-env'
+  Assert-LastNativeExitCode -StepName "Redis fixture command 'print-env'"
+
+  foreach ($line in $envLines) {
+    if ($line -match '^(?<name>[^=]+)=(?<value>.*)$') {
+      Set-Item -Path ("Env:" + $Matches['name']) -Value $Matches['value']
+    }
+  }
+}
+
+function Cleanup-RedisFixture {
+  $fixtureScript = Get-RedisFixtureScriptPath
+  foreach ($commandName in @('stop-all', 'cleanup')) {
+    try {
+      & $fixtureScript $commandName
+    }
+    catch {
+      Write-Warning "Redis fixture cleanup command '$commandName' failed: $($_.Exception.Message)"
+    }
+  }
+}
+
+function Invoke-CTestSuiteWithRedis {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Configuration
+  )
+
+  if ([string]::IsNullOrWhiteSpace($Env:HIREDIS_HAPP_TEST_REDIS_BUILD_JOBS)) {
+    $Env:HIREDIS_HAPP_TEST_REDIS_BUILD_JOBS = '2'
+  }
+
+  try {
+    Invoke-RedisFixtureCommand -CommandName 'start-all'
+    Import-RedisFixtureEnvironment
+
+    & ctest . -V -C $Configuration -R hiredis-happ-run-test
+    Assert-LastNativeExitCode -StepName 'Unit CTest suite'
+
+    & ctest . -V -C $Configuration -R hiredis-happ-redis-integration-raw --timeout 120
+    Assert-LastNativeExitCode -StepName 'Raw Redis integration CTest suite'
+
+    & ctest . -V -C $Configuration -R hiredis-happ-redis-integration-cluster --timeout 180
+    Assert-LastNativeExitCode -StepName 'Cluster Redis integration CTest suite'
+  }
+  finally {
+    Cleanup-RedisFixture
+  }
+}
+
 if ( $RUN_MODE -eq "msvc.modern.test" ) {
   Invoke-Environment "call ""$vsInstallationPath/VC/Auxiliary/Build/vcvars64.bat"""
   New-Item -Path "build_jobs_ci" -ItemType "directory" -Force 
@@ -61,9 +139,7 @@ if ( $RUN_MODE -eq "msvc.modern.test" ) {
   & cmake ".." "-G" "$Env:CMAKE_GENERATOR" "-A" $Env:CMAKE_PLATFORM "-DBUILD_SHARED_LIBS=$Env:BUILD_SHARED_LIBS"  `
     "-DPROJECT_HIREDIS_HAPP_ENABLE_UNITTEST=ON" "-DPROJECT_HIREDIS_HAPP_ENABLE_SAMPLE=ON"                         `
     "-DCMAKE_SYSTEM_VERSION=$selectWinSDKVersion" "-DATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_LOW_MEMORY_MODE=ON"
-  if ( $LastExitCode -ne 0 ) {
-    exit $LastExitCode
-  }
+  Assert-LastNativeExitCode -StepName 'CMake configure (msvc.modern.test)'
 
   $CURRENT_CWD = Get-Location
   $ALL_DLL_FILES = @(Get-ChildItem -Path "$CURRENT_CWD/*.dll" -Recurse) + @(Get-ChildItem -Path "$PROJECT_DIR/third_party/install/*.dll" -Recurse)
@@ -74,13 +150,8 @@ if ( $RUN_MODE -eq "msvc.modern.test" ) {
   Write-Output "PATH=$Env:PATH"
 
   & cmake --build . --config $Env:CONFIGURATION
-  if ( $LastExitCode -ne 0 ) {
-    exit $LastExitCode
-  }
-  & ctest . -V -C $Env:CONFIGURATION -R hiredis-happ-run-test
-  if ( $LastExitCode -ne 0 ) {
-    exit $LastExitCode
-  }
+  Assert-LastNativeExitCode -StepName 'CMake build (msvc.modern.test)'
+  Invoke-CTestSuiteWithRedis -Configuration $Env:CONFIGURATION
 }
 elseif ( $RUN_MODE -eq "msvc.2017.test" ) {
   Invoke-Environment "call ""$vsInstallationPath/VC/Auxiliary/Build/vcvars64.bat"""
@@ -89,9 +160,7 @@ elseif ( $RUN_MODE -eq "msvc.2017.test" ) {
   & cmake ".." "-G" "$Env:CMAKE_GENERATOR" "-DBUILD_SHARED_LIBS=$ENV:BUILD_SHARED_LIBS"       `
     "-DPROJECT_HIREDIS_HAPP_ENABLE_UNITTEST=ON" "-DPROJECT_HIREDIS_HAPP_ENABLE_SAMPLE=ON"     `
     "-DCMAKE_SYSTEM_VERSION=$selectWinSDKVersion" "-DATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_LOW_MEMORY_MODE=ON"
-  if ( $LastExitCode -ne 0 ) {
-    exit $LastExitCode
-  }
+  Assert-LastNativeExitCode -StepName 'CMake configure (msvc.2017.test)'
 
   $CURRENT_CWD = Get-Location
   $ALL_DLL_FILES = @(Get-ChildItem -Path "$CURRENT_CWD/*.dll" -Recurse) + @(Get-ChildItem -Path "$PROJECT_DIR/third_party/install/*.dll" -Recurse)
@@ -102,13 +171,8 @@ elseif ( $RUN_MODE -eq "msvc.2017.test" ) {
   Write-Output "PATH=$Env:PATH"
 
   & cmake --build . --config $Env:CONFIGURATION
-  if ( $LastExitCode -ne 0 ) {
-    exit $LastExitCode
-  }
-  & ctest . -V -C $Env:CONFIGURATION -R hiredis-happ-run-test
-  if ( $LastExitCode -ne 0 ) {
-    exit $LastExitCode
-  }
+  Assert-LastNativeExitCode -StepName 'CMake build (msvc.2017.test)'
+  Invoke-CTestSuiteWithRedis -Configuration $Env:CONFIGURATION
 }
 
 Set-Location $WORK_DIR

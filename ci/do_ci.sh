@@ -4,6 +4,68 @@ cd "$(cd "$(dirname $0)" && pwd)/..";
 
 set -ex ;
 
+PROJECT_ROOT="$PWD" ;
+REDIS_FIXTURE_SH="$PROJECT_ROOT/test/redis/redis-fixture.sh" ;
+REDIS_FIXTURE_PS1="$PROJECT_ROOT/test/redis/redis-fixture.ps1" ;
+
+is_windows_shell() {
+  local system_name="$(uname -s 2>/dev/null || true)" ;
+  case "$system_name" in
+    MINGW*|MSYS*|CYGWIN*)
+      return 0 ;;
+  esac
+
+  [[ -n "${MSYSTEM:-}" ]]
+}
+
+to_host_path() {
+  local path_value="$1" ;
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -aw "$path_value"
+  else
+    echo "$path_value"
+  fi
+}
+
+run_redis_fixture_cmd() {
+  local command_name="$1" ;
+
+  if is_windows_shell; then
+    local ps1_path="$(to_host_path "$REDIS_FIXTURE_PS1")" ;
+    if command -v pwsh >/dev/null 2>&1; then
+      pwsh -NoLogo -NoProfile -File "$ps1_path" "$command_name"
+    else
+      powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "$ps1_path" "$command_name"
+    fi
+  else
+    bash "$REDIS_FIXTURE_SH" "$command_name"
+  fi
+}
+
+export_redis_fixture_env() {
+  while IFS='=' read -r KEY VALUE; do
+    VALUE="${VALUE%$'\r'}" ;
+    export "$KEY=$VALUE" ;
+  done < <(run_redis_fixture_cmd print-env)
+}
+
+cleanup_redis_fixture() {
+  run_redis_fixture_cmd stop-all || true ;
+  run_redis_fixture_cmd cleanup || true ;
+}
+
+run_ctest_suite_with_redis() {
+  export HIREDIS_HAPP_TEST_REDIS_BUILD_JOBS="${HIREDIS_HAPP_TEST_REDIS_BUILD_JOBS:-2}" ;
+  trap cleanup_redis_fixture EXIT ;
+  run_redis_fixture_cmd start-all ;
+  export_redis_fixture_env ;
+  ctest . -V -R hiredis-happ-run-test ;
+  ctest . -V -R hiredis-happ-redis-integration-raw --timeout 120 ;
+  ctest . -V -R hiredis-happ-redis-integration-cluster --timeout 180 ;
+  trap - EXIT ;
+  cleanup_redis_fixture ;
+}
+
 if [[ "x$USE_CC" == "xclang-latest" ]]; then
   echo '#include <iostream>
   int main() { std::cout<<"Hello"; }' > test-libc++.cpp
@@ -65,7 +127,7 @@ elif [[ "$1" == "ssl.openssl" ]]; then
     "-DATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_LOW_MEMORY_MODE=ON"
   cd build_jobs_ci ;
   cmake --build . -j ;
-  ctest . -V -R hiredis-happ-run-test;
+  run_ctest_suite_with_redis ;
 elif [[ "$1" == "codeql.configure" ]]; then
   CRYPTO_OPTIONS="-DATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_CRYPTO_USE_OPENSSL=ON"
   bash cmake_dev.sh -lus -b RelWithDebInfo -r build_jobs_ci -c $USE_CC -- $CRYPTO_OPTIONS \
@@ -77,7 +139,7 @@ elif [[ "$1" == "gcc.legacy.test" ]]; then
   bash cmake_dev.sh -lus -b Debug -r build_jobs_ci -c $USE_CC ;
   cd build_jobs_ci ;
   cmake --build . -j ;
-  ctest . -V -R hiredis-happ-run-test;
+  run_ctest_suite_with_redis ;
 elif [[ "$1" == "msys2.mingw.test" ]]; then
   pacman -S --needed --noconfirm mingw-w64-x86_64-cmake git m4 curl wget tar autoconf automake  \
     mingw-w64-x86_64-git-lfs mingw-w64-x86_64-toolchain mingw-w64-x86_64-libtool                \
@@ -91,5 +153,5 @@ elif [[ "$1" == "msys2.mingw.test" ]]; then
   for EXT_PATH in $(find ../third_party/install/ -name "*.dll" | xargs dirname | sort -u); do
     export PATH="$PWD/$EXT_PATH:$PATH"
   done
-  ctest . -V -R hiredis-happ-run-test;
+  run_ctest_suite_with_redis ;
 fi

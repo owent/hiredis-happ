@@ -35,3 +35,4 @@
 /include/detail/hiredis_happ_config.h
 /build_jobs_*
 /build
+/.cmake-toolset

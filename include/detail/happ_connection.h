@@ -17,6 +17,10 @@ namespace hiredis {
 namespace happ {
 class cluster;
 
+#if defined(HIREDIS_HAPP_UNIT_TEST_HACK)
+struct connection_unit_test_access;
+#endif
+
 class connection {
  public:
   struct HIREDIS_HAPP_API_HEAD_ONLY status {
@@ -123,6 +127,10 @@ class connection {
   HIREDIS_HAPP_API status::type get_status() const;
 
  private:
+#if defined(HIREDIS_HAPP_UNIT_TEST_HACK)
+  friend struct connection_unit_test_access;
+#endif
+
   connection(const connection &);
   connection &operator=(const connection &);
 

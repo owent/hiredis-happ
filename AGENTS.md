@@ -2,6 +2,8 @@
 
 This file is the canonical, cross-tool guide for AI agents working in `hiredis-happ`. Keep it concise and source-backed. If a tool-specific file conflicts with this file, follow the user's explicit request first, then this file, then the tool-specific shim.
 
+Keep repository AI guidance consolidated here and in `.agents/skills/`. Do not maintain duplicate tool-specific copies unless `doc/ai/source-index.md` records a verified need.
+
 ## Project snapshot
 
 - `hiredis-happ` is a C++ library that wraps hiredis async APIs for Redis raw and cluster high-availability connectors.
@@ -53,6 +55,8 @@ $env:PATH = "$thirdPartyInstallDir\bin;$env:PATH"
 ctest --test-dir build_jobs_review -V -R hiredis-happ-run-test -C RelWithDebInfo --timeout 120
 ```
 
+Redis integration tests are registered separately as `hiredis-happ-redis-integration-raw` and `hiredis-happ-redis-integration-cluster`, but the repository-owned platform test flows (`bash ci/do_ci.sh ssl.openssl`, `bash ci/do_ci.sh gcc.legacy.test`, `pwsh ci/do_ci.ps1 msvc.modern.test`) run unit + Redis integration together and clean temporary Redis fixtures automatically. Use the direct `test/redis/redis-fixture.*` commands only when you intentionally want manual fixture control.
+
 For docs-only or AI-config-only changes, at minimum run `git diff --check` and validate skill frontmatter. Full CMake builds are optional unless instructions, commands, or generated files changed.
 
 ## Standard Agent Skills
@@ -62,7 +66,9 @@ Use `.agents/skills/<name>/SKILL.md` as the project-standard skill location. Cur
 - `build`: CMake, dependency, install, CI, and packaging workflow.
 - `testing`: unit/integration tests, Windows DLL lookup, and sanitizer guidance.
 - `code-review`: Redis/hiredis/C++ review checklist and risk triage.
-- `ai-agent-maintenance`: updates to `AGENTS.md`, `CLAUDE.md`, tool shims, skills, and source indexes.
+- `ai-agent-maintenance`: updates to `AGENTS.md`, `CLAUDE.md`, compatibility shims, skills, and source indexes.
+
+Prefer `.agents/skills/` over mirrored tool-specific skill trees. If a client already supports `.agents/skills/`, do not add a second copy just to restate the same workflow.
 
 Keep skill frontmatter valid: `name` must match the parent directory, use lowercase letters/digits/hyphens, and include a concise `description` explaining when to use the skill.
 

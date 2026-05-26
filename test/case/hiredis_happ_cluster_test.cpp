@@ -8,6 +8,25 @@
 
 #include "frame/test_macros.h"
 #include "hiredis_happ.h"
+#include "test_redis_reply_helper.h"
+
+namespace hiredis {
+namespace happ {
+struct cluster_unit_test_access {
+  static bool is_slot_ok(const cluster &clu) { return cluster::slot_status::OK == clu.slot_flag_; }
+
+  static size_t slot_host_count(const cluster &clu, int index) { return clu.slots_[index].hosts.size(); }
+
+  static const connection::key_t &slot_host(const cluster &clu, int index, size_t host_index) {
+    return clu.slots_[index].hosts[host_index];
+  }
+
+  static void on_reply_update_slot(cmd_exec *cmd, redisAsyncContext *ctx, void *reply) {
+    cluster::on_reply_update_slot(cmd, ctx, reply, nullptr);
+  }
+};
+}  // namespace happ
+}  // namespace hiredis
 
 static int expected_cluster_slot(const char *key, size_t key_len) {
   return static_cast<int>(hiredis::happ::crc16(key, key_len) % HIREDIS_HAPP_SLOT_NUMBER);
@@ -99,4 +118,100 @@ CASE_TEST(happ_cluster, hash_tag_slot) {
   CASE_EXPECT_EQ(expected_cluster_slot("{bar", strlen("{bar")), nested_tag_slot->index);
   CASE_EXPECT_EQ(expected_cluster_slot("bar", strlen("bar")), multi_tag_slot->index);
   CASE_EXPECT_EQ(nullptr, clu.get_slot_by_key(nullptr, 0));
+}
+
+CASE_TEST(happ_cluster, slot_reply_nil_endpoint_fallback) {
+  hiredis::happ::cluster clu;
+  clu.init("10.0.0.1", 7000);
+
+  hiredis::happ::holder_t h;
+  h.clu = &clu;
+  hiredis::happ::cmd_exec *cmd = hiredis::happ::cmd_exec::create(h, nullptr, nullptr, 0);
+  CASE_EXPECT_NE(nullptr, cmd);
+
+  redisAsyncContext vir_context;
+  memset(&vir_context, 0, sizeof(vir_context));
+  vir_context.c.connection_type = REDIS_CONN_TCP;
+  vir_context.c.tcp.host = const_cast<char *>("127.0.0.1");
+
+  hiredis_happ_test::redis_reply_ptr reply =
+      hiredis_happ_test::adopt_reply(hiredis_happ_test::make_array_reply({hiredis_happ_test::make_array_reply(
+          {hiredis_happ_test::make_integer_reply(0), hiredis_happ_test::make_integer_reply(1),
+           hiredis_happ_test::make_array_reply(
+               {hiredis_happ_test::make_nil_reply(), hiredis_happ_test::make_integer_reply(7000)}),
+           hiredis_happ_test::make_array_reply(
+               {hiredis_happ_test::make_string_reply("127.0.0.2"), hiredis_happ_test::make_integer_reply(7001)})})}));
+  CASE_EXPECT_NE(nullptr, reply.get());
+
+  hiredis::happ::cluster_unit_test_access::on_reply_update_slot(cmd, &vir_context, reply.get());
+  CASE_EXPECT_TRUE(hiredis::happ::cluster_unit_test_access::is_slot_ok(clu));
+  CASE_EXPECT_EQ(static_cast<size_t>(2), hiredis::happ::cluster_unit_test_access::slot_host_count(clu, 0));
+  CASE_EXPECT_TRUE("127.0.0.1" == hiredis::happ::cluster_unit_test_access::slot_host(clu, 0, 0).ip);
+  CASE_EXPECT_EQ(static_cast<uint16_t>(7000), hiredis::happ::cluster_unit_test_access::slot_host(clu, 0, 0).port);
+  CASE_EXPECT_TRUE("127.0.0.2" == hiredis::happ::cluster_unit_test_access::slot_host(clu, 1, 1).ip);
+  CASE_EXPECT_EQ(static_cast<uint16_t>(7001), hiredis::happ::cluster_unit_test_access::slot_host(clu, 1, 1).port);
+
+  hiredis::happ::cmd_exec::destroy(cmd);
+}
+
+CASE_TEST(happ_cluster, slot_reply_empty_endpoint_and_range_clamp) {
+  hiredis::happ::cluster clu;
+  clu.init("10.0.0.9", 7999);
+
+  hiredis::happ::holder_t h;
+  h.clu = &clu;
+  hiredis::happ::cmd_exec *cmd = hiredis::happ::cmd_exec::create(h, nullptr, nullptr, 0);
+  CASE_EXPECT_NE(nullptr, cmd);
+
+  redisAsyncContext vir_context;
+  memset(&vir_context, 0, sizeof(vir_context));
+  vir_context.c.connection_type = REDIS_CONN_TCP;
+  vir_context.c.tcp.host = const_cast<char *>("127.0.0.9");
+
+  hiredis_happ_test::redis_reply_ptr reply =
+      hiredis_happ_test::adopt_reply(hiredis_happ_test::make_array_reply({hiredis_happ_test::make_array_reply(
+          {hiredis_happ_test::make_integer_reply(-10),
+           hiredis_happ_test::make_integer_reply(HIREDIS_HAPP_SLOT_NUMBER + 16),
+           hiredis_happ_test::make_array_reply(
+               {hiredis_happ_test::make_string_reply(""), hiredis_happ_test::make_integer_reply(7300)})})}));
+  CASE_EXPECT_NE(nullptr, reply.get());
+
+  hiredis::happ::cluster_unit_test_access::on_reply_update_slot(cmd, &vir_context, reply.get());
+  CASE_EXPECT_TRUE(hiredis::happ::cluster_unit_test_access::is_slot_ok(clu));
+  CASE_EXPECT_EQ(static_cast<size_t>(1), hiredis::happ::cluster_unit_test_access::slot_host_count(clu, 0));
+  CASE_EXPECT_EQ(static_cast<size_t>(1),
+                 hiredis::happ::cluster_unit_test_access::slot_host_count(clu, HIREDIS_HAPP_SLOT_NUMBER - 1));
+  CASE_EXPECT_TRUE("127.0.0.9" == hiredis::happ::cluster_unit_test_access::slot_host(clu, 0, 0).ip);
+  CASE_EXPECT_EQ(static_cast<uint16_t>(7300), hiredis::happ::cluster_unit_test_access::slot_host(clu, 0, 0).port);
+
+  hiredis::happ::cmd_exec::destroy(cmd);
+}
+
+CASE_TEST(happ_cluster, slot_reply_unknown_endpoint_skips_slot_host) {
+  hiredis::happ::cluster clu;
+  clu.init("127.0.0.9", 7999);
+
+  hiredis::happ::holder_t h;
+  h.clu = &clu;
+  hiredis::happ::cmd_exec *cmd = hiredis::happ::cmd_exec::create(h, nullptr, nullptr, 0);
+  CASE_EXPECT_NE(nullptr, cmd);
+
+  redisAsyncContext vir_context;
+  memset(&vir_context, 0, sizeof(vir_context));
+  vir_context.c.connection_type = REDIS_CONN_TCP;
+  vir_context.c.tcp.host = const_cast<char *>("127.0.0.9");
+
+  hiredis_happ_test::redis_reply_ptr reply =
+      hiredis_happ_test::adopt_reply(hiredis_happ_test::make_array_reply({hiredis_happ_test::make_array_reply(
+          {hiredis_happ_test::make_integer_reply(3), hiredis_happ_test::make_integer_reply(3),
+           hiredis_happ_test::make_array_reply(
+               {hiredis_happ_test::make_string_reply("?"), hiredis_happ_test::make_integer_reply(7303)})})}));
+  CASE_EXPECT_NE(nullptr, reply.get());
+
+  hiredis::happ::cluster_unit_test_access::on_reply_update_slot(cmd, &vir_context, reply.get());
+  CASE_EXPECT_TRUE(hiredis::happ::cluster_unit_test_access::is_slot_ok(clu));
+  CASE_EXPECT_EQ(static_cast<size_t>(0), hiredis::happ::cluster_unit_test_access::slot_host_count(clu, 3));
+  CASE_EXPECT_TRUE("127.0.0.9:7999" == clu.get_slot_master(3)->name);
+
+  hiredis::happ::cmd_exec::destroy(cmd);
 }

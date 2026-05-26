@@ -1,6 +1,6 @@
 # Code Review Report - 2026-05-26
 
-本报告记录对 `hiredis-happ` 的一次全面代码审查。审查范围覆盖主仓库的 C++ 公共头文件、核心实现、单元测试、样例、CMake、CI、项目文档和 Copilot Agent 配置。`atframework/` 与 `cmake-toolset/` 作为外部/子模块依赖，原则上仅审查与本仓库构建入口相关的使用方式；本次仅对阻断 Windows 构建的 SSL 兼容问题做了最小修复。
+本报告记录对 `hiredis-happ` 的一次全面代码审查。审查范围覆盖主仓库的 C++ 公共头文件、核心实现、单元测试、样例、CMake、CI、项目文档和 AI agent 配置。`atframework/` 与 `cmake-toolset/` 作为外部/子模块依赖，原则上仅审查与本仓库构建入口相关的使用方式；本次仅对阻断 Windows 构建的 SSL 兼容问题做了最小修复。
 
 ## 调研依据
 
@@ -37,6 +37,7 @@
   - 修复网络错误重试判断：`REDIS_ERR_IO || REDIS_ERR_EOF`。
   - `exec(connection, cmd)` 中对空 context 增加保护。
   - `MOVED`/`ASK` 处理支持空 endpoint，按规范复用当前连接 endpoint。
+  - `CLUSTER SLOTS` endpoint 为 `"?"` 时不再错误回退到当前连接 host，保持 unknown-node 语义。
   - `MOVED` slot 下标增加边界校验。
   - `TRYAGAIN` 进入现有 TTL/timer retry 流程。
   - `CLUSTER SLOTS` reply 增加类型、空指针和 slot 范围校验，避免异常 reply 造成越界或崩溃。
@@ -50,27 +51,55 @@
 
 - `test/case/hiredis_happ_cluster_test.cpp`
   - 增加 hash-tag slot 规则回归测试，覆盖 `{user1000}`、`foo{}{bar}`、`foo{{bar}}zap`、`foo{bar}{zap}` 和空 key。
+  - 增加 `CLUSTER SLOTS` reply 的 `NIL` / `""` / `"?"` endpoint、slot range clamp、seed fallback 等回归测试。
 
 - `test/case/hiredis_happ_connection_test.cpp`
   - 增加 `connection::make_name(..., 0)` 回归测试。
+  - 增加 pending reply 队列、超时回调匹配、`release(false)` 错误路径的回归测试。
+
+- `test/case/hiredis_happ_cmd_test.cpp`
+  - 增加 `pick_argument()`、`vformat(const sds*)`、`vformat(nullptr)` 和 `cmd_exec::dump()` 的回归测试。
+
+- `test/case/hiredis_happ_raw_test.cpp`
+  - 增加 raw connector 的 AUTH callback、事件回调替换、timer/tick、buffer size、`start()` / `reset()` 行为测试。
+
+- `test/case/hiredis_happ_integration_test.cpp`
+  - 增加基于 libuv/libevent 适配器的真实 Redis smoke tests，覆盖 raw `PING` / `SET` / `GET` 和 cluster hash-tag `MSET` / `MGET`。
+
+- `test/case/test_redis_reply_helper.h`
+  - 新增可组合的 `redisReply` 构造 helper，便于 deterministic 单测覆盖复杂 reply 分支。
+
+- `test/redis/redis-fixture.sh`
+  - 新增 Redis fixture 脚本：下载官方 `redis-stable.tar.gz`、构建 `redis-server` / `redis-cli`、启动单节点实例、创建临时 6 节点集群，并提供 `cleanup` / `print-env` / `status` 子命令。
+
+- `test/redis/redis-fixture.ps1`
+  - 新增 Windows 包装层；在本机装有 WSL 和 Linux 发行版时，可复用同一套 fixture workflow。
+
+- `test/CMakeLists.txt`
+  - 测试目标接入 libuv/libevent 链接与编译宏，并将 CTest 拆分为 `hiredis-happ-run-test`、`hiredis-happ-redis-integration-raw`、`hiredis-happ-redis-integration-cluster`。
+
+- `ci/do_ci.sh`
+  - 现有 Unix/MSYS 平台测试模式会脚本化启动 Redis fixture、导出测试环境变量，并顺序运行 unit / raw / cluster CTest。
 
 - `.github/workflows/main.yml`
   - 修复 CodeQL cache key 的 GitHub Actions expression 语法错误。
+  - 现有 Linux/macOS/Windows 主测试 job 会执行 Redis fixture 流程；Windows job 会先准备 WSL distro，再进入正常的 MSVC build/test 流程。
 
 - `.gitattributes`
   - 增加仓库级 whitespace 规则，允许本仓库已存储的 CRLF 行尾参与 `git diff --check`，同时继续检查真正的行尾空白。
 
 ### 文档和 Agent 配置
 
-- 更新 README、Copilot instructions 和技能文档，记录本仓库的构建/测试入口、Redis Cluster/hiredis 审查准则和后续 playbook。
+- 更新 README、`AGENTS.md`/`CLAUDE.md` 与技能文档，记录本仓库的构建/测试入口、Redis Cluster/hiredis 审查准则和后续 playbook。
 - 新增 `doc/ROADMAP.md`，把本次审查未完成的大项转为可执行计划。
 
 ## 验证结果
 
-- CMake configure：`cmake -S . -B build_jobs_review -DPROJECT_HIREDIS_HAPP_ENABLE_UNITTEST=ON -DPROJECT_HIREDIS_HAPP_ENABLE_SAMPLE=ON -DATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_LOW_MEMORY_MODE=ON` 通过。
+- CMake configure：`cmake -S . -B build_jobs_review -DPROJECT_HIREDIS_HAPP_ENABLE_UNITTEST=ON -DPROJECT_HIREDIS_HAPP_ENABLE_SAMPLE=ON -DATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_LOW_MEMORY_MODE=ON` 通过，并确认本地构建可用 `libuv`。
 - MSVC build：`cmake --build build_jobs_review --config RelWithDebInfo` 通过。
-- CTest：在 Windows 上先将 `build_jobs_review/CMakeCache.txt` 中 `PROJECT_THIRD_PARTY_INSTALL_DIR` 对应的 `bin` 目录加入 `PATH` 后，`ctest --test-dir build_jobs_review -V -R hiredis-happ-run-test -C RelWithDebInfo --timeout 120` 通过，4 个测试全部通过。
-- Whitespace：默认 `git diff --check` 通过。
+- CTest unit：在 Windows 上先将 `build_jobs_review/CMakeCache.txt` 中 `PROJECT_THIRD_PARTY_INSTALL_DIR` 对应的 `bin` 目录加入 `PATH` 后，`ctest --test-dir build_jobs_review -V -R hiredis-happ-run-test -C RelWithDebInfo --timeout 120` 通过，10 个测试全部通过。
+- Redis fixture wrapper：`test/redis/redis-fixture.ps1 help` 已验证会在未安装 WSL Linux 发行版时给出明确提示；当前本机缺少 WSL distro，因此未执行本地 Windows+WSL integration run。
+- Integration execution path：现有 Linux/macOS/Windows 主测试 job 已覆盖 raw/cluster integration tests，不再把 Redis 覆盖拆到独立 side job / side mode。
 
 注意：未设置 Windows `PATH` 时，测试程序因找不到 `hiredis.dll` 返回 `0xC0000135`；这不是测试逻辑失败，但需要在本地/CI playbook 中显式处理。
 
@@ -88,7 +117,7 @@
 
 ### P1：集成测试覆盖不足
 
-当前单测主要是对象状态与格式化行为，缺少真实 Redis/Redis Cluster 场景。建议补充：
+当前已补 raw/cluster smoke tests、Redis fixture 脚本和 Linux integration job，但仍缺少更强的故障注入与生命周期压力场景。建议继续补充：
 
 - 单节点 raw connector：连接成功、断线、AUTH 成功/失败、pending command 错误回调。
 - Cluster：`CLUSTER SLOTS` 加载、`MOVED`、`ASK + ASKING`、`TRYAGAIN`、空 endpoint、slot 未覆盖。
