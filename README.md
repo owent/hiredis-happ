@@ -22,8 +22,8 @@ Asynchronous hiredis-based Redis high-availability connector for raw single-node
 |---|---|---|
 |Linux|GCC|Unit + Redis integration|
 |Linux|Clang|With libc++ + Redis integration|
-|Windows|Visual Studio 2022|Static linking + WSL Redis integration|
-|Windows|Visual Studio 2022|Dynamic linking + WSL Redis integration|
+|Windows|Visual Studio 2022|Static linking + unit tests in CI; optional WSL-backed Redis integration locally|
+|Windows|Visual Studio 2022|Dynamic linking + unit tests in CI; optional WSL-backed Redis integration locally|
 |macOS|AppleClang|With libc++ + Redis integration|
 
 ## Build
@@ -108,11 +108,13 @@ The Redis-backed integration targets are split from the unit target:
 - `hiredis-happ-redis-integration-raw`
 - `hiredis-happ-redis-integration-cluster`
 
-The repository-owned end-to-end test flows now run all three CTest entries in one pass and clean temporary Redis processes automatically at the end:
+The repository-owned Unix end-to-end test flows run all three CTest entries in one pass and clean temporary Redis processes automatically at the end. The Windows MSVC flow can do the same when Redis integration is enabled:
 
 - Linux/macOS: `bash ci/do_ci.sh ssl.openssl`
 - Legacy GCC flow: `bash ci/do_ci.sh gcc.legacy.test`
 - Windows MSVC: `pwsh ci/do_ci.ps1 msvc.modern.test`
+
+Set `HIREDIS_HAPP_TEST_WITH_REDIS=OFF` when you want the MSVC flow to run unit tests only. The GitHub Actions Windows job uses that switch so CI does not depend on provisioning a WSL distro.
 
 Use the direct fixture commands below when you want to run only the Redis-backed tests or inspect the temporary Redis instances manually.
 
@@ -181,7 +183,7 @@ The PowerShell wrapper under `test/redis/redis-fixture.ps1` requires:
 - At least one installed Linux distribution (for example Ubuntu).
 - A working `wsl` command from the current shell.
 
-The GitHub Actions Windows job bootstraps an Ubuntu distro before invoking the main MSVC test flow so Redis integration coverage stays inside the normal Windows build/test matrix.
+The GitHub Actions Windows job intentionally runs unit coverage only. Use the local PowerShell wrapper above when you want WSL-backed Redis integration coverage on a Windows workstation.
 
 If the wrapper tells you no distribution is installed, run `wsl --list --online` and then `wsl --install <Distro>` first.
 

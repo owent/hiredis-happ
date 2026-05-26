@@ -6,7 +6,7 @@
 
 - 已新增 `test/redis/redis-fixture.sh` 与 `test/redis/redis-fixture.ps1`，可脚本化下载官方 `redis-stable.tar.gz`、构建 Redis、启动单节点实例、以及创建临时 6 节点测试集群。
 - 已补充 `happ_cmd`、`happ_connection`、`happ_cluster`、`happ_raw` 的纯单元/回归测试，覆盖命令格式化与 dump、pending reply 队列、raw timer/callback 配置、以及 `CLUSTER SLOTS` 的 `NIL` / `""` / `"?"` endpoint 边界。
-- 已新增 `happ_integration_raw` / `happ_integration_cluster` 集成测试，并将 CTest 拆分为 unit、raw integration、cluster integration 三类入口，同时并回 Linux/macOS/Windows 的主测试流程，避免 Redis 覆盖游离在独立 job 之外。
+- 已新增 `happ_integration_raw` / `happ_integration_cluster` 集成测试，并将 CTest 拆分为 unit、raw integration、cluster integration 三类入口；Unix 主测试流程已并回 Redis 覆盖，Windows 则保留可选的本地 WSL fixture 流程，避免 CI 额外依赖 WSL。
 - 仍需继续收敛的高价值风险：ASAN/UBSAN 下的 disconnect/reset 生命周期测试，以及真实集群中的 `MOVED` / `ASK` / `TRYAGAIN` 故障注入覆盖。
 
 ## P0：异步生命周期安全

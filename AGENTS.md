@@ -55,7 +55,7 @@ $env:PATH = "$thirdPartyInstallDir\bin;$env:PATH"
 ctest --test-dir build_jobs_review -V -R hiredis-happ-run-test -C RelWithDebInfo --timeout 120
 ```
 
-Redis integration tests are registered separately as `hiredis-happ-redis-integration-raw` and `hiredis-happ-redis-integration-cluster`, but the repository-owned platform test flows (`bash ci/do_ci.sh ssl.openssl`, `bash ci/do_ci.sh gcc.legacy.test`, `pwsh ci/do_ci.ps1 msvc.modern.test`) run unit + Redis integration together and clean temporary Redis fixtures automatically. Use the direct `test/redis/redis-fixture.*` commands only when you intentionally want manual fixture control.
+Redis integration tests are registered separately as `hiredis-happ-redis-integration-raw` and `hiredis-happ-redis-integration-cluster`. The Unix platform test flows (`bash ci/do_ci.sh ssl.openssl`, `bash ci/do_ci.sh gcc.legacy.test`) run unit + Redis integration together and clean temporary Redis fixtures automatically. The Windows MSVC flow (`pwsh ci/do_ci.ps1 msvc.modern.test`) can run the same Redis-backed coverage when `HIREDIS_HAPP_TEST_WITH_REDIS` is not disabled; GitHub Actions Windows jobs set it to `OFF` so CI does not depend on WSL provisioning. Use the direct `test/redis/redis-fixture.*` commands only when you intentionally want manual fixture control.
 
 For docs-only or AI-config-only changes, at minimum run `git diff --check` and validate skill frontmatter. Full CMake builds are optional unless instructions, commands, or generated files changed.
 

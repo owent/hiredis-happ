@@ -54,6 +54,22 @@ cleanup_redis_fixture() {
   run_redis_fixture_cmd cleanup || true ;
 }
 
+should_run_redis_integration() {
+  local with_redis="${HIREDIS_HAPP_TEST_WITH_REDIS:-ON}" ;
+  with_redis="$(echo "$with_redis" | tr '[:lower:]' '[:upper:]')" ;
+
+  case "$with_redis" in
+    0|OFF|FALSE|NO)
+      return 1 ;;
+  esac
+
+  return 0 ;
+}
+
+run_unit_ctest_suite() {
+  ctest . -V -R hiredis-happ-run-test ;
+}
+
 run_ctest_suite_with_redis() {
   export HIREDIS_HAPP_TEST_REDIS_BUILD_JOBS="${HIREDIS_HAPP_TEST_REDIS_BUILD_JOBS:-2}" ;
   trap cleanup_redis_fixture EXIT ;
@@ -64,6 +80,15 @@ run_ctest_suite_with_redis() {
   ctest . -V -R hiredis-happ-redis-integration-cluster --timeout 180 ;
   trap - EXIT ;
   cleanup_redis_fixture ;
+}
+
+run_platform_ctest_suite() {
+  if should_run_redis_integration; then
+    run_ctest_suite_with_redis ;
+  else
+    echo "Redis integration is disabled for this run (HIREDIS_HAPP_TEST_WITH_REDIS=${HIREDIS_HAPP_TEST_WITH_REDIS:-ON}). Running unit tests only." ;
+    run_unit_ctest_suite ;
+  fi
 }
 
 if [[ "x$USE_CC" == "xclang-latest" ]]; then
@@ -127,7 +152,7 @@ elif [[ "$1" == "ssl.openssl" ]]; then
     "-DATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_LOW_MEMORY_MODE=ON"
   cd build_jobs_ci ;
   cmake --build . -j ;
-  run_ctest_suite_with_redis ;
+  run_platform_ctest_suite ;
 elif [[ "$1" == "codeql.configure" ]]; then
   CRYPTO_OPTIONS="-DATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_CRYPTO_USE_OPENSSL=ON"
   bash cmake_dev.sh -lus -b RelWithDebInfo -r build_jobs_ci -c $USE_CC -- $CRYPTO_OPTIONS \
@@ -139,7 +164,7 @@ elif [[ "$1" == "gcc.legacy.test" ]]; then
   bash cmake_dev.sh -lus -b Debug -r build_jobs_ci -c $USE_CC ;
   cd build_jobs_ci ;
   cmake --build . -j ;
-  run_ctest_suite_with_redis ;
+  run_platform_ctest_suite ;
 elif [[ "$1" == "msys2.mingw.test" ]]; then
   pacman -S --needed --noconfirm mingw-w64-x86_64-cmake git m4 curl wget tar autoconf automake  \
     mingw-w64-x86_64-git-lfs mingw-w64-x86_64-toolchain mingw-w64-x86_64-libtool                \
@@ -153,5 +178,5 @@ elif [[ "$1" == "msys2.mingw.test" ]]; then
   for EXT_PATH in $(find ../third_party/install/ -name "*.dll" | xargs dirname | sort -u); do
     export PATH="$PWD/$EXT_PATH:$PATH"
   done
-  run_ctest_suite_with_redis ;
+  run_platform_ctest_suite ;
 fi

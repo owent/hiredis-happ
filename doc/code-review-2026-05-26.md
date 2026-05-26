@@ -83,7 +83,7 @@
 
 - `.github/workflows/main.yml`
   - 修复 CodeQL cache key 的 GitHub Actions expression 语法错误。
-  - 现有 Linux/macOS/Windows 主测试 job 会执行 Redis fixture 流程；Windows job 会先准备 WSL distro，再进入正常的 MSVC build/test 流程。
+  - 现有 Linux/macOS 主测试 job 会执行 Redis fixture 流程；GitHub Actions Windows job 保持 unit-only，不再依赖 WSL distro provisioning。
 
 - `.gitattributes`
   - 增加仓库级 whitespace 规则，允许本仓库已存储的 CRLF 行尾参与 `git diff --check`，同时继续检查真正的行尾空白。
@@ -99,7 +99,7 @@
 - MSVC build：`cmake --build build_jobs_review --config RelWithDebInfo` 通过。
 - CTest unit：在 Windows 上先将 `build_jobs_review/CMakeCache.txt` 中 `PROJECT_THIRD_PARTY_INSTALL_DIR` 对应的 `bin` 目录加入 `PATH` 后，`ctest --test-dir build_jobs_review -V -R hiredis-happ-run-test -C RelWithDebInfo --timeout 120` 通过，10 个测试全部通过。
 - Redis fixture wrapper：`test/redis/redis-fixture.ps1 help` 已验证会在未安装 WSL Linux 发行版时给出明确提示；当前本机缺少 WSL distro，因此未执行本地 Windows+WSL integration run。
-- Integration execution path：现有 Linux/macOS/Windows 主测试 job 已覆盖 raw/cluster integration tests，不再把 Redis 覆盖拆到独立 side job / side mode。
+- Integration execution path：现有 Linux/macOS 主测试 job 已覆盖 raw/cluster integration tests，不再把 Redis 覆盖拆到独立 side job / side mode；GitHub Actions Windows job 则显式保持 unit-only。
 
 注意：未设置 Windows `PATH` 时，测试程序因找不到 `hiredis.dll` 返回 `0xC0000135`；这不是测试逻辑失败，但需要在本地/CI playbook 中显式处理。
 

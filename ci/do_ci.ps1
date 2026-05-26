@@ -104,6 +104,31 @@ function Cleanup-RedisFixture {
   }
 }
 
+function Test-ShouldRunRedisIntegration {
+  $withRedis = [Environment]::GetEnvironmentVariable('HIREDIS_HAPP_TEST_WITH_REDIS')
+  if ([string]::IsNullOrWhiteSpace($withRedis)) {
+    return $true
+  }
+
+  switch ($withRedis.Trim().ToUpperInvariant()) {
+    '0' { return $false }
+    'OFF' { return $false }
+    'FALSE' { return $false }
+    'NO' { return $false }
+    default { return $true }
+  }
+}
+
+function Invoke-UnitCTestSuite {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Configuration
+  )
+
+  & ctest . -V -C $Configuration -R hiredis-happ-run-test
+  Assert-LastNativeExitCode -StepName 'Unit CTest suite'
+}
+
 function Invoke-CTestSuiteWithRedis {
   param(
     [Parameter(Mandatory = $true)]
@@ -132,6 +157,21 @@ function Invoke-CTestSuiteWithRedis {
   }
 }
 
+function Invoke-PlatformCTestSuite {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Configuration
+  )
+
+  if (Test-ShouldRunRedisIntegration) {
+    Invoke-CTestSuiteWithRedis -Configuration $Configuration
+    return
+  }
+
+  Write-Output "Redis integration is disabled for this run (HIREDIS_HAPP_TEST_WITH_REDIS=$([Environment]::GetEnvironmentVariable('HIREDIS_HAPP_TEST_WITH_REDIS'))). Running unit tests only."
+  Invoke-UnitCTestSuite -Configuration $Configuration
+}
+
 if ( $RUN_MODE -eq "msvc.modern.test" ) {
   Invoke-Environment "call ""$vsInstallationPath/VC/Auxiliary/Build/vcvars64.bat"""
   New-Item -Path "build_jobs_ci" -ItemType "directory" -Force 
@@ -151,7 +191,7 @@ if ( $RUN_MODE -eq "msvc.modern.test" ) {
 
   & cmake --build . --config $Env:CONFIGURATION
   Assert-LastNativeExitCode -StepName 'CMake build (msvc.modern.test)'
-  Invoke-CTestSuiteWithRedis -Configuration $Env:CONFIGURATION
+  Invoke-PlatformCTestSuite -Configuration $Env:CONFIGURATION
 }
 elseif ( $RUN_MODE -eq "msvc.2017.test" ) {
   Invoke-Environment "call ""$vsInstallationPath/VC/Auxiliary/Build/vcvars64.bat"""
@@ -172,7 +212,7 @@ elseif ( $RUN_MODE -eq "msvc.2017.test" ) {
 
   & cmake --build . --config $Env:CONFIGURATION
   Assert-LastNativeExitCode -StepName 'CMake build (msvc.2017.test)'
-  Invoke-CTestSuiteWithRedis -Configuration $Env:CONFIGURATION
+  Invoke-PlatformCTestSuite -Configuration $Env:CONFIGURATION
 }
 
 Set-Location $WORK_DIR

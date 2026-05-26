@@ -51,7 +51,7 @@ die() {
 }
 
 log() {
-  echo "[redis-fixture] $*"
+  echo "[redis-fixture] $*" >&2
 }
 
 detect_make_jobs() {
@@ -107,7 +107,7 @@ fetch_archive() {
 extract_archive() {
   fetch_archive
   local top_level
-  top_level="$(tar -tzf "${ARCHIVE_PATH}" | head -1 | cut -d/ -f1)"
+  top_level="$(tar -tzf "${ARCHIVE_PATH}" | cut -d/ -f1 | sed '/^$/d' | sort -u | sed -n '1p')"
   [[ -n "${top_level}" ]] || die "Could not detect Redis source directory inside ${ARCHIVE_PATH}"
 
   if [[ -d "${SOURCE_DIR}/${top_level}" ]]; then

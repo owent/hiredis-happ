@@ -43,11 +43,13 @@ ctest --test-dir build_jobs_review -V -R hiredis-happ-run-test -C RelWithDebInfo
 - `hiredis-happ-redis-integration-raw`
 - `hiredis-happ-redis-integration-cluster`
 
-The repository-owned end-to-end platform flows run all three CTest entries in one pass and clean the temporary Redis instances automatically:
+The repository-owned Unix platform flows run all three CTest entries in one pass and clean the temporary Redis instances automatically. The Windows MSVC flow can do the same when Redis integration is enabled:
 
 - Linux/macOS: `bash ci/do_ci.sh ssl.openssl`
 - Legacy GCC flow: `bash ci/do_ci.sh gcc.legacy.test`
 - Windows MSVC: `pwsh ci/do_ci.ps1 msvc.modern.test`
+
+Set `HIREDIS_HAPP_TEST_WITH_REDIS=OFF` when you want `pwsh ci/do_ci.ps1 msvc.modern.test` to run unit tests only. The GitHub Actions Windows job uses that switch so CI does not rely on WSL provisioning.
 
 Provision Redis for integration tests with the fixture scripts under `test/redis/`.
 
@@ -102,4 +104,4 @@ For this repository, start from the fixture scripts and keep Redis provisioning 
 
 ## Validation
 
-After adding tests, run the narrow test first, then full CTest when practical. If the current Windows workstation does not have WSL + a Linux distro, document the skipped local integration run; in CI, keep Redis coverage inside the existing platform test jobs instead of splitting it into a side job.
+After adding tests, run the narrow test first, then full CTest when practical. If the current Windows workstation does not have WSL + a Linux distro, document the skipped local integration run. In CI, keep Redis coverage inside the existing Unix platform jobs instead of splitting it into a side job; the GitHub Actions Windows job intentionally disables WSL-backed Redis integration.
