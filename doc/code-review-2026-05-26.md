@@ -69,7 +69,7 @@
 
 - CMake configure：`cmake -S . -B build_jobs_review -DPROJECT_HIREDIS_HAPP_ENABLE_UNITTEST=ON -DPROJECT_HIREDIS_HAPP_ENABLE_SAMPLE=ON -DATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_LOW_MEMORY_MODE=ON` 通过。
 - MSVC build：`cmake --build build_jobs_review --config RelWithDebInfo` 通过。
-- CTest：在 Windows 上先将 `third_party/install/windows-amd64-msvc-19/bin` 加入 `PATH` 后，`ctest --test-dir build_jobs_review -V -R hiredis-happ-run-test -C RelWithDebInfo --timeout 120` 通过，4 个测试全部通过。
+- CTest：在 Windows 上先将 `build_jobs_review/CMakeCache.txt` 中 `PROJECT_THIRD_PARTY_INSTALL_DIR` 对应的 `bin` 目录加入 `PATH` 后，`ctest --test-dir build_jobs_review -V -R hiredis-happ-run-test -C RelWithDebInfo --timeout 120` 通过，4 个测试全部通过。
 - Whitespace：默认 `git diff --check` 通过。
 
 注意：未设置 Windows `PATH` 时，测试程序因找不到 `hiredis.dll` 返回 `0xC0000135`；这不是测试逻辑失败，但需要在本地/CI playbook 中显式处理。
@@ -104,7 +104,7 @@
 
 - 认证仍是旧式 `AUTH <password>`，未覆盖 Redis ACL 的 `AUTH <user> <password>` 或 `HELLO 3 AUTH ...`。
 - 项目应显式说明 `hiredis::happ::raw` / `cluster` 与 `redisAsyncContext` 一样不保证线程安全。
-- README 示例偏旧，可补充最小 raw/cluster 用法和事件循环 adapter 说明。
+- README 已补构建、sample 运行和最小 raw/cluster 调用示例；后续仍可增加更完整的 libuv/libevent integration walkthrough。
 
 ## 审查结论
 

@@ -1,0 +1,7 @@
+# External dependency submodules keep their own upstream style and review cycle.
+atframework/**
+
+# Ignore generated build trees.
+build/**
+build_*/**
+build_jobs_*/**

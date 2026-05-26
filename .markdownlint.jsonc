@@ -1,0 +1,25 @@
+{
+  // Repository-owned Markdown house style. Dependency submodules keep their
+  // upstream conventions and are excluded in .markdownlintignore.
+  "default": true,
+  "MD004": {
+    "style": "dash",
+  },
+  "MD007": {
+    "indent": 2,
+  },
+  "MD013": false,
+  "MD024": {
+    "siblings_only": true,
+  },
+  "MD029": {
+    "style": "one_or_ordered",
+  },
+  "MD041": false,
+  "MD046": {
+    "style": "fenced",
+  },
+  "MD048": {
+    "style": "backtick",
+  },
+}
