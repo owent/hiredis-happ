@@ -1,5 +1,7 @@
 // Copyright 2026 owent
 
+#include "detail/crc16.h"
+
 #include <cstddef>
 #include <cstdint>
 

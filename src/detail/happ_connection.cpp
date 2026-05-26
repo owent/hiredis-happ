@@ -1,11 +1,11 @@
 // Copyright 2026 owent
 
+#include "detail/happ_connection.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
-
-#include "detail/happ_connection.h"
 
 namespace hiredis {
 namespace happ {

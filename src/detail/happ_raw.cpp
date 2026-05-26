@@ -1,5 +1,7 @@
 // Copyright 2026 owent
 
+#include "detail/happ_raw.h"
+
 #if defined(_WIN32)
 #  ifndef WIN32_LEAN_AND_MEAN
 #    define WIN32_LEAN_AND_MEAN
@@ -22,8 +24,6 @@
 #include <ctime>
 #include <random>
 #include <sstream>
-
-#include "detail/happ_raw.h"
 
 namespace hiredis {
 namespace happ {

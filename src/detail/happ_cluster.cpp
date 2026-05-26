@@ -1,5 +1,7 @@
 // Copyright 2026 owent
 
+#include "detail/happ_cluster.h"
+
 #if defined(_WIN32)
 #  ifndef WIN32_LEAN_AND_MEAN
 #    define WIN32_LEAN_AND_MEAN
@@ -16,15 +18,12 @@
 #endif
 
 #include <detail/happ_cmd.h>
-#include <algorithm>
 #include <cassert>
 #include <cstdio>
 #include <ctime>
 #include <limits>
-#include <random>
 
 #include "detail/crc16.h"
-#include "detail/happ_cluster.h"
 
 namespace hiredis {
 namespace happ {

@@ -1,12 +1,12 @@
 // Copyright 2026 owent
 
+#include "detail/happ_cmd.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <iomanip>
-
-#include "detail/happ_cmd.h"
 
 #if (defined(__cplusplus) && __cplusplus >= 201103L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201103L)
 #  include <type_traits>
