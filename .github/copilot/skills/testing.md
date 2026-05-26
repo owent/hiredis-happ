@@ -30,6 +30,14 @@ CASE_THREAD_SLEEP_MS(milliseconds)
 CASE_THREAD_YIELD()
 ```
 
+## Regression Focus Areas
+
+- Redis Cluster hash tags and slot routing.
+- `MOVED`, `ASK + ASKING`, `TRYAGAIN`, `CLUSTERDOWN`, and malformed `CLUSTER SLOTS` replies.
+- hiredis async lifecycle: connect failure, disconnect, reset while commands are pending, and callbacks with `reply == nullptr`.
+- Non request-response commands must use `connection::redis_raw_cmd()` instead of normal `exec()`.
+- Logging paths should be tested with small buffers to catch truncation/termination issues.
+
 ## Running Tests
 
 The test executable is `hiredis-happ-test`.
@@ -66,13 +74,16 @@ On Windows, running `hiredis-happ-test.exe` (or samples) from a build directory 
 Example (PowerShell):
 
 ```powershell
-$buildDir = "<BUILD_DIR>"  # e.g. D:\workspace\...\build_jobs_dir
-$cfg = "Debug"
+$repoRoot = "<REPO_ROOT>"  # e.g. D:\workspace\git\github\owent\hiredis-happ
+$buildDir = "$repoRoot\build_jobs_dir"
+$cfg = "RelWithDebInfo"
 
-$env:PATH = "$buildDir\test\$cfg;" + $env:PATH
-Set-Location "$buildDir\test\$cfg"
-./hiredis-happ-test.exe -r happ_cluster
+$env:PATH = "$repoRoot\third_party\install\windows-amd64-msvc-19\bin;" + $env:PATH
+Set-Location "$buildDir\test"
+.\$cfg\hiredis-happ-test.exe -r happ_cluster
 ```
+
+For CTest on Windows, set the same `PATH` first; otherwise `hiredis-happ-test.exe` can fail before `main()` with `0xC0000135` because `hiredis.dll` is not discoverable.
 
 ## Writing Test Cases
 
@@ -94,3 +105,5 @@ CASE_TEST(happ_cluster, connection_callback) {
     clu.reset();
 }
 ```
+
+For lifecycle behavior that depends on hiredis callbacks, prefer integration tests with a real event loop and ASAN/UBSAN over pure object-state tests.

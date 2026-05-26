@@ -221,14 +221,15 @@ HIREDIS_HAPP_API raw::cmd_t *raw::exec(connection_t *conn, cmd_t *cmd) {
   int res = conn->redis_cmd(cmd, on_reply_wrapper);
 
   if (REDIS_OK != res) {
+    redisAsyncContext *context = conn->get_context();
     // some version of hiredis will miss onDisconnect, patch it
     // other situation should trigger error
-    if (conn->get_context()->c.flags & (REDIS_DISCONNECTING | REDIS_FREEING)) {
+    if (nullptr != context && (context->c.flags & (REDIS_DISCONNECTING | REDIS_FREEING))) {
       // Patch: hiredis will miss onDisconnect in some older version
       // If not in hiredis's callback_, REDIS_DISCONNECTING or REDIS_FREEING means resource is freed
       // If in hiredis's callback_, disconnect will be called after callback_ finished, so do
       // nothing here
-      if (conn_.get() == conn && !(conn->get_context()->c.flags & REDIS_IN_CALLBACK)) {
+      if (conn_.get() == conn && !(context->c.flags & REDIS_IN_CALLBACK)) {
         release_connection(false, error_code::REDIS_HAPP_CONNECTION);
       }
 
@@ -236,7 +237,8 @@ HIREDIS_HAPP_API raw::cmd_t *raw::exec(connection_t *conn, cmd_t *cmd) {
       // retry if the connection lost
       return retry(cmd, nullptr);
     } else {
-      call_cmd(cmd, error_code::REDIS_HAPP_HIREDIS, conn->get_context(), nullptr);
+      call_cmd(cmd, nullptr == context ? error_code::REDIS_HAPP_CONNECTION : error_code::REDIS_HAPP_HIREDIS, context,
+               nullptr);
       destroy_cmd(cmd);
     }
     return nullptr;
@@ -290,6 +292,9 @@ HIREDIS_HAPP_API raw::connection_t *raw::make_connection() {
   if (nullptr == c || c->err) {
     log_info("redis connect to %s failed, msg: %s", conf_.init_connection.name.c_str(),
              nullptr == c ? detail::NONE_MSG : c->errstr);
+    if (nullptr != c) {
+      redisAsyncFree(c);
+    }
     return nullptr;
   }
 
@@ -543,7 +548,7 @@ void raw::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
     return;
   }
 
-  if (REDIS_ERR_IO == c->err && REDIS_ERR_EOF == c->err) {
+  if (REDIS_ERR_IO == c->err || REDIS_ERR_EOF == c->err) {
     self->log_debug("redis cmd %p reply context err %d and will retry, %s", cmd, c->err, c->errstr);
     // retry if it's a network error
     conn->pop_reply(cmd);
@@ -625,7 +630,10 @@ void raw::on_reply_auth(cmd_exec *cmd, redisAsyncContext *rctx, void *r, void * 
   }
 
   // error and log
-  if (nullptr == reply || 0 != HIREDIS_HAPP_STRNCASE_CMP("OK", reply->str, 2)) {
+  bool auth_ok = nullptr != reply && nullptr != reply->str &&
+                 (REDIS_REPLY_STATUS == reply->type || REDIS_REPLY_STRING == reply->type) &&
+                 0 == HIREDIS_HAPP_STRNCASE_CMP("OK", reply->str, 2);
+  if (!auth_ok) {
     const char *error_text = "";
     if (nullptr != reply && nullptr != reply->str) {
       error_text = reply->str;
@@ -663,6 +671,9 @@ void raw::log_debug(const char *fmt, ...) {
   if (nullptr == conf_.log_buffer) {
     conf_.log_buffer = reinterpret_cast<char *>(malloc(conf_.log_max_size));
   }
+  if (nullptr == conf_.log_buffer) {
+    return;
+  }
 
   va_list ap;
   va_start(ap, fmt);
@@ -670,7 +681,7 @@ void raw::log_debug(const char *fmt, ...) {
   va_end(ap);
 
   conf_.log_buffer[conf_.log_max_size - 1] = 0;
-  if (len > 0) {
+  if (len >= 0 && static_cast<size_t>(len) < conf_.log_max_size) {
     conf_.log_buffer[len] = 0;
   }
 
@@ -685,6 +696,9 @@ void raw::log_info(const char *fmt, ...) {
   if (nullptr == conf_.log_buffer) {
     conf_.log_buffer = reinterpret_cast<char *>(malloc(conf_.log_max_size));
   }
+  if (nullptr == conf_.log_buffer) {
+    return;
+  }
 
   va_list ap;
   va_start(ap, fmt);
@@ -692,7 +706,7 @@ void raw::log_info(const char *fmt, ...) {
   va_end(ap);
 
   conf_.log_buffer[conf_.log_max_size - 1] = 0;
-  if (len > 0) {
+  if (len >= 0 && static_cast<size_t>(len) < conf_.log_max_size) {
     conf_.log_buffer[len] = 0;
   }
 

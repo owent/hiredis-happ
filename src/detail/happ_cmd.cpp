@@ -1,4 +1,3 @@
-
 // Copyright 2026 owent
 
 #include <algorithm>
@@ -6,7 +5,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <iomanip>
-
 
 #include "detail/happ_cmd.h"
 
@@ -92,7 +90,7 @@ HIREDIS_HAPP_API int cmd_exec::format(const char *fmt, ...) {
   int ret = redisvFormatCommand(&raw_cmd_content_.content.raw, fmt, ap);
   va_end(ap);
 
-  raw_cmd_content_.raw_len = ret;
+  raw_cmd_content_.raw_len = ret > 0 ? static_cast<size_t>(ret) : 0;
   return ret;
 }
 
@@ -103,18 +101,22 @@ HIREDIS_HAPP_API int cmd_exec::vformat(const char *fmt, va_list ap) {
   va_copy(ap_c, ap);
 
   int ret = redisvFormatCommand(&raw_cmd_content_.content.raw, fmt, ap_c);
-  raw_cmd_content_.raw_len = ret;
+  va_end(ap_c);
+  raw_cmd_content_.raw_len = ret > 0 ? static_cast<size_t>(ret) : 0;
   return ret;
 }
 
 HIREDIS_HAPP_API int cmd_exec::vformat(const sds *src) {
   free_cmd_content(&raw_cmd_content_);
 
-  if (nullptr == src) {
+  if (nullptr == src || nullptr == *src) {
     return 0;
   }
 
   raw_cmd_content_.content.redis_sds = sdsdup(*src);
+  if (nullptr == raw_cmd_content_.content.redis_sds) {
+    return error_code::REDIS_HAPP_CREATE;
+  }
   raw_cmd_content_.raw_len = 0;
 
   return static_cast<int>(sdslen(raw_cmd_content_.content.redis_sds));

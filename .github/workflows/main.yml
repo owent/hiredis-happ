@@ -124,7 +124,7 @@ jobs:
         with:
           path: |
             third_party/install
-          key: ${{ runner.os }}-codeql-${ hashFiles('.github/.cache-key') }) }}
+          key: ${{ runner.os }}-codeql-${{ hashFiles('.github/.cache-key') }}
       - name: Build
         shell: bash
         env:

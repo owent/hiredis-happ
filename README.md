@@ -21,7 +21,7 @@ Redis HA connector
 
 1. auto reconnect
 2. support redis cluster
-3. ~~[TODO] support redis sential~~
+3. ~~[TODO] support redis sentinel~~
 4. support raw redis connection
 
 ## Usage
@@ -57,11 +57,16 @@ You can also custom how to print log by using *set_log_writer* to help you to fi
 
 ## Document
 
-See [doc](doc) 
+See [doc](doc).
+
+- [Code review report - 2026-05-26](doc/code-review-2026-05-26.md)
+- [Roadmap & playbook](doc/ROADMAP.md)
 
 ## Notice
 
 This lib only support Request-Response commands now.(means every request should has only one response).
+
+`hiredis::happ::raw`, `hiredis::happ::cluster`, and the underlying hiredis `redisAsyncContext` are intended to be used from one event-loop thread unless the caller adds external synchronization.
 
 ### Unsupport Commands
 

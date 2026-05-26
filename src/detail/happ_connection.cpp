@@ -5,7 +5,6 @@
 #include <cstdlib>
 #include <cstring>
 
-
 #include "detail/happ_connection.h"
 
 namespace hiredis {
@@ -34,6 +33,10 @@ HIREDIS_HAPP_API void connection::init(holder_t h, const key_t &k) {
 
 HIREDIS_HAPP_API connection::status::type connection::set_connecting(redisAsyncContext *c) {
   status::type ret = conn_status_;
+  if (nullptr == c) {
+    return ret;
+  }
+
   if (status::CONNECTING == conn_status_) {
     return ret;
   }
@@ -183,6 +186,10 @@ HIREDIS_HAPP_API int connection::redis_raw_cmd(redisCallbackFn *fn, void *priv_d
     return error_code::REDIS_HAPP_CREATE;
   }
 
+  if (nullptr == src || nullptr == *src) {
+    return error_code::REDIS_HAPP_PARAM;
+  }
+
   return redisAsyncFormattedCommand(context_, fn, priv_data, *src, sdslen(*src));
 }
 
@@ -325,6 +332,11 @@ HIREDIS_HAPP_API std::string connection::make_name(const std::string &ip, uint16
 
   ret = ip;
   ret += ":";
+
+  if (0 == port) {
+    ret += "0";
+    return ret;
+  }
 
   char buf[8] = {0};
   int i = 7;  // XXXXXXX0

@@ -69,6 +69,15 @@ Include this header to use the library:
 - `hiredis::happ::cmd_exec` - Command wrapper
 - Callback-based async execution
 
+## Review-Derived Guardrails
+
+1. **Do not guess Redis/hiredis semantics**: verify against official Redis Cluster, RESP, and hiredis async API behavior before changing lifecycle, retry, or slot-routing code.
+2. **Async ownership is critical**: `cmd_exec` must be callback-called and destroyed exactly once. Do not retain `redisReply*` beyond a hiredis callback.
+3. **hiredis context cleanup**: if `redisAsyncConnect()` returns a non-null context with `c->err`, free it with `redisAsyncFree(c)`.
+4. **Cluster routing**: slot calculation must implement Redis hash tags; handle `MOVED`, `ASK + ASKING`, `TRYAGAIN`, and incomplete `CLUSTER SLOTS` replies defensively.
+5. **Threading**: treat `raw`, `cluster`, `connection`, and `redisAsyncContext` as not thread-safe unless future tests and docs explicitly state otherwise.
+6. **Logging and external replies**: always guard allocated log buffers and nullable hiredis reply fields (`reply`, `reply->str`, `reply->element`).
+
 ## Coding Conventions
 
 1. **Namespace**: All code is in `hiredis::happ` namespace
@@ -90,3 +99,11 @@ This library only supports Request-Response commands. The following are NOT supp
 - `monitor`
 
 These commands don't follow the request-response pattern and require special handling through `connection::redis_raw_cmd`.
+
+## Local Build and Test Hints
+
+- Configure with tests/samples: `cmake -S . -B build_jobs_dir -DPROJECT_HIREDIS_HAPP_ENABLE_UNITTEST=ON -DPROJECT_HIREDIS_HAPP_ENABLE_SAMPLE=ON`.
+- Build: `cmake --build build_jobs_dir --config RelWithDebInfo`.
+- Test through CTest: `ctest --test-dir build_jobs_dir -V -R hiredis-happ-run-test`.
+- On Windows, prepend `third_party/install/windows-amd64-msvc-19/bin` to `PATH` before running tests/samples so `hiredis.dll` can be found.
+- See `.github/copilot/skills/building.md`, `.github/copilot/skills/testing.md`, and `.github/copilot/skills/code-review.md` for task-specific checklists.

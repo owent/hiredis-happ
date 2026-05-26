@@ -43,6 +43,32 @@ static int random() {
 #endif
 }
 
+static int hash_slot(const char *key, size_t key_len) {
+  if (nullptr == key || 0 == key_len) {
+    return -1;
+  }
+
+  size_t start = 0;
+  while (start < key_len && key[start] != '{') {
+    ++start;
+  }
+
+  if (start == key_len) {
+    return static_cast<int>(crc16(key, key_len) % HIREDIS_HAPP_SLOT_NUMBER);
+  }
+
+  size_t end = start + 1;
+  while (end < key_len && key[end] != '}') {
+    ++end;
+  }
+
+  if (end == key_len || end == start + 1) {
+    return static_cast<int>(crc16(key, key_len) % HIREDIS_HAPP_SLOT_NUMBER);
+  }
+
+  return static_cast<int>(crc16(key + start + 1, end - start - 1) % HIREDIS_HAPP_SLOT_NUMBER);
+}
+
 static char NONE_MSG[] = "none";
 }  // namespace detail
 
@@ -238,7 +264,7 @@ HIREDIS_HAPP_API cluster::cmd_t *cluster::exec(const char *key, size_t ks, cmd_t
 
   // calculate the slot index
   if (nullptr != key && 0 != ks) {
-    cmd->engine_.slot = static_cast<int>(crc16(key, ks) % HIREDIS_HAPP_SLOT_NUMBER);
+    cmd->engine_.slot = detail::hash_slot(key, ks);
   }
 
   // ttl_ pre-judge
@@ -312,9 +338,10 @@ HIREDIS_HAPP_API cluster::cmd_t *cluster::exec(connection_t *conn, cmd_t *cmd) {
   int res = conn->redis_cmd(cmd, on_reply_wrapper);
 
   if (REDIS_OK != res) {
+    redisAsyncContext *context = conn->get_context();
     // some version of hiredis will miss onDisconnect, patch it
     // other situation should trigger error
-    if (conn->get_context()->c.flags & (REDIS_DISCONNECTING | REDIS_FREEING)) {
+    if (nullptr != context && (context->c.flags & (REDIS_DISCONNECTING | REDIS_FREEING))) {
       // remove the invalid connection, so this connection will not be selected next time.
       remove_connection_key(conn->get_key().name);
 
@@ -322,7 +349,7 @@ HIREDIS_HAPP_API cluster::cmd_t *cluster::exec(connection_t *conn, cmd_t *cmd) {
       // If not in hiredis's callback_, REDIS_DISCONNECTING or REDIS_FREEING means resource is freed
       // If in hiredis's callback_, disconnect will be called after callback_ finished, so do
       // nothing here
-      if (!(conn->get_context()->c.flags & REDIS_IN_CALLBACK)) {
+      if (!(context->c.flags & REDIS_IN_CALLBACK)) {
         release_connection(conn->get_key(), false, error_code::REDIS_HAPP_CONNECTION);
       }
 
@@ -331,7 +358,8 @@ HIREDIS_HAPP_API cluster::cmd_t *cluster::exec(connection_t *conn, cmd_t *cmd) {
       cmd->engine_.slot = -1;
       return retry(cmd, nullptr);
     } else {
-      call_cmd(cmd, error_code::REDIS_HAPP_HIREDIS, conn->get_context(), nullptr);
+      call_cmd(cmd, nullptr == context ? error_code::REDIS_HAPP_CONNECTION : error_code::REDIS_HAPP_HIREDIS, context,
+               nullptr);
       destroy_cmd(cmd);
     }
     return nullptr;
@@ -424,7 +452,10 @@ HIREDIS_HAPP_API const connection::key_t *cluster::get_slot_master(int index) {
 }
 
 HIREDIS_HAPP_API const cluster::slot_t *cluster::get_slot_by_key(const char *key, size_t ks) const {
-  int index = static_cast<int>(crc16(key, ks) % HIREDIS_HAPP_SLOT_NUMBER);
+  int index = detail::hash_slot(key, ks);
+  if (index < 0) {
+    return nullptr;
+  }
   return &slots_[index];
 }
 
@@ -465,6 +496,9 @@ HIREDIS_HAPP_API cluster::connection_t *cluster::make_connection(const connectio
   redisAsyncContext *c = redisAsyncConnect(key.ip.c_str(), static_cast<int>(key.port));
   if (nullptr == c || c->err) {
     log_info("redis connect to %s failed, msg: %s", key.name.c_str(), nullptr == c ? detail::NONE_MSG : c->errstr);
+    if (nullptr != c) {
+      redisAsyncFree(c);
+    }
     return nullptr;
   }
 
@@ -725,7 +759,7 @@ void cluster::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
     return;
   }
 
-  if (REDIS_ERR_IO == c->err && REDIS_ERR_EOF == c->err) {
+  if (REDIS_ERR_IO == c->err || REDIS_ERR_EOF == c->err) {
     self->log_debug("redis cmd %p reply context err %d and will retry, %s", cmd, c->err, c->errstr);
     // retry if it's a network error
     conn->pop_reply(cmd);
@@ -745,6 +779,12 @@ void cluster::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
 
   // error handler
   if (REDIS_REPLY_ERROR == reply->type) {
+    if (nullptr == reply->str) {
+      self->log_debug("redis cmd %p reply error and abort without error text", cmd);
+      conn->call_reply(cmd, r);
+      return;
+    }
+
     int slot_index = 0;
     char addr[260] = {0};
 
@@ -760,6 +800,9 @@ void cluster::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
       std::string ip;
       uint16_t port;
       if (connection::pick_name(addr, ip, port)) {
+        if (ip.empty()) {
+          ip = conn->get_key().ip;
+        }
         connection::key_t conn_key;
         connection::set_key(conn_key, ip, port);
 
@@ -791,6 +834,12 @@ void cluster::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
       HIREDIS_HAPP_SSCANF(reply->str + 6, "%d %s", &slot_index, addr);
 #endif
 
+      if (slot_index < 0 || slot_index >= HIREDIS_HAPP_SLOT_NUMBER) {
+        self->log_info("cluster MOVED reply contains invalid slot: %d", slot_index);
+        conn->call_reply(cmd, r);
+        return;
+      }
+
       if (cmd->engine_.slot >= 0 && cmd->engine_.slot != slot_index) {
         self->log_info("cluster cmd key error, expect slot: %d, real slot: %d", cmd->engine_.slot, slot_index);
         cmd->engine_.slot = slot_index;
@@ -799,6 +848,9 @@ void cluster::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
       std::string ip;
       uint16_t port;
       if (connection::pick_name(addr, ip, port)) {
+        if (ip.empty()) {
+          ip = conn->get_key().ip;
+        }
         // update slot
         self->slots_[slot_index].hosts.clear();
         self->slots_[slot_index].hosts.push_back(connection::key_t());
@@ -819,6 +871,15 @@ void cluster::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
       } else {
         self->slot_flag_ = slot_status::INVALID;
       }
+    } else if (0 == HIREDIS_HAPP_STRNCASE_CMP("TRYAGAIN", reply->str, 8)) {
+      self->log_debug("redis cmd %p %s", cmd, reply->str);
+
+      // TRYAGAIN can be returned during resharding for multi-key operations. Keep the original
+      // slot mapping and let the normal TTL/timer retry flow decide whether to retry immediately
+      // or delay the command.
+      conn->pop_reply(cmd);
+      self->retry(cmd);
+      return;
     } else if (0 == HIREDIS_HAPP_STRNCASE_CMP("CLUSTERDOWN", reply->str, 11)) {
       self->log_info("cluster down reset all connection, cmd and replys");
       conn->call_reply(cmd, r);
@@ -843,7 +904,8 @@ void cluster::on_reply_update_slot(cmd_exec *cmd, redisAsyncContext *rctx, void 
   cluster *self = cmd->holder_.clu;
 
   // failed and retry
-  if (nullptr == reply || reply->elements <= 0 || REDIS_REPLY_ARRAY != reply->element[0]->type) {
+  if (nullptr == reply || REDIS_REPLY_ARRAY != reply->type || reply->elements <= 0 || nullptr == reply->element ||
+      nullptr == reply->element[0] || REDIS_REPLY_ARRAY != reply->element[0]->type) {
     self->slot_flag_ = slot_status::INVALID;
 
     if (!self->slot_pending_.empty()) {
@@ -874,15 +936,28 @@ void cluster::on_reply_update_slot(cmd_exec *cmd, redisAsyncContext *rctx, void 
 
   for (size_t i = 0; i < reply->elements; ++i) {
     redisReply *slot_node = reply->element[i];
-    if (slot_node->elements >= 3) {
+    if (nullptr != slot_node && REDIS_REPLY_ARRAY == slot_node->type && slot_node->elements >= 3 &&
+        nullptr != slot_node->element && nullptr != slot_node->element[0] && nullptr != slot_node->element[1] &&
+        REDIS_REPLY_INTEGER == slot_node->element[0]->type && REDIS_REPLY_INTEGER == slot_node->element[1]->type) {
       long long si = slot_node->element[0]->integer;
       long long ei = slot_node->element[1]->integer;
+      if (si < 0) {
+        si = 0;
+      }
+      if (ei >= HIREDIS_HAPP_SLOT_NUMBER) {
+        ei = HIREDIS_HAPP_SLOT_NUMBER - 1;
+      }
+      if (si > ei) {
+        continue;
+      }
 
       std::vector<connection::key_t> hosts;
       for (size_t j = 2; j < slot_node->elements; ++j) {
         redisReply *addr = slot_node->element[j];
         // redis cluster may response a empty list when some error happened
-        if (addr->elements >= 2 && REDIS_REPLY_STRING == addr->element[0]->type && addr->element[0]->str[0] &&
+        if (nullptr != addr && REDIS_REPLY_ARRAY == addr->type && addr->elements >= 2 && nullptr != addr->element &&
+            nullptr != addr->element[0] && nullptr != addr->element[1] && REDIS_REPLY_STRING == addr->element[0]->type &&
+            nullptr != addr->element[0]->str && addr->element[0]->str[0] &&
             REDIS_REPLY_INTEGER == addr->element[1]->type) {
           hosts.push_back(connection::key_t());
           connection::set_key(hosts.back(), addr->element[0]->str, static_cast<uint16_t>(addr->element[1]->integer));
@@ -925,7 +1000,7 @@ void cluster::on_reply_asking(redisAsyncContext *c, void *r, void *privdata) {
   // cmd in ask command is not in any connection
   // so there is no need to pop it, directly retry will be OK
 
-  if (REDIS_ERR_IO == c->err && REDIS_ERR_EOF == c->err) {
+  if (REDIS_ERR_IO == c->err || REDIS_ERR_EOF == c->err) {
     self->log_debug("redis asking err %d and will retry, %s", c->err, c->errstr);
     // retry if network error
     self->retry(cmd);
@@ -1018,7 +1093,10 @@ void cluster::on_reply_auth(cmd_exec *cmd, redisAsyncContext *rctx, void *r, voi
   }
 
   // error and log
-  if (nullptr == reply || 0 != HIREDIS_HAPP_STRNCASE_CMP("OK", reply->str, 2)) {
+  bool auth_ok = nullptr != reply && nullptr != reply->str &&
+                 (REDIS_REPLY_STATUS == reply->type || REDIS_REPLY_STRING == reply->type) &&
+                 0 == HIREDIS_HAPP_STRNCASE_CMP("OK", reply->str, 2);
+  if (!auth_ok) {
     const char *error_text = "";
     if (nullptr != reply && nullptr != reply->str) {
       error_text = reply->str;
@@ -1072,6 +1150,9 @@ void cluster::log_debug(const char *fmt, ...) {
   if (nullptr == conf_.log_buffer) {
     conf_.log_buffer = reinterpret_cast<char *>(malloc(conf_.log_max_size));
   }
+  if (nullptr == conf_.log_buffer) {
+    return;
+  }
 
   va_list ap;
   va_start(ap, fmt);
@@ -1079,7 +1160,7 @@ void cluster::log_debug(const char *fmt, ...) {
   va_end(ap);
 
   conf_.log_buffer[conf_.log_max_size - 1] = 0;
-  if (len > 0) {
+  if (len >= 0 && static_cast<size_t>(len) < conf_.log_max_size) {
     conf_.log_buffer[len] = 0;
   }
 
@@ -1094,6 +1175,9 @@ void cluster::log_info(const char *fmt, ...) {
   if (nullptr == conf_.log_buffer) {
     conf_.log_buffer = reinterpret_cast<char *>(malloc(conf_.log_max_size));
   }
+  if (nullptr == conf_.log_buffer) {
+    return;
+  }
 
   va_list ap;
   va_start(ap, fmt);
@@ -1101,7 +1185,7 @@ void cluster::log_info(const char *fmt, ...) {
   va_end(ap);
 
   conf_.log_buffer[conf_.log_max_size - 1] = 0;
-  if (len > 0) {
+  if (len >= 0 && static_cast<size_t>(len) < conf_.log_max_size) {
     conf_.log_buffer[len] = 0;
   }
 

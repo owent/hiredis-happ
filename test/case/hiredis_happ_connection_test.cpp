@@ -56,6 +56,7 @@ CASE_TEST(happ_connection, basic) {
   CASE_EXPECT_TRUE("127.0.0.2" == conn1->get_key().ip);
   CASE_EXPECT_TRUE(1234 == conn1->get_key().port);
   CASE_EXPECT_TRUE("127.0.0.2:1234" == conn1->get_key().name);
+  CASE_EXPECT_TRUE("127.0.0.1:0" == hiredis::happ::connection::make_name("127.0.0.1", 0));
 
   CASE_EXPECT_EQ(hiredis::happ::connection::status::DISCONNECTED, conn1->get_status());
   hiredis::happ::cmd_exec* cmd = hiredis::happ::cmd_exec::create(h, nullptr, &vir_context, 0);

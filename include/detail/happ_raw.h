@@ -245,4 +245,4 @@ class raw {
 }  // namespace happ
 }  // namespace hiredis
 
-#endif  // HIREDIS_HAPP_HIREDIS_HAPP_CLUSTER_H
+#endif  // HIREDIS_HAPP_HIREDIS_HAPP_RAW_H
