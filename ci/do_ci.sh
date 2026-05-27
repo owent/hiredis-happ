@@ -149,7 +149,8 @@ if [[ "$1" == "format" ]]; then
 elif [[ "$1" == "ssl.openssl" ]]; then
   CRYPTO_OPTIONS="-DATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_CRYPTO_USE_OPENSSL=ON" ;
   bash cmake_dev.sh -lus -b Debug -r build_jobs_ci -c $USE_CC -- $CRYPTO_OPTIONS \
-    "-DATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_LOW_MEMORY_MODE=ON"
+    "-DATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_LOW_MEMORY_MODE=ON" \
+    "-DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS:-OFF}"
   cd build_jobs_ci ;
   cmake --build . -j ;
   run_platform_ctest_suite ;

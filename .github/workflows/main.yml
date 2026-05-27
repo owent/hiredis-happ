@@ -64,6 +64,29 @@ jobs:
           else
             bash ci/do_ci.sh ssl.openssl ;
           fi
+  unix_build_shared:
+    name: Unix Build (Shared Library)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Generate cache key
+        shell: bash
+        run: git submodule > '.github/.cache-key'
+      - name: Cache packages
+        uses: actions/cache@v5
+        with:
+          path: |
+            /usr/local/share/vcpkg/installed
+            third_party/install
+          key: ubuntu-latest-gcc-shared-x64-linux-${{ hashFiles('.github/.cache-key') }}
+      - name: Build & Test
+        shell: bash
+        env:
+          USE_CC: gcc
+          BUILD_SHARED_LIBS: ON
+        run: |
+          bash ci/do_ci.sh ssl.openssl
   vs2022_build: # job id, can be any string
     name: Visual Studio 2022 Build
     strategy:

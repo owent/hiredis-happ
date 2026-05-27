@@ -948,7 +948,7 @@ void cluster::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
   conn->call_reply(cmd, r);
 }
 
-void cluster::on_reply_update_slot(cmd_exec *cmd, redisAsyncContext *rctx, void *r, void * /*privdata*/) {
+HIREDIS_HAPP_API void cluster::on_reply_update_slot(cmd_exec *cmd, redisAsyncContext *rctx, void *r, void * /*privdata*/) {
   redisReply *reply = reinterpret_cast<redisReply *>(r);
   cluster *self = cmd->holder_.clu;
 
