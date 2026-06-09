@@ -22,10 +22,9 @@ if(NOT (WIN32 AND BUILD_SHARED_LIBS))
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/test")
 endif()
 
-add_compiler_define(_CRT_SECURE_NO_WARNINGS=1)
-add_compiler_define(HIREDIS_HAPP_UNIT_TEST_HACK=1)
-
 atframe_add_test_executable(hiredis-happ-test ${PROJECT_TEST_SRC_LIST})
+
+target_compile_definitions(hiredis-happ-test PRIVATE _CRT_SECURE_NO_WARNINGS=1 HIREDIS_HAPP_UNIT_TEST_HACK=1)
 
 unset(PROJECT_TEST_EXT_LIBS)
 if(ATFRAMEWORK_CMAKE_TOOLSET_THIRD_PARTY_LIBUV_LINK_NAME)
