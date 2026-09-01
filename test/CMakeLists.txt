@@ -65,3 +65,11 @@ set_tests_properties(hiredis-happ-redis-integration-raw PROPERTIES LABELS "integ
 
 add_test(NAME hiredis-happ-redis-integration-cluster COMMAND hiredis-happ-test -f happ_integration_cluster*)
 set_tests_properties(hiredis-happ-redis-integration-cluster PROPERTIES LABELS "integration;redis;cluster" TIMEOUT 180)
+
+if(COMMAND atframe_test_setup_run_environment)
+  foreach(HIREDIS_HAPP_TEST_RUN_ENV_CASE IN ITEMS hiredis-happ-run-test hiredis-happ-redis-integration-raw
+                                                  hiredis-happ-redis-integration-cluster)
+    atframe_test_setup_run_environment(${HIREDIS_HAPP_TEST_RUN_ENV_CASE} "${PROJECT_TEST_RUNTIME_OUTPUT_DIRECTORY}")
+  endforeach()
+  unset(HIREDIS_HAPP_TEST_RUN_ENV_CASE)
+endif()
