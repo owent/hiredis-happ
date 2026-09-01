@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: CI Job
         shell: bash
         run: |
@@ -41,12 +41,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Generate cache key
         shell: bash
         run: git submodule > '.github/.cache-key'
       - name: Cache packages
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             /usr/local/share/vcpkg/installed
@@ -57,24 +57,18 @@ jobs:
         env:
           USE_CC: ${{ matrix.cc }}
         run: |
-          if [[ "xgcc-4.8" == "x$USE_CC" ]]; then
-            sudo apt-get update ;
-            sudo apt-get install --no-install-recommends --no-install-suggests -y g++-4.8 ;
-            bash ci/do_ci.sh gcc.legacy.test ;
-          else
-            bash ci/do_ci.sh ssl.openssl ;
-          fi
+          bash ci/do_ci.sh ssl.openssl ;
   unix_build_shared:
     name: Unix Build (Shared Library)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Generate cache key
         shell: bash
         run: git submodule > '.github/.cache-key'
       - name: Cache packages
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             /usr/local/share/vcpkg/installed
@@ -87,28 +81,28 @@ jobs:
           BUILD_SHARED_LIBS: ON
         run: |
           bash ci/do_ci.sh ssl.openssl
-  vs2022_build: # job id, can be any string
-    name: Visual Studio 2022 Build
+  vs2026_build: # job id, can be any string
+    name: Visual Studio 2026 Build
     strategy:
       matrix:
         include:
-          - os: windows-latest
-            generator: "Visual Studio 17 2022"
+          - os: windows-2025-vs2026
+            generator: "Visual Studio 18 2026"
             build_shared_libs: "ON"
             platform: x64
-          - os: windows-latest
-            generator: "Visual Studio 17 2022"
+          - os: windows-2025-vs2026
+            generator: "Visual Studio 18 2026"
             build_shared_libs: "OFF"
             platform: x64
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Generate cache key
         shell: bash
         run: git submodule > '.github/.cache-key'
       - name: Cache packages
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             third_party/install
@@ -139,12 +133,12 @@ jobs:
       security-events: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Generate cache key
         shell: bash
         run: git submodule > '.github/.cache-key'
       - name: Cache packages
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             third_party/install
@@ -157,7 +151,7 @@ jobs:
         run: |
           bash ci/do_ci.sh codeql.configure
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           config-file: ./.github/codeql/codeql-config.yml
       - name: Build
@@ -168,6 +162,6 @@ jobs:
         run: |
           bash ci/do_ci.sh codeql.build
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:cpp"
