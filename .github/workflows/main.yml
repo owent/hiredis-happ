@@ -29,15 +29,20 @@ jobs:
           - os: ubuntu-latest
             triplet: x64-linux
             cc: gcc
+            redis_provider: docker
           - os: ubuntu-latest
             triplet: x64-linux
             cc: gcc-latest
+            redis_provider: docker
           - os: ubuntu-latest
             triplet: x64-linux
             cc: clang-latest
+            redis_provider: docker
+          # macOS runners have no Docker daemon; build Redis from source there.
           - os: macos-latest
             triplet: x64-osx
             cc: clang-latest
+            redis_provider: source
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -56,6 +61,9 @@ jobs:
         shell: bash
         env:
           USE_CC: ${{ matrix.cc }}
+          # Pin the fixture provider intentionally: docker on ubuntu runners
+          # fails fast instead of silently falling back to a source build.
+          HIREDIS_HAPP_TEST_REDIS_PROVIDER: ${{ matrix.redis_provider }}
         run: |
           bash ci/do_ci.sh ssl.openssl ;
   unix_build_shared:
@@ -79,6 +87,7 @@ jobs:
         env:
           USE_CC: gcc
           BUILD_SHARED_LIBS: ON
+          HIREDIS_HAPP_TEST_REDIS_PROVIDER: docker
         run: |
           bash ci/do_ci.sh ssl.openssl
   vs2026_build: # job id, can be any string

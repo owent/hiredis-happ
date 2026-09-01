@@ -40,7 +40,7 @@
 
 ### P1 Cluster Playbook
 
-1. 使用 docker compose 或脚本启动 3 master + 3 replica 测试集群。
+1. 使用 docker compose 或脚本启动 3 master + 3 replica 测试集群。（已由 `test/redis/redis-fixture.sh` 覆盖：Linux 上默认通过 Docker 容器（`HIREDIS_HAPP_TEST_REDIS_PROVIDER=auto`）启动 6 节点集群，无 Docker 环境回退源码构建。）
 2. 增加以下测试：
    - `CLUSTER SLOTS` 初始化 slot map。
    - hash tags：多 key 同 slot。

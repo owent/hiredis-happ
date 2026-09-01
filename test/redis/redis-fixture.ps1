@@ -18,6 +18,8 @@ function Show-Usage {
     '          cleanup, print-env, status',
     '',
     'This wrapper delegates to WSL because official Redis OSS server binaries are not provided for native Windows.',
+    'Inside WSL the fixture uses Docker containers when the daemon is reachable (HIREDIS_HAPP_TEST_REDIS_PROVIDER=auto),',
+    'otherwise it builds Redis from source. Set HIREDIS_HAPP_TEST_REDIS_PROVIDER=source to force the source build.',
     'Set HIREDIS_HAPP_TEST_WSL_DISTRO when you want to target a specific installed distro.'
   ) | Write-Host
 }
@@ -100,6 +102,9 @@ $forwardEnvNames = @(
   'HIREDIS_HAPP_TEST_REDIS_ROOT',
   'HIREDIS_HAPP_TEST_REDIS_DOWNLOAD_URL',
   'HIREDIS_HAPP_TEST_REDIS_BUILD_JOBS',
+  'HIREDIS_HAPP_TEST_REDIS_PROVIDER',
+  'HIREDIS_HAPP_TEST_REDIS_IMAGE',
+  'HIREDIS_HAPP_TEST_REDIS_DOCKER_PREFIX',
   'HIREDIS_HAPP_TEST_SINGLE_HOST',
   'HIREDIS_HAPP_TEST_SINGLE_PORT',
   'HIREDIS_HAPP_TEST_CLUSTER_HOST',

@@ -118,7 +118,11 @@ Set `HIREDIS_HAPP_TEST_WITH_REDIS=OFF` when you want the MSVC flow to run unit t
 
 Use the direct fixture commands below when you want to run only the Redis-backed tests or inspect the temporary Redis instances manually.
 
-The fixture scripts under `test/redis/` download the official `redis-stable.tar.gz`, build `redis-server` / `redis-cli`, start a standalone Redis on `127.0.0.1:6390`, and create a temporary 6-node cluster with seed node `127.0.0.1:7300`.
+The fixture scripts under `test/redis/` start a standalone Redis on `127.0.0.1:6390` and a temporary 6-node cluster with seed node `127.0.0.1:7300`. Two providers are available and selected through `HIREDIS_HAPP_TEST_REDIS_PROVIDER`:
+
+- `auto` (default): use Docker containers when running on Linux with a reachable Docker daemon, otherwise fall back to building Redis from the official `redis-stable.tar.gz` source archive.
+- `docker`: run the standalone server and all cluster nodes as `redis:8-alpine` containers (override with `HIREDIS_HAPP_TEST_REDIS_IMAGE`). Cluster nodes use host networking and announce `127.0.0.1`, so the host-side test binary can follow `MOVED` redirections. Requires Linux.
+- `source`: download the official `redis-stable.tar.gz` and build `redis-server` / `redis-cli` locally.
 
 On Linux, macOS, or WSL:
 
@@ -145,9 +149,9 @@ ctest --test-dir build_jobs_review -V -R hiredis-happ-redis-integration-cluster 
 .\test\redis\redis-fixture.ps1 cleanup
 ```
 
-If you have multiple WSL distros installed, set `HIREDIS_HAPP_TEST_WSL_DISTRO` before running the wrapper to pin a specific distro. The wrapper terminates that distro after `stop-*` / `cleanup` so temporary Redis processes do not linger after the test flow finishes.
+If you have multiple WSL distros installed, set `HIREDIS_HAPP_TEST_WSL_DISTRO` before running the wrapper to pin a specific distro. The wrapper terminates that distro after `stop-*` / `cleanup` so temporary Redis processes do not linger after the test flow finishes. Inside WSL the same provider selection applies: with Docker Desktop's WSL integration enabled the fixture uses containers, otherwise it builds Redis from source inside the distro.
 
-The fixture scripts honor `HIREDIS_HAPP_TEST_SINGLE_HOST`, `HIREDIS_HAPP_TEST_SINGLE_PORT`, `HIREDIS_HAPP_TEST_CLUSTER_HOST`, `HIREDIS_HAPP_TEST_CLUSTER_PORT`, and related `HIREDIS_HAPP_TEST_*` environment overrides printed by `print-env`.
+The fixture scripts honor `HIREDIS_HAPP_TEST_SINGLE_HOST`, `HIREDIS_HAPP_TEST_SINGLE_PORT`, `HIREDIS_HAPP_TEST_CLUSTER_HOST`, `HIREDIS_HAPP_TEST_CLUSTER_PORT`, and related `HIREDIS_HAPP_TEST_*` environment overrides printed by `print-env`. The GitHub Actions Linux jobs pin `HIREDIS_HAPP_TEST_REDIS_PROVIDER=docker` so integration tests run against containers instead of compiling Redis; the macOS job pins `source` because macOS runners have no Docker daemon.
 
 For single-config generators, omit `-C RelWithDebInfo`.
 

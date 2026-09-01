@@ -17,6 +17,9 @@ CLUSTER_BASE_PORT="${HIREDIS_HAPP_TEST_CLUSTER_BASE_PORT:-7300}"
 CLUSTER_PORT="${HIREDIS_HAPP_TEST_CLUSTER_PORT:-${CLUSTER_BASE_PORT}}"
 CLUSTER_REPLICAS="${HIREDIS_HAPP_TEST_CLUSTER_REPLICAS:-1}"
 CLUSTER_NODE_COUNT="${HIREDIS_HAPP_TEST_CLUSTER_NODE_COUNT:-6}"
+REDIS_PROVIDER="${HIREDIS_HAPP_TEST_REDIS_PROVIDER:-auto}"
+REDIS_IMAGE="${HIREDIS_HAPP_TEST_REDIS_IMAGE:-redis:8-alpine}"
+DOCKER_PREFIX="${HIREDIS_HAPP_TEST_REDIS_DOCKER_PREFIX:-hiredis-happ-redis}"
 
 ARCHIVE_NAME="$(basename "${DOWNLOAD_URL}")"
 ARCHIVE_PATH="${DOWNLOAD_DIR}/${ARCHIVE_NAME}"
@@ -28,9 +31,9 @@ usage() {
 Usage: test/redis/redis-fixture.sh <command>
 
 Commands:
-  download            Download the official Redis source archive.
-  build               Build Redis and install redis-server/redis-cli into the fixture workspace.
-  prepare             Download + build.
+  download            Download the official Redis source archive (source provider).
+  build               Build Redis and install redis-server/redis-cli into the fixture workspace (source provider).
+  prepare             Download + build (source provider).
   start-single        Start a standalone Redis server for raw integration tests.
   stop-single         Stop the standalone Redis server.
   restart-single      Restart the standalone Redis server.
@@ -42,6 +45,15 @@ Commands:
   cleanup             Stop everything and remove runtime data.
   print-env           Print the environment variables used by the integration tests.
   status              Show fixture status.
+
+Providers (HIREDIS_HAPP_TEST_REDIS_PROVIDER, default: auto):
+  auto                Use docker on Linux when the Docker daemon is reachable, otherwise build from source.
+  docker              Run Redis/Redis Cluster in Docker containers (requires Docker with host networking, i.e. Linux).
+  source              Download and build the official Redis source archive.
+
+Docker tunables:
+  HIREDIS_HAPP_TEST_REDIS_IMAGE         Image used for containers (default: redis:8-alpine).
+  HIREDIS_HAPP_TEST_REDIS_DOCKER_PREFIX Container name prefix (default: hiredis-happ-redis).
 EOF
 }
 
@@ -143,6 +155,163 @@ build_redis() {
   [[ -x "${REDIS_SERVER}" && -x "${REDIS_CLI}" ]] || die "redis-server or redis-cli was not installed correctly"
 }
 
+docker_available() {
+  command -v docker >/dev/null 2>&1 || return 1
+  docker info >/dev/null 2>&1 || return 1
+}
+
+resolve_provider() {
+  case "${REDIS_PROVIDER}" in
+    docker | source)
+      echo "${REDIS_PROVIDER}"
+      ;;
+    auto)
+      # Host networking is required so the host-side test binary can follow
+      # cluster redirections to the announced addresses. Docker host
+      # networking only works on Linux, so auto keeps the source build on
+      # macOS and other non-Linux hosts.
+      if [[ "$(uname -s)" == "Linux" ]] && docker_available; then
+        echo "docker"
+      else
+        echo "source"
+      fi
+      ;;
+    *)
+      die "Unknown HIREDIS_HAPP_TEST_REDIS_PROVIDER: ${REDIS_PROVIDER} (expected auto, docker or source)"
+      ;;
+  esac
+}
+
+docker_container_single() {
+  echo "${DOCKER_PREFIX}-single"
+}
+
+docker_container_cluster() {
+  local index="$1"
+  echo "${DOCKER_PREFIX}-cluster-${index}"
+}
+
+docker_remove_container() {
+  local name="$1"
+  docker rm -f "${name}" >/dev/null 2>&1 || true
+}
+
+docker_wait_for_redis() {
+  local container="$1"
+  shift
+  local attempts="$1"
+  shift
+  local i
+
+  for ((i = 0; i < attempts; ++i)); do
+    if docker exec "${container}" redis-cli "$@" PING >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.1
+  done
+
+  return 1
+}
+
+docker_start_single() {
+  local name
+  name="$(docker_container_single)"
+  docker_remove_container "${name}"
+
+  log "Starting standalone Redis container ${name} (${REDIS_IMAGE}) on ${SINGLE_HOST}:${SINGLE_PORT}"
+  docker run -d --name "${name}" -p "${SINGLE_HOST}:${SINGLE_PORT}:6379" "${REDIS_IMAGE}" \
+    redis-server --save '' --appendonly no --protected-mode no >/dev/null
+  docker_wait_for_redis "${name}" 120 || die "Standalone Redis container did not become ready"
+}
+
+docker_stop_single() {
+  docker_remove_container "$(docker_container_single)"
+}
+
+docker_start_cluster_nodes() {
+  local index
+  local port
+  local name
+
+  for ((index = 0; index < CLUSTER_NODE_COUNT; ++index)); do
+    port="$(cluster_node_port "${index}")"
+    name="$(docker_container_cluster "${index}")"
+    docker_remove_container "${name}"
+
+    log "Starting Redis Cluster container ${name} (${REDIS_IMAGE}) on ${CLUSTER_HOST}:${port}"
+    docker run -d --name "${name}" --network host "${REDIS_IMAGE}" \
+      redis-server \
+      --bind "${CLUSTER_HOST}" \
+      --port "${port}" \
+      --protected-mode no \
+      --save '' \
+      --appendonly no \
+      --cluster-enabled yes \
+      --cluster-config-file nodes.conf \
+      --cluster-node-timeout 5000 \
+      --cluster-announce-ip "${CLUSTER_HOST}" \
+      --cluster-announce-port "${port}" \
+      --cluster-announce-bus-port "$((port + 10000))" >/dev/null
+  done
+
+  for ((index = 0; index < CLUSTER_NODE_COUNT; ++index)); do
+    docker_wait_for_redis "$(docker_container_cluster "${index}")" 120 -h "${CLUSTER_HOST}" -p "$(cluster_node_port "${index}")" ||
+      die "Redis Cluster container $(cluster_node_port "${index}") did not become ready"
+  done
+}
+
+docker_create_cluster() {
+  local nodes=()
+  local index
+
+  for ((index = 0; index < CLUSTER_NODE_COUNT; ++index)); do
+    nodes+=("${CLUSTER_HOST}:$(cluster_node_port "${index}")")
+  done
+
+  log "Creating Redis Cluster with ${CLUSTER_NODE_COUNT} container nodes"
+  docker exec "$(docker_container_cluster 0)" redis-cli --cluster create "${nodes[@]}" \
+    --cluster-replicas "${CLUSTER_REPLICAS}" --cluster-yes
+}
+
+docker_wait_for_cluster_ok() {
+  local index
+  local port
+
+  for ((index = 0; index < CLUSTER_NODE_COUNT; ++index)); do
+    port="$(cluster_node_port "${index}")"
+    if ! docker_wait_for_redis "$(docker_container_cluster "${index}")" 120 -h "${CLUSTER_HOST}" -p "${port}"; then
+      return 1
+    fi
+  done
+
+  for ((index = 0; index < 100; ++index)); do
+    if docker exec "$(docker_container_cluster 0)" redis-cli -h "${CLUSTER_HOST}" -p "${CLUSTER_PORT}" cluster info 2>/dev/null |
+      grep -q '^cluster_state:ok'; then
+      return 0
+    fi
+    sleep 0.2
+  done
+
+  return 1
+}
+
+docker_start_cluster() {
+  [[ "${CLUSTER_NODE_COUNT}" -eq 6 ]] || die "This fixture currently expects 6 cluster nodes"
+  [[ "${CLUSTER_REPLICAS}" -eq 1 ]] || die "This fixture currently expects --cluster-replicas 1"
+
+  docker_stop_cluster || true
+  docker_start_cluster_nodes
+  docker_create_cluster
+  docker_wait_for_cluster_ok || die "Redis Cluster did not reach cluster_state:ok"
+}
+
+docker_stop_cluster() {
+  local index
+  for ((index = 0; index < CLUSTER_NODE_COUNT; ++index)); do
+    docker_remove_container "$(docker_container_cluster "${index}")"
+  done
+}
+
 wait_for_redis() {
   local host="$1"
   local port="$2"
@@ -227,6 +396,11 @@ single_pid_file() {
 }
 
 start_single() {
+  if [[ "${PROVIDER}" == "docker" ]]; then
+    docker_start_single
+    return
+  fi
+
   build_redis
   stop_single || true
   write_single_config
@@ -236,8 +410,23 @@ start_single() {
   wait_for_redis "${SINGLE_HOST}" "${SINGLE_PORT}" 120 || die "Standalone Redis did not become ready"
 }
 
-stop_single() {
+source_stop_single() {
   shutdown_redis "${SINGLE_HOST}" "${SINGLE_PORT}" "$(single_pid_file)"
+}
+
+stop_single() {
+  # Best effort across both providers: the resolved provider may have flipped
+  # since start (e.g. the Docker daemon went away), and leftover servers hold
+  # the same ports either way.
+  if [[ "${PROVIDER}" == "docker" ]]; then
+    docker_stop_single
+    source_stop_single
+  else
+    source_stop_single
+    if docker_available; then
+      docker_stop_single
+    fi
+  fi
 }
 
 cluster_node_dir() {
@@ -323,6 +512,11 @@ wait_for_cluster_ok() {
 }
 
 start_cluster() {
+  if [[ "${PROVIDER}" == "docker" ]]; then
+    docker_start_cluster
+    return
+  fi
+
   [[ "${CLUSTER_NODE_COUNT}" -eq 6 ]] || die "This fixture currently expects 6 cluster nodes"
   [[ "${CLUSTER_REPLICAS}" -eq 1 ]] || die "This fixture currently expects --cluster-replicas 1"
 
@@ -332,11 +526,24 @@ start_cluster() {
   wait_for_cluster_ok || die "Redis Cluster did not reach cluster_state:ok"
 }
 
-stop_cluster() {
+source_stop_cluster() {
   local index
   for ((index = 0; index < CLUSTER_NODE_COUNT; ++index)); do
     shutdown_redis "${CLUSTER_HOST}" "$(cluster_node_port "${index}")" "$(cluster_node_dir "${index}")/redis.pid"
   done
+}
+
+stop_cluster() {
+  # Best effort across both providers, same rationale as stop_single.
+  if [[ "${PROVIDER}" == "docker" ]]; then
+    docker_stop_cluster
+    source_stop_cluster
+  else
+    source_stop_cluster
+    if docker_available; then
+      docker_stop_cluster
+    fi
+  fi
 }
 
 cleanup_runtime() {
@@ -353,19 +560,59 @@ HIREDIS_HAPP_TEST_CLUSTER_BASE_PORT=${CLUSTER_BASE_PORT}
 HIREDIS_HAPP_TEST_CLUSTER_NODE_COUNT=${CLUSTER_NODE_COUNT}
 HIREDIS_HAPP_TEST_CLUSTER_REPLICAS=${CLUSTER_REPLICAS}
 HIREDIS_HAPP_TEST_REDIS_ROOT=${WORK_ROOT}
+HIREDIS_HAPP_TEST_REDIS_PROVIDER=${PROVIDER}
 EOF
 }
 
+redis_cli_ping() {
+  local host="$1"
+  local port="$2"
+
+  if [[ "${PROVIDER}" == "docker" ]]; then
+    if [[ "${port}" == "${SINGLE_PORT}" ]]; then
+      # The single container listens on the image default port 6379; the
+      # host-side SINGLE_PORT is only the published mapping.
+      docker exec "$(docker_container_single)" redis-cli -p 6379 PING >/dev/null 2>&1
+    else
+      # Cluster containers use host networking, so the announced host and
+      # port are reachable from inside the container as well.
+      docker exec "$(docker_container_cluster $((port - CLUSTER_BASE_PORT)))" \
+        redis-cli -h "${host}" -p "${port}" PING >/dev/null 2>&1
+    fi
+    return
+  fi
+
+  if [[ ! -x "${REDIS_CLI}" ]]; then
+    return 1
+  fi
+
+  "${REDIS_CLI}" -h "${host}" -p "${port}" PING >/dev/null 2>&1
+}
+
+cluster_info_ok() {
+  if [[ "${PROVIDER}" == "docker" ]]; then
+    docker exec "$(docker_container_cluster 0)" redis-cli -h "${CLUSTER_HOST}" -p "${CLUSTER_PORT}" cluster info 2>/dev/null |
+      grep -q '^cluster_state:ok'
+    return
+  fi
+
+  if [[ ! -x "${REDIS_CLI}" ]]; then
+    return 1
+  fi
+
+  "${REDIS_CLI}" -h "${CLUSTER_HOST}" -p "${CLUSTER_PORT}" cluster info 2>/dev/null | grep -q '^cluster_state:ok'
+}
+
 status() {
-  if wait_for_redis "${SINGLE_HOST}" "${SINGLE_PORT}" 1; then
-    log "single: running on ${SINGLE_HOST}:${SINGLE_PORT}"
+  if redis_cli_ping "${SINGLE_HOST}" "${SINGLE_PORT}"; then
+    log "single: running on ${SINGLE_HOST}:${SINGLE_PORT} (${PROVIDER})"
   else
     log "single: stopped"
   fi
 
-  if wait_for_redis "${CLUSTER_HOST}" "${CLUSTER_PORT}" 1; then
-    if "${REDIS_CLI}" -h "${CLUSTER_HOST}" -p "${CLUSTER_PORT}" cluster info 2>/dev/null | grep -q '^cluster_state:ok'; then
-      log "cluster: running on ${CLUSTER_HOST}:${CLUSTER_PORT}"
+  if redis_cli_ping "${CLUSTER_HOST}" "${CLUSTER_PORT}"; then
+    if cluster_info_ok; then
+      log "cluster: running on ${CLUSTER_HOST}:${CLUSTER_PORT} (${PROVIDER})"
     else
       log "cluster: port reachable but cluster_state is not ok"
     fi
@@ -376,6 +623,7 @@ status() {
 
 main() {
   local command="${1:-}"
+  PROVIDER="$(resolve_provider)"
   case "${command}" in
     download)
       fetch_archive
