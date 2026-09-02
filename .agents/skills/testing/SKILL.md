@@ -51,7 +51,7 @@ The repository-owned Unix platform flows run all three CTest entries in one pass
 
 Set `HIREDIS_HAPP_TEST_WITH_REDIS=OFF` when you want `pwsh ci/do_ci.ps1 msvc.modern.test` to run unit tests only. The GitHub Actions Windows job uses that switch so CI does not rely on WSL provisioning.
 
-Provision Redis for integration tests with the fixture scripts under `test/redis/`. Provider selection via `HIREDIS_HAPP_TEST_REDIS_PROVIDER`: `auto` (default) uses Docker containers on Linux when the daemon is reachable and falls back to building `redis-stable.tar.gz` from source elsewhere; `docker` forces containers (Linux host networking, image overridable via `HIREDIS_HAPP_TEST_REDIS_IMAGE`, default `redis:8-alpine`); `source` forces the local source build. The GitHub Actions Linux jobs pin `docker`, the macOS job pins `source`.
+Provision Redis for integration tests with the fixture scripts under `test/redis/`. Provider selection via `HIREDIS_HAPP_TEST_REDIS_PROVIDER`: `auto` (default) uses Docker containers on Linux when the daemon is reachable, the precompiled Homebrew `redis` formula on macOS when `brew` is available, and falls back to building `redis-stable.tar.gz` from source elsewhere; `docker` forces containers (Linux host networking, image overridable via `HIREDIS_HAPP_TEST_REDIS_IMAGE`, default `redis:8-alpine`); `homebrew` forces the Homebrew package; `source` forces the local source build (fails on macOS with Redis 8 because Xcode's GNU Make 3.81 cannot build the bundled modules). The GitHub Actions Linux jobs pin `docker`, the macOS job pins `homebrew`.
 
 Linux/macOS/WSL:
 

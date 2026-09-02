@@ -32,8 +32,8 @@ Usage: test/redis/redis-fixture.sh <command>
 
 Commands:
   download            Download the official Redis source archive (source provider).
-  build               Build Redis and install redis-server/redis-cli into the fixture workspace (source provider).
-  prepare             Download + build (source provider).
+  build               Provision redis-server/redis-cli for the resolved provider (source: compile; homebrew: brew install).
+  prepare             Same as build.
   start-single        Start a standalone Redis server for raw integration tests.
   stop-single         Stop the standalone Redis server.
   restart-single      Restart the standalone Redis server.
@@ -47,8 +47,10 @@ Commands:
   status              Show fixture status.
 
 Providers (HIREDIS_HAPP_TEST_REDIS_PROVIDER, default: auto):
-  auto                Use docker on Linux when the Docker daemon is reachable, otherwise build from source.
+  auto                Use docker on Linux when the Docker daemon is reachable, the Homebrew
+                      package on macOS when brew is available, otherwise build from source.
   docker              Run Redis/Redis Cluster in Docker containers (requires Docker with host networking, i.e. Linux).
+  homebrew            Use the precompiled redis formula from Homebrew (macOS or Linuxbrew).
   source              Download and build the official Redis source archive.
 
 Docker tunables:
@@ -160,24 +162,56 @@ docker_available() {
   docker info >/dev/null 2>&1 || return 1
 }
 
+homebrew_resolve_redis_tools() {
+  command -v brew >/dev/null 2>&1 || return 1
+  local prefix
+  prefix="$(brew --prefix redis 2>/dev/null || true)"
+  if [[ -n "${prefix}" && -x "${prefix}/bin/redis-server" && -x "${prefix}/bin/redis-cli" ]]; then
+    REDIS_SERVER="${prefix}/bin/redis-server"
+    REDIS_CLI="${prefix}/bin/redis-cli"
+    return 0
+  fi
+  return 1
+}
+
+homebrew_ensure_redis() {
+  require_command brew
+  if ! homebrew_resolve_redis_tools; then
+    log "Installing Redis via Homebrew"
+    brew install redis
+    homebrew_resolve_redis_tools || die "redis-server or redis-cli not found after 'brew install redis'"
+  fi
+  log "Using Homebrew Redis: ${REDIS_SERVER}"
+}
+
+ensure_redis_tools() {
+  if [[ "${PROVIDER}" == "homebrew" ]]; then
+    homebrew_ensure_redis
+  else
+    build_redis
+  fi
+}
+
 resolve_provider() {
   case "${REDIS_PROVIDER}" in
-    docker | source)
+    docker | homebrew | source)
       echo "${REDIS_PROVIDER}"
       ;;
     auto)
       # Host networking is required so the host-side test binary can follow
       # cluster redirections to the announced addresses. Docker host
-      # networking only works on Linux, so auto keeps the source build on
-      # macOS and other non-Linux hosts.
+      # networking only works on Linux, so auto prefers the Homebrew
+      # precompiled package on macOS and the source build elsewhere.
       if [[ "$(uname -s)" == "Linux" ]] && docker_available; then
         echo "docker"
+      elif [[ "$(uname -s)" == "Darwin" ]] && command -v brew >/dev/null 2>&1; then
+        echo "homebrew"
       else
         echo "source"
       fi
       ;;
     *)
-      die "Unknown HIREDIS_HAPP_TEST_REDIS_PROVIDER: ${REDIS_PROVIDER} (expected auto, docker or source)"
+      die "Unknown HIREDIS_HAPP_TEST_REDIS_PROVIDER: ${REDIS_PROVIDER} (expected auto, docker, homebrew or source)"
       ;;
   esac
 }
@@ -401,7 +435,7 @@ start_single() {
     return
   fi
 
-  build_redis
+  ensure_redis_tools
   stop_single || true
   write_single_config
 
@@ -465,7 +499,7 @@ EOF
 
 start_cluster_nodes() {
   local index
-  build_redis
+  ensure_redis_tools
 
   for ((index = 0; index < CLUSTER_NODE_COUNT; ++index)); do
     write_cluster_config "${index}"
@@ -624,15 +658,20 @@ status() {
 main() {
   local command="${1:-}"
   PROVIDER="$(resolve_provider)"
+  if [[ "${PROVIDER}" == "homebrew" ]]; then
+    # Pre-resolve the Homebrew binary paths so status/stop work without
+    # installing anything; start paths install on demand via ensure_redis_tools.
+    homebrew_resolve_redis_tools || true
+  fi
   case "${command}" in
     download)
       fetch_archive
       ;;
     build)
-      build_redis
+      ensure_redis_tools
       ;;
     prepare)
-      build_redis
+      ensure_redis_tools
       ;;
     start-single)
       start_single

@@ -38,11 +38,12 @@ jobs:
             triplet: x64-linux
             cc: clang-latest
             redis_provider: docker
-          # macOS runners have no Docker daemon; build Redis from source there.
+          # macOS runners have no Docker daemon; use the precompiled Homebrew
+          # redis formula (Xcode make 3.81 cannot build Redis 8 bundled modules).
           - os: macos-latest
             triplet: x64-osx
             cc: clang-latest
-            redis_provider: source
+            redis_provider: homebrew
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
