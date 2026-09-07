@@ -6,9 +6,6 @@ find_package(Libevent)
 file(
   GLOB_RECURSE
   PROJECT_TEST_SRC_LIST
-  ${PROJECT_TEST_SRC_DIR}/app/*.cpp
-  ${PROJECT_TEST_SRC_DIR}/frame/*.h
-  ${PROJECT_TEST_SRC_DIR}/frame/*.cpp
   ${CMAKE_CURRENT_LIST_DIR}/*.hpp
   ${CMAKE_CURRENT_LIST_DIR}/*.h
   ${CMAKE_CURRENT_LIST_DIR}/*.c
@@ -22,7 +19,7 @@ if(NOT (WIN32 AND BUILD_SHARED_LIBS))
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/test")
 endif()
 
-atframe_add_test_executable(hiredis-happ-test ${PROJECT_TEST_SRC_LIST})
+atframe_add_test_executable(hiredis-happ-test ${PROJECT_TEST_SRC_LIST} LINK_TEST_MAIN)
 
 target_compile_definitions(hiredis-happ-test PRIVATE _CRT_SECURE_NO_WARNINGS=1 HIREDIS_HAPP_UNIT_TEST_HACK=1)
 

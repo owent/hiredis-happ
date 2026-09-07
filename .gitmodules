@@ -1,8 +1,8 @@
 [submodule "atframework/cmake-toolset"]
 	path = atframework/cmake-toolset
-	url = https://github.com/atframework/cmake-toolset.git
+	url = https://github.com/atframework/cmake-toolset
 	branch = main
 [submodule "atframework/atframe_utils"]
 	path = atframework/atframe_utils
-	url = https://github.com/atframework/atframe_utils.git
+	url = https://github.com/atframework/atframe_utils
 	branch = main
