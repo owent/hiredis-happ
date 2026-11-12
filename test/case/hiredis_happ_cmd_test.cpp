@@ -6,7 +6,6 @@
 #include <set>
 #include <sstream>
 
-
 #include "frame/test_macros.h"
 #include "hiredis_happ.h"
 #include "test_redis_reply_helper.h"

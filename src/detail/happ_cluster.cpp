@@ -27,7 +27,6 @@
 #include "detail/crc16.h"
 #include "detail/happ_cmd.h"
 
-
 namespace hiredis {
 namespace happ {
 namespace detail {
@@ -121,7 +120,7 @@ static bool pick_cluster_endpoint_from_reply(redisAsyncContext *rctx, redisReply
 static char NONE_MSG[] = "none";
 }  // namespace detail
 
-HIREDIS_HAPP_API cluster::cluster() : slot_flag_(slot_status::INVALID) {
+HIREDIS_HAPP_API cluster::cluster() : slots_(new slot_t[HIREDIS_HAPP_SLOT_NUMBER]), slot_flag_(slot_status::INVALID) {
   conf_.log_fn_debug = conf_.log_fn_info = nullptr;
   conf_.log_buffer = nullptr;
   conf_.log_max_size = 0;
@@ -948,7 +947,8 @@ void cluster::on_reply_wrapper(redisAsyncContext *c, void *r, void *privdata) {
   conn->call_reply(cmd, r);
 }
 
-HIREDIS_HAPP_API void cluster::on_reply_update_slot(cmd_exec *cmd, redisAsyncContext *rctx, void *r, void * /*privdata*/) {
+HIREDIS_HAPP_API void cluster::on_reply_update_slot(cmd_exec *cmd, redisAsyncContext *rctx, void *r,
+                                                    void * /*privdata*/) {
   redisReply *reply = reinterpret_cast<redisReply *>(r);
   cluster *self = cmd->holder_.clu;
 

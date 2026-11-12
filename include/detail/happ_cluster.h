@@ -280,7 +280,7 @@ class cluster {
   struct slot_status {
     enum type { INVALID = 0, UPDATING, OK };
   };
-  slot_t slots_[HIREDIS_HAPP_SLOT_NUMBER];
+  std::unique_ptr<slot_t[]> slots_;
   slot_status::type slot_flag_;
   // retry cmd queue after slots_ reloaded
   std::list<cmd_t *> slot_pending_;
